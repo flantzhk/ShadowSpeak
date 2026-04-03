@@ -2838,7 +2838,7 @@ function App() {
                   <div style={{fontSize:".78rem",fontWeight:800,color:"var(--ink)"}}>{displayName}</div>
                   <div style={{fontSize:".62rem",color:"var(--ink2)"}}>{user.email}</div>
                 </div>
-                <button onClick={()=>{setProfileMenu(false);window.location.href="mandarin.html";}} style={{width:"100%",padding:"10px 16px",background:"none",border:"none",cursor:"pointer",fontSize:".75rem",fontWeight:700,color:"var(--ink)",textAlign:"left",display:"flex",alignItems:"center",gap:8}}>🇨🇳 Learn another language</button>
+                <button onClick={()=>{setProfileMenu(false);window.location.href="mandarin.html";}} style={{width:"100%",padding:"10px 16px",background:"none",border:"none",cursor:"pointer",fontSize:".75rem",fontWeight:700,color:"var(--ink)",textAlign:"left",display:"flex",alignItems:"center",gap:8}}>🇨🇳 Learn Mandarin</button>
                 <button onClick={()=>{setProfileMenu(false);setTab("settings");}} style={{width:"100%",padding:"10px 16px",background:"none",border:"none",cursor:"pointer",fontSize:".75rem",fontWeight:700,color:"var(--ink)",textAlign:"left",display:"flex",alignItems:"center",gap:8}}>⚙️ Settings</button>
                 <button onClick={()=>{setProfileMenu(false);window.location.href="index.html";}} style={{width:"100%",padding:"10px 16px",background:"none",border:"none",cursor:"pointer",fontSize:".75rem",fontWeight:700,color:"var(--ink)",textAlign:"left",display:"flex",alignItems:"center",gap:8}}>🏠 Back to home</button>
                 <div style={{borderTop:"1px solid var(--st)",margin:"2px 0"}} />
@@ -2849,7 +2849,7 @@ function App() {
         </div>
       </div>
 
-      {tab==="home"&&<TodayTab profile={displayName} progress={progress} upd={upd} markReviewed={markReviewed} setTab={setTab} setSelUnit={setSelUnit} startPlaylist={startPlaylist} openPlBuilder={()=>setShowPlBuilder(true)} />}
+      {tab==="home"&&<TodayTab profile={displayName} progress={progress} upd={upd} markReviewed={markReviewed} setTab={setTab} setSelUnit={setSelUnit} startPlaylist={startPlaylist} openPlBuilder={()=>setShowPlBuilder(true)} settings={settings} />}
       {tab==="phrases"&&<PhrasesTab progress={progress} upd={upd} selUnit={selUnit} setSelUnit={setSelUnit} settings={settings} />}
       {tab==="vocab"&&<VocabTab progress={progress} upd={upd} startPlaylist={startPlaylist} />}
       {tab==="unit10"&&<Unit10Tab progress={progress} upd={upd} />}
@@ -3679,7 +3679,7 @@ function AddNewSection({ progress, upd }) {
 }
 
 // ---- TODAY (with lesson engine) ----
-function TodayTab({ profile, progress, upd, markReviewed, setTab, setSelUnit, startPlaylist, openPlBuilder }) {
+function TodayTab({ profile, progress, upd, markReviewed, setTab, setSelUnit, startPlaylist, openPlBuilder, settings }) {
   const [inLesson, setInLesson] = useState(false);
   const [addEn, setAddEn] = useState("");
   const [addJy, setAddJy] = useState("");
@@ -4263,6 +4263,10 @@ function ShadowMode({ unit, progress, upd, settings, onClose, startIdx=0, single
       <div className="l-ctrl">
         {/* Transport: Replay / Pause / Next */}
         <div className="l-transport">
+          {!single&&<div className="lt-wrap">
+            <button className="lt-btn sec" disabled={idx===0} style={idx===0?{opacity:.3}:{}} onClick={()=>{if(idx>0){clear();setScoreResult(null);setIdx(i=>i-1);setPhase("play");}}}>⏮</button>
+            <span className="lt-lbl">Back</span>
+          </div>}
           <div className="lt-wrap">
             <button className="lt-btn sec" onClick={()=>{clear();setPhase("play");}}>↻</button>
             <span className="lt-lbl">Replay</span>
@@ -4272,7 +4276,7 @@ function ShadowMode({ unit, progress, upd, settings, onClose, startIdx=0, single
             <span className="lt-lbl">{playing?"Pause":"Play"}</span>
           </div>
           {!single&&<div className="lt-wrap">
-            <button className="lt-btn sec" onClick={()=>{clear();if(idx+1>=total)setComplete(true);else{setIdx(i=>i+1);setPhase("play");}}}>⏭</button>
+            <button className="lt-btn sec" onClick={()=>{clear();setScoreResult(null);if(idx+1>=total)setComplete(true);else{setIdx(i=>i+1);setPhase("play");}}}>⏭</button>
             <span className="lt-lbl">Next</span>
           </div>}
         </div>

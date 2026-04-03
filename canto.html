@@ -2786,8 +2786,9 @@ function App() {
   const photoURL = user.photoURL;
   const vk = Object.keys(progress.vocab||{}).filter(k=>progress.vocab[k]).length;
 
-  // Voice onboarding — show once on first visit (skip if offline)
-  if (settings.onboardingDone === false) {
+  // Voice onboarding — show once on first visit (skip if offline or returning user)
+  const isReturningUser = (progress.lessonLog||[]).length > 0 || Object.keys(progress.phrases||{}).length > 0 || Object.keys(progress.vocab||{}).length > 0;
+  if (settings.onboardingDone === false && !isReturningUser) {
     if (!_isOnline) {
       // Skip onboarding offline, use defaults
       updSettings("enVoice", DEFAULT_EN_VOICE);
@@ -2800,6 +2801,9 @@ function App() {
         updSettings("onboardingDone", true);
       }} />;
     }
+  } else if (settings.onboardingDone === false && isReturningUser) {
+    // Returning user on new device — skip onboarding, use defaults, persist
+    updSettings("onboardingDone", true);
   }
 
   return (
@@ -3721,45 +3725,76 @@ function TodayTab({ profile, progress, upd, markReviewed, setTab, setSelUnit, st
   if (inLesson) return <LessonMode progress={progress} upd={upd} profile={profile} settings={settings} onComplete={completeLesson} onQuit={()=>setConfirmQuit(true)} />;
 
   return (
-    <div className="mc">
-      {/* GREETING — plain text at top */}
-      <div style={{marginBottom:24}}>
-        <div className="pt">Hey, {userName.split(" ")[0]} 👋</div>
-        <div className="ps">{totalLessons===0?"Ready to start learning Cantonese?":
-          totalLessons<5?"You're building a great habit!":
-          `${totalLessons} lessons in — keep it up!`}</div>
+    <div className="mc" style={{padding:"0 14px 80px"}}>
+
+      {/* ── GREETING ── */}
+      <div style={{padding:"20px 0 16px"}}>
+        <div style={{fontSize:"1.3rem",fontWeight:900,color:"var(--ink)"}}>Hello, {userName.split(" ")[0]} 👋</div>
+        <div style={{fontSize:".82rem",color:"var(--ink2)",lineHeight:1.5,marginTop:4}}>
+          {totalLessons===0?"Welcome! Let's get you started with Cantonese.":
+           didLessonToday(progress)?`Great work today! You've done ${totalLessons} lesson${totalLessons>1?"s":""} so far.`:
+           `Good to see you! You've done ${totalLessons} lesson${totalLessons>1?"s":""} so far${stats.streak>1?` — ${stats.streak} days in a row! 🔥`:""}.`}
+        </div>
       </div>
 
-      {/* STEP 1 · ADD — collapsible card */}
-      <div style={{marginBottom:24}}>
-        <div style={{fontSize:".62rem",fontWeight:900,color:"var(--ink3)",textTransform:"uppercase",letterSpacing:"1.5px",marginBottom:6}}>STEP 1 · ADD NEW WORDS</div>
-        <div style={{fontSize:".82rem",fontWeight:700,color:"var(--ink)",marginBottom:8}}>Anything new to practise?</div>
+      {/* ── ADD NEW WORDS ── */}
+      <div style={{background:"var(--wh)",borderRadius:16,padding:16,marginBottom:16,border:"1px solid var(--st)"}}>
+        <div style={{fontSize:".62rem",fontWeight:800,textTransform:"uppercase",letterSpacing:1,color:"var(--ink3)",marginBottom:10}}>Step 1 · Add</div>
+        <div style={{fontSize:".88rem",fontWeight:700,color:"var(--ink)",marginBottom:4}}>Anything new to practise?</div>
         <div style={{fontSize:".72rem",color:"var(--ink3)",marginBottom:10,lineHeight:1.5}}>Add a word or phrase — it'll be priority in every lesson until you've got it.</div>
         <AddNewSection progress={progress} upd={upd} />
       </div>
 
-      <div style={{height:1,background:"var(--st)",margin:"0 0 24px"}} />
-
-      {/* STEP 2 · PRACTISE — dark CTA card */}
-      <div style={{marginBottom:24}}>
-        <div style={{fontSize:".62rem",fontWeight:900,color:"var(--ink3)",textTransform:"uppercase",letterSpacing:"1.5px",marginBottom:6}}>STEP 2 · PRACTISE</div>
-        <div style={{background:"var(--for)",borderRadius:14,padding:20,textAlign:"center"}}>
-          <div style={{fontSize:".88rem",fontWeight:700,color:"rgba(255,255,255,.6)",marginBottom:4}}>
-            {totalLessons===0?"30 minutes is all it takes":"Ready to practise?"}
-          </div>
-          <div style={{fontSize:".72rem",color:"rgba(255,255,255,.35)",marginBottom:14,lineHeight:1.5}}>
-            {phaseInfo_short.map((p,i)=>(i>0?" → ":"")+p).join("")}
-          </div>
-          <button style={{background:"var(--lime)",color:"var(--for)",border:"none",borderRadius:12,padding:"14px 36px",fontSize:".9rem",fontWeight:900,cursor:"pointer",boxShadow:"0 4px 12px rgba(196,240,0,.3)"}} onClick={()=>setInLesson(true)}>Start practising 💪</button>
+      {/* ── START LESSON ── */}
+      <div style={{background:"var(--for)",borderRadius:16,padding:20,marginBottom:16,textAlign:"center"}}>
+        <div style={{fontSize:".62rem",fontWeight:800,textTransform:"uppercase",letterSpacing:1,color:"rgba(196,240,0,.5)",marginBottom:10}}>Step 2 · Practise</div>
+        <div style={{fontSize:".95rem",fontWeight:800,color:"#fff",marginBottom:4,lineHeight:1.4}}>
+          {(()=>{
+            const learning = (progress.unit10||[]).filter(s=>!s.known&&s.cn&&s.cn!=="(add characters)").length;
+            if(learning>0) return `${learning} word${learning>1?"s":""} to drill — let's go!`;
+            const headlines = [
+              "30 minutes of focused practice",
+              "Every session rewires your brain 🧠",
+              "Consistency beats perfection",
+              "One more lesson, one step closer ✨",
+              "Small daily wins add up to something big",
+            ];
+            if(totalLessons===0) return "Your first lesson — 30 minutes is all it takes!";
+            return headlines[totalLessons % headlines.length];
+          })()}
         </div>
+        <div style={{fontSize:".68rem",color:"rgba(255,255,255,.4)",marginBottom:14}}>Warm-up → Learn → Drill → Review → Quiz → Cool-down</div>
+        <button style={{background:"var(--lime)",color:"var(--for)",border:"none",borderRadius:12,padding:"14px 36px",fontSize:".9rem",fontWeight:900,cursor:"pointer",boxShadow:"0 4px 12px rgba(0,0,0,.15)"}} onClick={()=>setInLesson(true)}>Start practising 💪</button>
       </div>
 
       <div style={{height:1,background:"var(--st)",margin:"0 0 24px"}} />
 
-      {/* REWARD JOURNEY — white card */}
-      <div style={{marginBottom:24}}>
-        <div style={{fontSize:".62rem",fontWeight:900,color:"var(--ink3)",textTransform:"uppercase",letterSpacing:"1.5px",marginBottom:6}}>REWARD JOURNEY</div>
-        <div style={{background:"var(--wh)",borderRadius:14,padding:18,border:"1px solid var(--st)"}}>
+      {/* ── YOUR PROGRESS ── */}
+      <div style={{marginBottom:16}}>
+        <div style={{fontSize:".62rem",fontWeight:800,textTransform:"uppercase",letterSpacing:1,color:"var(--ink3)",marginBottom:10}}>Your Progress</div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:6}}>
+          <div style={{background:"var(--wh)",borderRadius:12,padding:10,textAlign:"center",border:"1px solid var(--st)"}}>
+            <div style={{fontSize:"1.2rem",fontWeight:900,color:"var(--for)"}}>{totalLessons}</div>
+            <div style={{fontSize:".62rem",fontWeight:700,color:"var(--ink2)"}}>Lessons</div>
+          </div>
+          <div style={{background:"var(--wh)",borderRadius:12,padding:10,textAlign:"center",border:"1px solid var(--st)"}}>
+            <div style={{fontSize:"1.2rem",fontWeight:900,color:"var(--for)"}}>{stats.streak}🔥</div>
+            <div style={{fontSize:".62rem",fontWeight:700,color:"var(--ink2)"}}>Streak</div>
+          </div>
+          <div style={{background:"var(--wh)",borderRadius:12,padding:10,textAlign:"center",border:"1px solid var(--st)"}}>
+            <div style={{fontSize:"1.2rem",fontWeight:900,color:"var(--for)"}}>{stats.known}</div>
+            <div style={{fontSize:".62rem",fontWeight:700,color:"var(--ink2)"}}>Phrases</div>
+          </div>
+          <div style={{background:"var(--wh)",borderRadius:12,padding:10,textAlign:"center",border:"1px solid var(--st)"}}>
+            <div style={{fontSize:"1.2rem",fontWeight:900,color:"var(--for)"}}>{vk}</div>
+            <div style={{fontSize:".62rem",fontWeight:700,color:"var(--ink2)"}}>Words</div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── REWARD JOURNEY ── */}
+      <div style={{background:"var(--wh)",borderRadius:16,padding:18,marginBottom:16,border:"1px solid var(--st)"}}>
+        <div style={{fontSize:".62rem",fontWeight:800,textTransform:"uppercase",letterSpacing:1,color:"var(--ink3)",marginBottom:10}}>Reward Journey</div>
           {Math.floor(totalLessons/10) > 0 && (
             <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:4,marginBottom:12,background:"var(--cream)",borderRadius:10,padding:8}}>
               {Array.from({length:Math.min(Math.floor(totalLessons/10),10)},(_,i)=>(
@@ -3806,8 +3841,6 @@ function TodayTab({ profile, progress, upd, markReviewed, setTab, setSelUnit, st
           </div>
         </div>
       </div>
-
-      <div style={{height:1,background:"var(--st)",margin:"0 0 24px"}} />
 
       {/* BADGES EARNED */}
       {earnedBadges.length > 0 && (

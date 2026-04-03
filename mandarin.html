@@ -2402,8 +2402,9 @@ function App() {
   const photoURL = user.photoURL;
   const vk = Object.keys(progress.vocab||{}).filter(k=>progress.vocab[k]).length;
 
-  // Voice onboarding — show once on first visit (skip if offline)
-  if (settings.onboardingDone === false) {
+  // Voice onboarding — show once on first visit (skip if offline or returning user)
+  const isReturningUser = (progress.lessonLog||[]).length > 0 || Object.keys(progress.phrases||{}).length > 0 || Object.keys(progress.vocab||{}).length > 0;
+  if (settings.onboardingDone === false && !isReturningUser) {
     if (!_isOnline) {
       updSettings("enVoice", DEFAULT_EN_VOICE);
       updSettings("zhVoice", DEFAULT_ZH_VOICE);
@@ -2415,6 +2416,8 @@ function App() {
         updSettings("onboardingDone", true);
       }} />;
     }
+  } else if (settings.onboardingDone === false && isReturningUser) {
+    updSettings("onboardingDone", true);
   }
 
   return (

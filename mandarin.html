@@ -5,6 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>Mandarin Is Easy</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🇨🇳</text></svg>" />
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#1F3329" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <link rel="apple-touch-icon" href="icon-192.png" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
@@ -39,6 +44,71 @@ const FIREBASE_CONFIG = {
 if (!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
 const fbAuth = firebase.auth();
 const fbDb = firebase.firestore();
+
+// Enable Firestore offline persistence
+fbDb.enablePersistence({ synchronizeTabs: true }).catch(err => {
+  if (err.code === 'failed-precondition') console.warn("Firestore persistence: multiple tabs open");
+  else if (err.code === 'unimplemented') console.warn("Firestore persistence: not supported");
+});
+
+// ---- OFFLINE DETECTION ----
+let _isOnline = navigator.onLine;
+const _onlineListeners = new Set();
+function onOnlineChange(fn) { _onlineListeners.add(fn); return () => _onlineListeners.delete(fn); }
+window.addEventListener("online", () => { _isOnline = true; _onlineListeners.forEach(fn => fn(true)); });
+window.addEventListener("offline", () => { _isOnline = false; _onlineListeners.forEach(fn => fn(false)); });
+
+// ---- SERVICE WORKER REGISTRATION ----
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("sw.js").then(reg => {
+      console.log("SW registered:", reg.scope);
+    }).catch(err => console.warn("SW registration failed:", err));
+  });
+}
+
+// ---- AUDIO MANIFEST ----
+let _audioManifest = null;
+let _audioManifestLoading = false;
+async function loadAudioManifest() {
+  if (_audioManifest) return _audioManifest;
+  if (_audioManifestLoading) {
+    return new Promise(resolve => {
+      const check = setInterval(() => { if (_audioManifest) { clearInterval(check); resolve(_audioManifest); } }, 100);
+      setTimeout(() => { clearInterval(check); resolve(null); }, 5000);
+    });
+  }
+  _audioManifestLoading = true;
+  try {
+    const res = await fetch("audio/manifest.json");
+    if (res.ok) { _audioManifest = await res.json(); console.log("Audio manifest loaded"); }
+  } catch(e) { console.warn("Audio manifest not available:", e.message); }
+  _audioManifestLoading = false;
+  return _audioManifest;
+}
+loadAudioManifest();
+
+function playLocalAudio(url) {
+  return new Promise((resolve, reject) => {
+    stopAudio();
+    const audio = new Audio(url);
+    _currentAudio = audio;
+    if (_audioCtx && _audioCtx.state === "suspended") _audioCtx.resume();
+    audio.onended = () => { _currentAudio = null; resolve(); };
+    audio.onerror = () => { _currentAudio = null; reject(new Error("Local audio failed: " + url)); };
+    audio.play().catch(e => { _currentAudio = null; reject(e); });
+  });
+}
+
+async function tryLocalAudio(text, section) {
+  const manifest = await loadAudioManifest();
+  if (!manifest) return false;
+  const [app, lang] = section.split(".");
+  const path = manifest?.[app]?.[lang]?.[text];
+  if (!path) return false;
+  try { await playLocalAudio(path); return true; }
+  catch(e) { console.warn("Local audio playback failed:", e.message); return false; }
+}
 
 const MANDO_COLLECTION = "mandarin-progress";
 async function loadFromFirestore(uid) {
@@ -1199,22 +1269,36 @@ const DEFAULT_ZH_VOICE = "bhJUNIXWQQ94l8eI2VUf";
 let _activeEnVoiceId = DEFAULT_EN_VOICE;
 let _activeZhVoiceId = DEFAULT_ZH_VOICE;
 
-function elevenLabsTTS(text, lang) {
+// ---- TTS AUDIO CACHE ----
+const _ttsCache = new Map();
+function _playCachedBlob(blob, lang) {
   return new Promise((resolve, reject) => {
     stopAudio();
-    const voiceId = (lang === "en" || lang === "en-US") ? _activeEnVoiceId : _activeZhVoiceId;
+    const url = URL.createObjectURL(blob);
+    const audio = new Audio(url);
+    // Slow down Mandarin slightly for more natural pace
+    if (lang === "cmn-CN" || lang === "zh") audio.playbackRate = 0.88;
+    _currentAudio = audio;
+    audio.onended = () => { _currentAudio = null; resolve(); };
+    audio.onerror = () => { _currentAudio = null; reject(new Error("cached playback failed")); };
+    audio.play().catch(e => { _currentAudio = null; reject(e); });
+  });
+}
+
+function elevenLabsTTS(text, lang) {
+  const voiceId = (lang === "en" || lang === "en-US") ? _activeEnVoiceId : _activeZhVoiceId;
+  const cacheKey = `el:${voiceId}:${text}`;
+  if (_ttsCache.has(cacheKey)) return _playCachedBlob(_ttsCache.get(cacheKey), lang);
+  return new Promise((resolve, reject) => {
+    stopAudio();
     fetch(`${PROXY_URL}/elevenlabs/tts`, {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text, voice_id: voiceId, model_id: "eleven_multilingual_v2", voice_settings: { stability: 0.5, similarity_boost: 0.75, style: 0.0 } })
+      body: JSON.stringify({ text, voice_id: voiceId, model_id: "eleven_multilingual_v2", voice_settings: { stability: 0.7, similarity_boost: 0.75, style: 0.0 } })
     })
     .then(res => { if (!res.ok) throw new Error("ElevenLabs " + res.status); return res.blob(); })
     .then(blob => {
-      const url = URL.createObjectURL(blob);
-      const audio = new Audio(url);
-      _currentAudio = audio;
-      audio.onended = () => { _currentAudio = null; URL.revokeObjectURL(url); resolve(); };
-      audio.onerror = () => { _currentAudio = null; URL.revokeObjectURL(url); reject(new Error("ElevenLabs playback failed")); };
-      audio.play().catch(e => { _currentAudio = null; URL.revokeObjectURL(url); reject(e); });
+      _ttsCache.set(cacheKey, blob);
+      _playCachedBlob(blob, lang).then(resolve).catch(reject);
     }).catch(reject);
   });
 }
@@ -1234,6 +1318,11 @@ function googleTTS(text, lang) {
 
 async function speak(text){
   stopAudio();
+  // 1. Try local pre-generated audio
+  if (await tryLocalAudio(text, "mandarin.cn")) return;
+  // 2. Offline? Can't call API
+  if (!_isOnline) { console.warn("Offline: no local audio for", text); return; }
+  // 3. Online fallbacks
   try { await elevenLabsTTS(text, "cmn-CN"); return; } catch(e) { console.warn("ElevenLabs failed:", e.message); }
   try { await googleTTS(text, "cmn-CN"); return; } catch(e) {}
   return speakAsync(text, "cmn-CN", 0.85);
@@ -1241,6 +1330,11 @@ async function speak(text){
 
 async function speakEnglish(text) {
   stopAudio();
+  // 1. Try local pre-generated audio
+  if (await tryLocalAudio(text, "mandarin.en")) return;
+  // 2. Offline? Can't call API
+  if (!_isOnline) { console.warn("Offline: no local EN audio for", text); return; }
+  // 3. Online fallbacks
   try { await elevenLabsTTS(text, "en"); return; } catch(e) { console.warn("ElevenLabs EN failed:", e.message); }
   try { await googleTTS(text, "en"); return; } catch(e) {}
   return speakAsync(text, "en-US", 1.0);
@@ -1254,6 +1348,7 @@ async function speakPhrase(item) {
 
 // ---- Pronunciation Scoring via cantonese.ai (supports Mandarin too) ----
 async function scorePronunciation(audioBlob, text, language = "mandarin") {
+  if (!_isOnline) throw new Error("OFFLINE");
   const formData = new FormData();
   formData.append("text", text);
   formData.append("language", language);
@@ -1371,6 +1466,7 @@ const CSS = `
 :root{--cream:#F5F2EE;--wh:#fff;--st:#EDE8E0;--st2:#E0DAD0;--ink:#2C2C2C;--ink2:#5A554F;--ink3:#7A756E;--lime:#C4F000;--ld:#7AAA00;--for:#1F3329;--navy:#1A1F3D;--navy-l:#242B52;--cor:#F05A3A;--plum:#8F6AE8;}
 *{box-sizing:border-box;margin:0;padding:0}body,button,input,select,textarea{font-family:'DM Sans',-apple-system,sans-serif}
 .ca{background:var(--cream);min-height:100vh;color:var(--ink);-webkit-font-smoothing:antialiased}
+@keyframes slideDown{from{transform:translateY(-100%);opacity:0}to{transform:translateY(0);opacity:1}}
 
 /* Bottom nav — mobile only */
 .bn{position:fixed;bottom:0;left:0;right:0;background:var(--wh);border-top:1px solid var(--st2);display:flex;z-index:100;padding-bottom:env(safe-area-inset-bottom)}
@@ -1810,30 +1906,24 @@ function QuizTab({ progress, upd }) {
   const [picking, setPicking] = useState(false);
   const [selectedUnits, setSelectedUnits] = useState(new Set());
   const [source, setSource] = useState("known");
+  const [pronScores, setPronScores] = useState([]);
 
   const knownPhrases = useMemo(() => {
     const items = [];
-    UNITS.forEach(u => {
-      u.phrases.forEach((p, i) => {
-        const key = `${u.id}-${i}`;
-        if ((progress.phrases || {})[key]) items.push({ ...p, unitId: u.id, phraseIdx: i, key });
-      });
-    });
+    UNITS.forEach(u => { u.phrases.forEach((p, i) => { const key = `${u.id}-${i}`; if ((progress.phrases || {})[key]) items.push({ ...p, unitId: u.id, phraseIdx: i, key }); }); });
     return items;
   }, [progress]);
 
   const getUnitPhrases = () => {
     const items = [];
-    UNITS.forEach(u => {
-      if (selectedUnits.has(u.id)) u.phrases.forEach((p, i) => items.push({ ...p, unitId: u.id, phraseIdx: i, key: `${u.id}-${i}` }));
-    });
+    UNITS.forEach(u => { if (selectedUnits.has(u.id)) u.phrases.forEach((p, i) => items.push({ ...p, unitId: u.id, phraseIdx: i, key: `${u.id}-${i}` })); });
     return items;
   };
 
   const startQuiz = (m, src) => {
     let pool = src === "units" ? getUnitPhrases() : src === "all" ? UNITS.flatMap(u => u.phrases.map((p, i) => ({ ...p, unitId: u.id, phraseIdx: i, key: `${u.id}-${i}` }))) : knownPhrases;
     setQuizItems([...pool].sort(() => Math.random() - 0.5).slice(0, 20));
-    setMode(m); setSource(src); setIdx(0); setRevealed(false); setScore({ right: 0, almost: 0, wrong: 0 }); setDone(false); setDictAnswer(""); setPicking(false);
+    setMode(m); setSource(src); setIdx(0); setRevealed(false); setScore({ right: 0, almost: 0, wrong: 0 }); setDone(false); setDictAnswer(""); setPicking(false); setScoreResult(null); setPronScores([]);
   };
 
   const grade = (result) => {
@@ -1844,18 +1934,23 @@ function QuizTab({ progress, upd }) {
     if (idx + 1 >= quizItems.length) setDone(true); else setIdx(i => i + 1);
   };
 
-  const toggleUnit = (id) => {
-    setSelectedUnits(prev => { const next = new Set(prev); if (next.has(id)) next.delete(id); else next.add(id); return next; });
+  const pronNext = () => {
+    if (scoreResult) setPronScores(prev => [...prev, scoreResult.score]);
+    setScoreResult(null); setIsRecording(false); setScoring(false);
+    if (idx + 1 >= quizItems.length) setDone(true); else setIdx(i => i + 1);
+  };
+  const pronSkip = () => {
+    setPronScores(prev => [...prev, null]);
+    setScoreResult(null); setIsRecording(false); setScoring(false);
+    if (idx + 1 >= quizItems.length) setDone(true); else setIdx(i => i + 1);
   };
 
-  const qStartTest = async () => {
-    stopAudio();
-    try { const ok = await startRecording(); if (ok) setIsRecording(true); } catch(e) { console.warn("Mic error:", e); }
-  };
+  const toggleUnit = (id) => { setSelectedUnits(prev => { const next = new Set(prev); if (next.has(id)) next.delete(id); else next.add(id); return next; }); };
+
+  const qStartTest = async () => { stopAudio(); try { const ok = await startRecording(); if (ok) setIsRecording(true); } catch(e) { console.warn("Mic error:", e); } };
   const qStopTest = async () => {
     setIsRecording(false); setScoring(true);
-    const blob = await stopRecording();
-    const ph = quizItems[idx];
+    const blob = await stopRecording(); const ph = quizItems[idx];
     if (blob && ph) {
       try {
         const result = await scorePronunciation(blob, ph.cn, "mandarin");
@@ -1874,173 +1969,222 @@ function QuizTab({ progress, upd }) {
   };
 
   if (picking) {
-    const pickerMode = picking;
-    const unitCount = selectedUnits.size;
-    const phraseCount = getUnitPhrases().length;
-    return (
-      <div className="mc">
-        <div className="pt">Pick units to quiz 📋</div>
-        <div className="ps">Choose which units you want to practise. Tap to select, then start!</div>
-        <div style={{display:"flex",flexWrap:"wrap",gap:6,margin:"12px 0"}}>
-          {UNITS.map(u => (
-            <button key={u.id} onClick={()=>toggleUnit(u.id)} style={{padding:"8px 12px",borderRadius:10,border:selectedUnits.has(u.id)?"2px solid var(--lime)":"1.5px solid var(--st)",background:selectedUnits.has(u.id)?"rgba(196,240,0,.1)":"var(--wh)",cursor:"pointer",fontSize:".68rem",fontWeight:700,color:"var(--ink)"}}>
-              {selectedUnits.has(u.id)?"✓ ":""}{u.id}. {u.title}
-            </button>
-          ))}
-        </div>
-        <div style={{display:"flex",gap:6,margin:"8px 0"}}>
-          <button onClick={()=>setSelectedUnits(new Set(UNITS.map(u=>u.id)))} style={{flex:1,padding:"8px",borderRadius:8,border:"1px solid var(--st)",background:"var(--wh)",fontSize:".65rem",fontWeight:700,color:"var(--ink)",cursor:"pointer"}}>Select all</button>
-          <button onClick={()=>setSelectedUnits(new Set())} style={{flex:1,padding:"8px",borderRadius:8,border:"1px solid var(--st)",background:"var(--wh)",fontSize:".65rem",fontWeight:700,color:"var(--ink)",cursor:"pointer"}}>Clear</button>
-        </div>
-        {unitCount > 0 && (
-          <div style={{textAlign:"center",margin:"12px 0"}}>
-            <div style={{fontSize:".72rem",color:"var(--ink2)",marginBottom:8}}>{unitCount} unit{unitCount>1?"s":""} selected, {phraseCount} phrases</div>
-            <button onClick={()=>startQuiz(pickerMode,"units")} style={{padding:"14px 28px",borderRadius:12,border:"none",background:"var(--lime)",color:"var(--for)",fontSize:".85rem",fontWeight:900,cursor:"pointer"}}>Start quiz with {Math.min(phraseCount,20)} phrases</button>
-          </div>
-        )}
-        <button onClick={()=>setPicking(false)} style={{display:"block",margin:"12px auto 0",background:"none",border:"none",cursor:"pointer",fontSize:".72rem",fontWeight:600,color:"var(--ink2)"}}>← Back</button>
+    const unitCount = selectedUnits.size; const phraseCount = getUnitPhrases().length;
+    return (<div className="mc">
+      <div className="pt">Pick units to practise 📋</div>
+      <div className="ps">Choose which units you want in your pronunciation quiz.</div>
+      <div style={{display:"flex",flexWrap:"wrap",gap:6,margin:"12px 0"}}>
+        {UNITS.map(u => (<button key={u.id} onClick={()=>toggleUnit(u.id)} style={{padding:"8px 12px",borderRadius:10,border:selectedUnits.has(u.id)?"2px solid var(--lime)":"1.5px solid var(--st)",background:selectedUnits.has(u.id)?"rgba(196,240,0,.1)":"var(--wh)",cursor:"pointer",fontSize:".68rem",fontWeight:700,color:"var(--ink)"}}>{selectedUnits.has(u.id)?"✓ ":""}{u.id}. {u.title}</button>))}
       </div>
-    );
+      <div style={{display:"flex",gap:6,margin:"8px 0"}}>
+        <button onClick={()=>setSelectedUnits(new Set(UNITS.map(u=>u.id)))} style={{flex:1,padding:"8px",borderRadius:8,border:"1px solid var(--st)",background:"var(--wh)",fontSize:".65rem",fontWeight:700,color:"var(--ink)",cursor:"pointer"}}>Select all</button>
+        <button onClick={()=>setSelectedUnits(new Set())} style={{flex:1,padding:"8px",borderRadius:8,border:"1px solid var(--st)",background:"var(--wh)",fontSize:".65rem",fontWeight:700,color:"var(--ink)",cursor:"pointer"}}>Clear</button>
+      </div>
+      {unitCount > 0 && (<div style={{textAlign:"center",margin:"12px 0"}}>
+        <div style={{fontSize:".72rem",color:"var(--ink2)",marginBottom:8}}>{unitCount} unit{unitCount>1?"s":""}, {phraseCount} phrases</div>
+        <button onClick={()=>startQuiz("pronunciation","units")} style={{padding:"14px 28px",borderRadius:12,border:"none",background:"var(--lime)",color:"var(--for)",fontSize:".85rem",fontWeight:900,cursor:"pointer"}}>Start with {Math.min(phraseCount,20)} phrases</button>
+      </div>)}
+      <button onClick={()=>setPicking(false)} style={{display:"block",margin:"12px auto 0",background:"none",border:"none",cursor:"pointer",fontSize:".72rem",fontWeight:600,color:"var(--ink2)"}}>← Back</button>
+    </div>);
   }
 
   if (!mode) {
-    return (
-      <div className="mc">
-        <div className="pt">Quiz Time! 🎯</div>
-        <div className="ps">Test what you've learned. You'll be surprised how much you know!</div>
-        <div className="qs-card" onClick={() => startQuiz("production","known")} style={{opacity:knownPhrases.length<3?.4:1,pointerEvents:knownPhrases.length<3?"none":"auto"}}>
-          <div style={{ fontSize: "2rem", marginBottom: 8 }}>🗣</div>
-          <div className="qs-ti">Speaking Quiz</div>
-          <div className="qs-sub">See the English, try to say it in Mandarin out loud, then check!</div>
+    const hasEnough = knownPhrases.length >= 3;
+    return (<div className="mc">
+      <div className="pt">Test yourself 🎯</div>
+      <div className="ps">Three ways to practise. Pick the one that fits your mood!</div>
+
+      <div className="qs-card" onClick={()=>hasEnough&&startQuiz("speaking","known")} style={{opacity:hasEnough?1:.4,pointerEvents:hasEnough?"auto":"none"}}>
+        <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:6}}>
+          <div style={{fontSize:"1.6rem"}}>🧠</div>
+          <div><div className="qs-ti">Recall Quiz</div><div style={{fontSize:".62rem",color:"var(--ink3)",fontWeight:600}}>From your {knownPhrases.length} known phrases</div></div>
         </div>
-        <div className="qs-card" onClick={() => startQuiz("dictation","known")} style={{opacity:knownPhrases.length<3?.4:1,pointerEvents:knownPhrases.length<3?"none":"auto"}}>
-          <div style={{ fontSize: "2rem", marginBottom: 8 }}>👂</div>
-          <div className="qs-ti">Listening Quiz</div>
-          <div className="qs-sub">Listen to Mandarin, then type what you think it means in English!</div>
-        </div>
-        <div style={{fontSize:".75rem",color:"var(--ink2)",textAlign:"center",marginTop:10,fontWeight:600}}>
-          {knownPhrases.length >= 3 ? `${knownPhrases.length} known phrases ready to quiz 🎉` : `Mark at least 3 phrases as known to unlock quizzes above 💪`}
-        </div>
-        <div style={{borderTop:"1.5px solid var(--st)",margin:"16px 0 12px"}} />
-        <div style={{fontSize:".72rem",fontWeight:800,color:"var(--ink)",marginBottom:8}}>Or pick specific units to quiz:</div>
-        <div className="qs-card" onClick={() => setPicking("production")}>
-          <div style={{ fontSize: "2rem", marginBottom: 8 }}>🎯</div>
-          <div className="qs-ti">Speaking Quiz (pick units)</div>
-          <div className="qs-sub">Choose exactly which units you want to practise speaking</div>
-        </div>
-        <div className="qs-card" onClick={() => setPicking("dictation")}>
-          <div style={{ fontSize: "2rem", marginBottom: 8 }}>🎧</div>
-          <div className="qs-ti">Listening Quiz (pick units)</div>
-          <div className="qs-sub">Choose units and test your listening comprehension</div>
-        </div>
-        <button onClick={()=>startQuiz("production","all")} style={{width:"100%",marginTop:10,padding:"12px",borderRadius:12,border:"1.5px solid var(--st)",background:"var(--wh)",cursor:"pointer",fontSize:".75rem",fontWeight:700,color:"var(--ink)"}}>🔀 Random quiz from all {UNITS.reduce((s,u)=>s+u.phrases.length,0)} phrases</button>
+        <div className="qs-sub">See the English and try to remember the Mandarin. Good for building memory. You grade yourself.</div>
       </div>
-    );
+
+      <div className="qs-card" onClick={()=>hasEnough&&startQuiz("listening","known")} style={{opacity:hasEnough?1:.4,pointerEvents:hasEnough?"auto":"none"}}>
+        <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:6}}>
+          <div style={{fontSize:"1.6rem"}}>👂</div>
+          <div><div className="qs-ti">Listening Quiz</div><div style={{fontSize:".62rem",color:"var(--ink3)",fontWeight:600}}>From your {knownPhrases.length} known phrases</div></div>
+        </div>
+        <div className="qs-sub">Hear the Mandarin and type what it means in English. Trains your ear to catch real speech.</div>
+      </div>
+
+      {!hasEnough && <div style={{fontSize:".72rem",color:"var(--ink2)",textAlign:"center",margin:"6px 0 10px",fontWeight:600}}>Mark at least 3 phrases as known in Phrases to unlock the quizzes above 💪</div>}
+
+      <div style={{borderTop:"1.5px solid var(--st)",margin:"14px 0"}} />
+
+      <div className="qs-card" onClick={()=>setPicking(true)} style={{border:"2px solid var(--lime)",background:"rgba(196,240,0,.04)"}}>
+        <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:6}}>
+          <div style={{fontSize:"1.6rem"}}>🎙</div>
+          <div><div className="qs-ti">Pronunciation Quiz</div><div style={{fontSize:".62rem",color:"var(--ld)",fontWeight:700}}>Pick any units, no experience needed</div></div>
+        </div>
+        <div className="qs-sub">Pick which units to practise, then record yourself saying each phrase out loud. The AI scores your pronunciation and shows you which sounds you nailed and which need work.</div>
+      </div>
+    </div>);
   }
 
   if (done) {
-    const total = score.right + score.almost + score.wrong;
-    const pct = total ? Math.round(score.right / total * 100) : 0;
-    return (
-      <div className="comp-ov">
-        <div className="comp-em">{pct >= 80 ? "🌟" : pct >= 50 ? "💪" : "📝"}</div>
-        <div className="comp-t">{pct >= 80 ? "Amazing work!" : pct >= 50 ? "Great effort!" : "Good practice!"}</div>
-        <div className="comp-s">{score.right}/{total} correct · {score.wrong > 0 ? `${score.wrong} sent back for more practice` : "nothing sent back! Wow!"}</div>
-        <div style={{ display: "flex", gap: 10, marginBottom: 16 }}>
-          <div style={{ background: "rgba(196,240,0,.15)", borderRadius: 10, padding: "10px 16px", textAlign: "center" }}><div style={{ fontSize: "1.2rem", fontWeight: 900, color: "var(--lime)" }}>{score.right}</div><div style={{ fontSize: ".52rem", color: "rgba(255,255,255,.4)", fontWeight: 700 }}>Got it</div></div>
-          <div style={{ background: "rgba(255,255,255,.06)", borderRadius: 10, padding: "10px 16px", textAlign: "center" }}><div style={{ fontSize: "1.2rem", fontWeight: 900, color: "#fff" }}>{score.almost}</div><div style={{ fontSize: ".52rem", color: "rgba(255,255,255,.4)", fontWeight: 700 }}>Almost</div></div>
-          <div style={{ background: "rgba(240,90,58,.15)", borderRadius: 10, padding: "10px 16px", textAlign: "center" }}><div style={{ fontSize: "1.2rem", fontWeight: 900, color: "var(--cor)" }}>{score.wrong}</div><div style={{ fontSize: ".52rem", color: "rgba(255,255,255,.4)", fontWeight: 700 }}>Review</div></div>
-        </div>
+    if (mode === "pronunciation") {
+      const scored = pronScores.filter(s => s !== null); const avg = scored.length ? Math.round(scored.reduce((a,b)=>a+b,0)/scored.length) : 0;
+      return (<div className="comp-ov">
+        <div className="comp-em">{avg >= 80 ? "🌟" : avg >= 60 ? "💪" : "📝"}</div>
+        <div className="comp-t">{avg >= 80 ? "Amazing pronunciation!" : avg >= 60 ? "Getting there!" : "Good practice!"}</div>
+        <div className="comp-s">Average score: {avg}% across {scored.length} phrase{scored.length!==1?"s":""}{pronScores.length-scored.length>0?` (${pronScores.length-scored.length} skipped)`:""}</div>
         <button className="comp-btn" onClick={() => setMode(null)}>Done</button>
+      </div>);
+    }
+    const total = score.right + score.almost + score.wrong; const pct = total ? Math.round(score.right / total * 100) : 0;
+    return (<div className="comp-ov">
+      <div className="comp-em">{pct >= 80 ? "🌟" : pct >= 50 ? "💪" : "📝"}</div>
+      <div className="comp-t">{pct >= 80 ? "Amazing work!" : pct >= 50 ? "Great effort!" : "Good practice!"}</div>
+      <div className="comp-s">{score.right}/{total} correct · {score.wrong > 0 ? `${score.wrong} sent back for more practice` : "nothing sent back!"}</div>
+      <div style={{display:"flex",gap:10,marginBottom:16}}>
+        <div style={{background:"rgba(196,240,0,.15)",borderRadius:10,padding:"10px 16px",textAlign:"center"}}><div style={{fontSize:"1.2rem",fontWeight:900,color:"var(--lime)"}}>{score.right}</div><div style={{fontSize:".52rem",color:"rgba(255,255,255,.4)",fontWeight:700}}>Got it</div></div>
+        <div style={{background:"rgba(255,255,255,.06)",borderRadius:10,padding:"10px 16px",textAlign:"center"}}><div style={{fontSize:"1.2rem",fontWeight:900,color:"#fff"}}>{score.almost}</div><div style={{fontSize:".52rem",color:"rgba(255,255,255,.4)",fontWeight:700}}>Almost</div></div>
+        <div style={{background:"rgba(240,90,58,.15)",borderRadius:10,padding:"10px 16px",textAlign:"center"}}><div style={{fontSize:"1.2rem",fontWeight:900,color:"var(--cor)"}}>{score.wrong}</div><div style={{fontSize:".52rem",color:"rgba(255,255,255,.4)",fontWeight:700}}>Review</div></div>
       </div>
-    );
+      <button className="comp-btn" onClick={() => setMode(null)}>Done</button>
+    </div>);
   }
 
   const item = quizItems[idx];
 
-  if (mode === "production") {
-    return (
-      <div className="quiz-ov">
-        <div className="quiz-hd">
-          <button className="quiz-cl" onClick={() => {setMode(null);setScoreResult(null);}}>✕ End quiz</button>
-          <div className="quiz-ti">🗣 Speaking Quiz</div>
-          <div style={{ fontSize: ".65rem", color: "rgba(255,255,255,.4)" }}>{idx + 1}/{quizItems.length}</div>
-        </div>
-        <div className="quiz-body">
-          <div className="quiz-sub">Say this in Mandarin. Take your time!</div>
-          <div className="quiz-prompt">{item.en}</div>
-          {!revealed ? (
-            <button className="quiz-reveal-btn" onClick={() => setRevealed(true)}>Reveal answer</button>
-          ) : (
-            <>
-              <div className="quiz-answer">
-                <div className="quiz-ans-py">{item.pinyin}</div>
-                <div className="quiz-ans-cn">{item.cn}</div>
-                <button style={{ marginTop: 8, background: "var(--for)", border: "none", borderRadius: 999, padding: "6px 14px", fontSize: ".62rem", cursor: "pointer", color: "var(--lime)", fontWeight: 700 }} onClick={() => speak(item.cn)}>▶ Listen to it</button>
-              </div>
-              <div style={{width:"100%",maxWidth:440,marginBottom:8}}>
-                {!isRecording && !scoring ? (
-                  <button onClick={qStartTest} style={{width:"100%",padding:"12px",borderRadius:12,border:"2px solid var(--lime)",background:"rgba(196,240,0,.08)",color:"var(--lime)",fontSize:".78rem",fontWeight:800,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>🎙 Test your pronunciation</button>
-                ) : scoring ? (
-                  <div style={{width:"100%",padding:"12px",borderRadius:12,background:"rgba(255,255,255,.06)",textAlign:"center"}}><div style={{fontSize:".75rem",fontWeight:700,color:"rgba(255,255,255,.5)"}}>Scoring your pronunciation...</div></div>
-                ) : (
-                  <button onClick={qStopTest} style={{width:"100%",padding:"12px",borderRadius:12,border:"2px solid #e74c3c",background:"rgba(231,76,60,.12)",color:"#ff7a5c",fontSize:".78rem",fontWeight:800,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8,animation:"pulse 1s ease-in-out infinite"}}>⏹ Stop recording & score</button>
-                )}
-              </div>
-              <div style={{ fontSize: ".68rem", color: "var(--ink3)", marginBottom: 8 }}>How did you do?</div>
-              <div className="quiz-grade">
-                <button className="quiz-g-btn quiz-g-yes" onClick={() => grade("right")}>✓ Got it</button>
-                <button className="quiz-g-btn quiz-g-almost" onClick={() => grade("almost")}>~ Almost</button>
-                <button className="quiz-g-btn quiz-g-no" onClick={() => grade("wrong")}>✗ Nope</button>
-              </div>
-            </>
-          )}
-          <div className="quiz-score">{score.right} correct · {score.wrong} sent back for review</div>
-        </div>
-        {scoreResult && <PronunciationScore score={scoreResult.score} chars={scoreResult.chars} phrase={scoreResult.phrase} onRetry={() => { setScoreResult(null); qStartTest(); }} onNext={() => { setScoreResult(null); }} onClose={() => { setScoreResult(null); }} />}
+  if (mode === "pronunciation") {
+    return (<div className="quiz-ov">
+      <div className="quiz-hd">
+        <button className="quiz-cl" onClick={()=>{setMode(null);setScoreResult(null);}}>✕ End</button>
+        <div className="quiz-ti">🎙 Pronunciation</div>
+        <div style={{fontSize:".65rem",color:"rgba(255,255,255,.4)"}}>{idx+1}/{quizItems.length}</div>
       </div>
-    );
+      <div className="quiz-body">
+        <div className="quiz-sub" style={{marginBottom:4}}>Say this out loud in Mandarin:</div>
+        <div className="quiz-prompt" style={{marginBottom:6}}>{item.en}</div>
+        <div style={{marginBottom:4}}>
+          <div style={{fontSize:".95rem",fontStyle:"italic",color:"var(--plum)",fontWeight:600}}>{item.pinyin}</div>
+          <div style={{fontFamily:"'Noto Sans SC'",fontSize:".88rem",color:"var(--ink2)",marginTop:2}}>{item.cn}</div>
+        </div>
+        <button style={{marginBottom:14,background:"var(--for)",border:"none",borderRadius:999,padding:"8px 16px",fontSize:".68rem",cursor:"pointer",color:"var(--lime)",fontWeight:700}} onClick={()=>speak(item.cn)}>▶ Listen first</button>
+        <div style={{width:"100%",maxWidth:440}}>
+          {!isRecording && !scoring && !scoreResult ? (
+            <RecordBtn onClick={qStartTest} label="🎙 Record yourself" />
+          ) : scoring ? (
+            <div style={{width:"100%",padding:"16px",borderRadius:14,background:"rgba(0,0,0,.04)",textAlign:"center"}}><div style={{fontSize:".82rem",fontWeight:700,color:"var(--ink2)"}}>Scoring...</div></div>
+          ) : isRecording ? (
+            <button onClick={qStopTest} style={{width:"100%",padding:"16px",borderRadius:14,border:"none",background:"#e74c3c",color:"#fff",fontSize:".88rem",fontWeight:800,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:10,animation:"pulse 1s ease-in-out infinite"}}>⏹ Stop and score</button>
+          ) : null}
+        </div>
+        {!scoreResult && !isRecording && !scoring && (<button onClick={pronSkip} style={{marginTop:10,background:"none",border:"none",cursor:"pointer",fontSize:".72rem",fontWeight:600,color:"var(--ink3)"}}>Skip →</button>)}
+        <div style={{fontSize:".65rem",color:"var(--ink3)",marginTop:10}}>{idx+1} of {quizItems.length}</div>
+      </div>
+      {scoreResult && <PronunciationScore score={scoreResult.score} chars={scoreResult.chars} phrase={scoreResult.phrase} onRetry={()=>{setScoreResult(null);qStartTest();}} onNext={pronNext} onClose={pronNext} />}
+    </div>);
   }
 
-  if (mode === "dictation") {
-    return (
-      <div className="quiz-ov">
-        <div className="quiz-hd">
-          <button className="quiz-cl" onClick={() => setMode(null)}>✕ End quiz</button>
-          <div className="quiz-ti">👂 Listening</div>
-          <div style={{ fontSize: ".65rem", color: "rgba(255,255,255,.4)" }}>{idx + 1}/{quizItems.length}</div>
-        </div>
-        <div className="quiz-body">
-          <div className="quiz-sub">Listen carefully, then type what it means:</div>
-          <button className="quiz-play-btn" onClick={() => speak(item.cn)}>▶</button>
-          {!revealed ? (
-            <>
-              <input className="quiz-input" placeholder="Type the English meaning..." value={dictAnswer} onChange={e => setDictAnswer(e.target.value)} onKeyDown={e => e.key === "Enter" && setRevealed(true)} />
-              <button className="quiz-reveal-btn" onClick={() => setRevealed(true)}>Check my answer</button>
-            </>
-          ) : (
-            <>
-              <div className="quiz-answer">
-                <div className="quiz-ans-en">{item.en}</div>
-                <div className="quiz-ans-py">{item.pinyin}</div>
-                <div className="quiz-ans-cn">{item.cn}</div>
-                {dictAnswer && <div style={{ marginTop: 8, fontSize: ".72rem", color: "var(--ink2)", padding: "6px 10px", background: "var(--cream)", borderRadius: 8 }}>Your answer: "{dictAnswer}"</div>}
-              </div>
-              <div style={{ fontSize: ".68rem", color: "var(--ink3)", marginBottom: 8 }}>Were you close?</div>
-              <div className="quiz-grade">
-                <button className="quiz-g-btn quiz-g-yes" onClick={() => grade("right")}>✓ Got it</button>
-                <button className="quiz-g-btn quiz-g-almost" onClick={() => grade("almost")}>~ Almost</button>
-                <button className="quiz-g-btn quiz-g-no" onClick={() => grade("wrong")}>✗ Nope</button>
-              </div>
-            </>
-          )}
-          <div className="quiz-score">{score.right} correct · {score.wrong} sent back for review</div>
-        </div>
+  if (mode === "speaking") {
+    return (<div className="quiz-ov">
+      <div className="quiz-hd">
+        <button className="quiz-cl" onClick={()=>setMode(null)}>✕ End</button>
+        <div className="quiz-ti">🧠 Recall</div>
+        <div style={{fontSize:".65rem",color:"rgba(255,255,255,.4)"}}>{idx+1}/{quizItems.length}</div>
       </div>
-    );
+      <div className="quiz-body">
+        <div className="quiz-sub">What's this in Mandarin?</div>
+        <div className="quiz-prompt">{item.en}</div>
+        {!revealed ? (<button className="quiz-reveal-btn" onClick={()=>setRevealed(true)}>Reveal answer</button>) : (<>
+          <div className="quiz-answer">
+            <div className="quiz-ans-py">{item.pinyin}</div>
+            <div className="quiz-ans-cn">{item.cn}</div>
+            <button style={{marginTop:8,background:"var(--for)",border:"none",borderRadius:999,padding:"8px 16px",fontSize:".68rem",cursor:"pointer",color:"var(--lime)",fontWeight:700}} onClick={()=>speak(item.cn)}>▶ Listen</button>
+          </div>
+          <div style={{fontSize:".68rem",color:"var(--ink3)",marginBottom:8}}>How did you do?</div>
+          <div className="quiz-grade">
+            <button className="quiz-g-btn quiz-g-yes" onClick={()=>grade("right")}>✓ Got it</button>
+            <button className="quiz-g-btn quiz-g-almost" onClick={()=>grade("almost")}>~ Almost</button>
+            <button className="quiz-g-btn quiz-g-no" onClick={()=>grade("wrong")}>✗ Nope</button>
+          </div>
+        </>)}
+        <div className="quiz-score">{score.right} correct · {score.wrong} sent back</div>
+      </div>
+    </div>);
+  }
+
+  if (mode === "listening") {
+    return (<div className="quiz-ov">
+      <div className="quiz-hd">
+        <button className="quiz-cl" onClick={()=>setMode(null)}>✕ End</button>
+        <div className="quiz-ti">👂 Listening</div>
+        <div style={{fontSize:".65rem",color:"rgba(255,255,255,.4)"}}>{idx+1}/{quizItems.length}</div>
+      </div>
+      <div className="quiz-body">
+        <div className="quiz-sub">Listen carefully, then type what it means:</div>
+        <button className="quiz-play-btn" onClick={()=>speak(item.cn)}>▶</button>
+        {!revealed ? (<>
+          <input className="quiz-input" placeholder="Type the English meaning..." value={dictAnswer} onChange={e=>setDictAnswer(e.target.value)} onKeyDown={e=>e.key==="Enter"&&setRevealed(true)} />
+          <button className="quiz-reveal-btn" onClick={()=>setRevealed(true)}>Check my answer</button>
+        </>) : (<>
+          <div className="quiz-answer">
+            <div className="quiz-ans-en">{item.en}</div>
+            <div className="quiz-ans-py">{item.pinyin}</div>
+            <div className="quiz-ans-cn">{item.cn}</div>
+            {dictAnswer && <div style={{marginTop:8,fontSize:".72rem",color:"var(--ink2)",padding:"6px 10px",background:"var(--cream)",borderRadius:8}}>Your answer: "{dictAnswer}"</div>}
+          </div>
+          <div style={{fontSize:".68rem",color:"var(--ink3)",marginBottom:8}}>Were you close?</div>
+          <div className="quiz-grade">
+            <button className="quiz-g-btn quiz-g-yes" onClick={()=>grade("right")}>✓ Got it</button>
+            <button className="quiz-g-btn quiz-g-almost" onClick={()=>grade("almost")}>~ Almost</button>
+            <button className="quiz-g-btn quiz-g-no" onClick={()=>grade("wrong")}>✗ Nope</button>
+          </div>
+        </>)}
+        <div className="quiz-score">{score.right} correct · {score.wrong} sent back</div>
+      </div>
+    </div>);
   }
 
   return null;
+}
+
+// ---- OFFLINE HOOK ----
+function useIsOnline() {
+  const [online, setOnline] = useState(_isOnline);
+  useEffect(() => {
+    const unsub = onOnlineChange(setOnline);
+    return unsub;
+  }, []);
+  return online;
+}
+
+// ---- OFFLINE BANNER COMPONENT ----
+function OfflineBanner() {
+  const isOnline = useIsOnline();
+  if (isOnline) return null;
+  return (
+    <div style={{
+      position:"fixed",top:0,left:0,right:0,zIndex:9999,
+      display:"flex",alignItems:"center",justifyContent:"center",gap:6,
+      padding:"6px 16px",
+      background:"rgba(44,44,44,.92)",backdropFilter:"blur(8px)",
+      borderBottom:"1px solid rgba(255,255,255,.08)",
+      animation:"slideDown .3s ease"
+    }}>
+      <div style={{width:6,height:6,borderRadius:"50%",background:"#F05A3A",flexShrink:0}}></div>
+      <span style={{fontSize:".68rem",fontWeight:700,color:"rgba(255,255,255,.8)",letterSpacing:".3px"}}>Offline mode</span>
+    </div>
+  );
+}
+
+// ---- OFFLINE-AWARE RECORD BUTTON ----
+function RecordBtn({ onClick, label, style }) {
+  const isOnline = useIsOnline();
+  if (!isOnline) {
+    return (
+      <div style={{width:"100%",padding:"14px 16px",borderRadius:14,background:"rgba(0,0,0,.04)",textAlign:"center",border:"1.5px dashed var(--st2)"}}>
+        <div style={{fontSize:".75rem",fontWeight:700,color:"var(--ink3)"}}>Go online to test your pronunciation</div>
+        <div style={{fontSize:".62rem",color:"var(--ink3)",marginTop:4}}>Recording requires an internet connection for scoring</div>
+      </div>
+    );
+  }
+  return <button onClick={onClick} style={style || {width:"100%",padding:"16px",borderRadius:14,border:"none",background:"var(--for)",color:"#fff",fontSize:".88rem",fontWeight:800,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:10}}>{label || "🎙 Record yourself"}</button>;
 }
 
 function App() {
@@ -2082,12 +2226,18 @@ function App() {
         }
       }
       const cloudSettings = await loadSettingsFromFirestore(user.uid);
+      const ls = JSON.parse(localStorage.getItem("mandarin-settings")||"{}");
       if (cloudSettings) {
+        if (ls.onboardingDone && !cloudSettings.onboardingDone) cloudSettings.onboardingDone = true;
         setSettings(cloudSettings);
+        localStorage.setItem("mandarin-settings", JSON.stringify(cloudSettings));
         _activeEnVoiceId = cloudSettings.enVoice || DEFAULT_EN_VOICE;
         _activeZhVoiceId = cloudSettings.zhVoice || DEFAULT_ZH_VOICE;
+      } else if (ls.onboardingDone) {
+        setSettings(ls);
+        _activeEnVoiceId = ls.enVoice || DEFAULT_EN_VOICE;
+        _activeZhVoiceId = ls.zhVoice || DEFAULT_ZH_VOICE;
       } else {
-        const ls = JSON.parse(localStorage.getItem("mandarin-settings")||"{}");
         const defaults = { learnMode: ls.learnMode||"speaking", enVoice: DEFAULT_EN_VOICE, zhVoice: DEFAULT_ZH_VOICE, defaultSpeed: "normal", onboardingDone: false };
         setSettings(defaults);
         _activeEnVoiceId = DEFAULT_EN_VOICE;
@@ -2168,17 +2318,24 @@ function App() {
   const photoURL = user.photoURL;
   const vk = Object.keys(progress.vocab||{}).filter(k=>progress.vocab[k]).length;
 
-  // Voice onboarding — show once on first visit
+  // Voice onboarding — show once on first visit (skip if offline)
   if (settings.onboardingDone === false) {
-    return <VoiceOnboarding onComplete={(enVoice, zhVoice) => {
-      updSettings("enVoice", enVoice);
-      updSettings("zhVoice", zhVoice);
+    if (!_isOnline) {
+      updSettings("enVoice", DEFAULT_EN_VOICE);
+      updSettings("zhVoice", DEFAULT_ZH_VOICE);
       updSettings("onboardingDone", true);
-    }} />;
+    } else {
+      return <VoiceOnboarding onComplete={(enVoice, zhVoice) => {
+        updSettings("enVoice", enVoice);
+        updSettings("zhVoice", zhVoice);
+        updSettings("onboardingDone", true);
+      }} />;
+    }
   }
 
   return (
     <div className={`ca ${settings.learnMode === "reading" ? "reading-mode" : ""}`}>
+      <OfflineBanner />
       <div className="hdr">
         <div className="hdr-l">
           <div className="hm"><ChinaFlag /></div>
@@ -2205,6 +2362,7 @@ function App() {
                   <div style={{fontSize:".62rem",color:"var(--ink2)"}}>{user.email}</div>
                 </div>
                 <button onClick={()=>{setProfileMenu(false);window.location.href="canto.html";}} style={{width:"100%",padding:"10px 16px",background:"none",border:"none",cursor:"pointer",fontSize:".75rem",fontWeight:700,color:"var(--ink)",textAlign:"left",display:"flex",alignItems:"center",gap:8}}>🇭🇰 Switch to Cantonese</button>
+                <button onClick={()=>{setProfileMenu(false);setTab("settings");}} style={{width:"100%",padding:"10px 16px",background:"none",border:"none",cursor:"pointer",fontSize:".75rem",fontWeight:700,color:"var(--ink)",textAlign:"left",display:"flex",alignItems:"center",gap:8}}>⚙️ Settings</button>
                 <button onClick={()=>{setProfileMenu(false);window.location.href="index.html";}} style={{width:"100%",padding:"10px 16px",background:"none",border:"none",cursor:"pointer",fontSize:".75rem",fontWeight:700,color:"var(--ink)",textAlign:"left",display:"flex",alignItems:"center",gap:8}}>🏠 Back to home</button>
                 <div style={{borderTop:"1px solid var(--st)",margin:"2px 0"}} />
                 <button onClick={()=>{fbAuth.signOut();window.location.href="index.html";}} style={{width:"100%",padding:"10px 16px",background:"none",border:"none",cursor:"pointer",fontSize:".75rem",fontWeight:700,color:"#e74c3c",textAlign:"left",display:"flex",alignItems:"center",gap:8}}>🚪 Sign out</button>
@@ -2215,7 +2373,7 @@ function App() {
       </div>
 
       {tab==="home"&&<TodayTab profile={displayName} progress={progress} upd={upd} markReviewed={markReviewed} setTab={setTab} setSelUnit={setSelUnit} startPlaylist={startPlaylist} openPlBuilder={()=>setShowPlBuilder(true)} />}
-      {tab==="phrases"&&<PhrasesTab progress={progress} upd={upd} selUnit={selUnit} setSelUnit={setSelUnit} />}
+      {tab==="phrases"&&<PhrasesTab progress={progress} upd={upd} selUnit={selUnit} setSelUnit={setSelUnit} settings={settings} />}
       {tab==="vocab"&&<VocabTab progress={progress} upd={upd} startPlaylist={startPlaylist} />}
       {tab==="unit10"&&<Unit10Tab progress={progress} upd={upd} />}
       {tab==="settings"&&<SettingsTab settings={settings} updSettings={updSettings} />}
@@ -2374,7 +2532,7 @@ function DrillView({ item, items, innerIdx, safeIdx, showPinyin }) {
 
   return (
     <div className="sh-bd">
-      {round === 1 && gloss ? (
+      {round === 1 && gloss && gloss.some(g=>g.en) ? (
         <>
           <div className="sh-en" style={{fontSize:"1rem",marginBottom:14,opacity:.5}}>{item.en}</div>
           <div style={{display:"flex",flexWrap:"wrap",gap:8,justifyContent:"center",margin:"0 0 16px"}}>
@@ -2772,9 +2930,7 @@ function LessonMode({ progress, upd, profile, settings, onComplete, onQuit }) {
               {/* Pronunciation scoring in quiz */}
               <div style={{width:"100%",maxWidth:440,marginBottom:10}}>
                 {!isRecording && !scoring ? (
-                  <button onClick={quizStartTest} style={{width:"100%",padding:"12px",borderRadius:12,border:"2px solid var(--lime)",background:"rgba(196,240,0,.08)",color:"var(--lime)",fontSize:".78rem",fontWeight:800,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
-                    🎙 Test your pronunciation
-                  </button>
+                  <RecordBtn onClick={quizStartTest} label="🎙 Test your pronunciation" style={{width:"100%",padding:"12px",borderRadius:12,border:"2px solid var(--lime)",background:"rgba(196,240,0,.08)",color:"var(--lime)",fontSize:".78rem",fontWeight:800,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8}} />
                 ) : scoring ? (
                   <div style={{width:"100%",padding:"12px",borderRadius:12,background:"rgba(255,255,255,.06)",textAlign:"center"}}>
                     <div style={{fontSize:".75rem",fontWeight:700,color:"rgba(255,255,255,.5)"}}>Scoring your pronunciation...</div>
@@ -3247,7 +3403,7 @@ function TodayTab({ profile, progress, upd, markReviewed, setTab, setSelUnit, st
               {/* Header */}
               <div className="fl-header">
                 <div className="fl-badge"><span className="fl-badge-dot" /> Your Finish Line</div>
-                <div className="fl-title">{totalAll} words &amp; phrases to <span className="fl-accent">Mandarin</span></div>
+                <div className="fl-title">{totalPhrases} phrases + {ALL_WORDS.length} vocab words in <span className="fl-accent">Mandarin</span></div>
                 <div className="fl-encourage">The most essential words and phrases, carefully chosen to get you speaking in the real world. <strong>{message}</strong></div>
               </div>
 
@@ -3309,7 +3465,7 @@ function TodayTab({ profile, progress, upd, markReviewed, setTab, setSelUnit, st
 
 
 // ---- PHRASES ----
-function PhrasesTab({ progress, upd, selUnit, setSelUnit }) {
+function PhrasesTab({ progress, upd, selUnit, setSelUnit, settings }) {
   const [shadow, setShadow] = useState(null);
   const phraseSectionRef = useRef(null);
   const unit = UNITS.find(u=>u.id===selUnit)||UNITS[0];
@@ -3321,7 +3477,7 @@ function PhrasesTab({ progress, upd, selUnit, setSelUnit }) {
   if (shadow !== null) return <ShadowMode unit={unit} progress={progress} upd={upd} settings={settings} onClose={()=>{if(typeof releaseMic==='function')releaseMic();setShadow(null);}} startIdx={shadow==="unit"?0:shadow} single={shadow!=="unit"} />;
 
   // Topic icons for visual picker
-  const topicIcons = {1:"👋",2:"🤝",3:"🚕",4:"☕",5:"🍜",6:"🛍",7:"🏫",8:"🏠",9:"🕐",10:"❤️"};
+  const topicIcons = {1:"👋",2:"🤝",3:"🚕",4:"☕",5:"🍜",6:"🛍",7:"🏫",8:"🏠",9:"🕐",10:"❤️",11:"🍻",12:"🌧",13:"💰",14:"💪",15:"😤",16:"📱",17:"🥺",18:"🔢",19:"🎉",20:"🌇"};
 
   // Sort: incomplete first, completed at bottom
   const sortedUnits = [...UNITS].sort((a,b) => {
@@ -3583,9 +3739,7 @@ function ShadowMode({ unit, progress, upd, settings, onClose, startIdx=0, single
         {/* Test yourself — pronunciation scoring */}
         <div style={{padding:"8px 0"}}>
           {!isRecording && !scoring ? (
-            <button onClick={startTest} style={{width:"100%",padding:"14px",borderRadius:14,border:"2px solid var(--lime)",background:"rgba(196,240,0,.08)",color:"var(--lime)",fontSize:".82rem",fontWeight:800,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
-              🎙 Test your pronunciation
-            </button>
+            <RecordBtn onClick={startTest} label="🎙 Test your pronunciation" style={{width:"100%",padding:"14px",borderRadius:14,border:"2px solid var(--lime)",background:"rgba(196,240,0,.08)",color:"var(--lime)",fontSize:".82rem",fontWeight:800,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8}} />
           ) : scoring ? (
             <div style={{width:"100%",padding:"14px",borderRadius:14,background:"rgba(255,255,255,.06)",textAlign:"center"}}>
               <div style={{fontSize:".78rem",fontWeight:700,color:"rgba(255,255,255,.5)"}}>Scoring your pronunciation...</div>

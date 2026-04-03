@@ -2687,7 +2687,10 @@ function App() {
       const ls = JSON.parse(localStorage.getItem("canto-settings")||"{}");
       if (cloudSettings) {
         // Merge: if localStorage says onboarding done but cloud doesn't, trust localStorage
-        if (ls.onboardingDone && !cloudSettings.onboardingDone) cloudSettings.onboardingDone = true;
+        if (ls.onboardingDone && !cloudSettings.onboardingDone) {
+          cloudSettings.onboardingDone = true;
+          saveSettingsToFirestore(user.uid, cloudSettings);
+        }
         setSettings(cloudSettings);
         localStorage.setItem("canto-settings", JSON.stringify(cloudSettings));
         _activeEnVoiceId = cloudSettings.enVoice || DEFAULT_EN_VOICE;
@@ -4801,6 +4804,43 @@ function VoiceOnboarding({ onComplete }) {
 function SettingsTab({ settings, updSettings }) {
   const [playing, setPlaying] = useState(null);
   const [confirmReset, setConfirmReset] = useState(false);
+  const [dlState, setDlState] = useState("idle"); // idle | loading | done | error
+  const [dlProgress, setDlProgress] = useState({ done: 0, total: 0 });
+
+  const downloadOfflineAudio = async () => {
+    setDlState("loading");
+    try {
+      const manifest = await loadAudioManifest();
+      if (!manifest) { setDlState("error"); return; }
+      // Collect all audio URLs from the manifest
+      const urls = [];
+      for (const app of Object.values(manifest)) {
+        for (const lang of Object.values(app)) {
+          for (const path of Object.values(lang)) {
+            urls.push(path);
+          }
+        }
+      }
+      setDlProgress({ done: 0, total: urls.length });
+      // Cache in batches via service worker
+      const batchSize = 20;
+      let done = 0;
+      for (let i = 0; i < urls.length; i += batchSize) {
+        const batch = urls.slice(i, i + batchSize);
+        if (navigator.serviceWorker?.controller) {
+          navigator.serviceWorker.controller.postMessage({ type: "precache-audio", urls: batch });
+        }
+        // Small delay between batches to avoid overwhelming the network
+        await new Promise(r => setTimeout(r, 300));
+        done += batch.length;
+        setDlProgress({ done: Math.min(done, urls.length), total: urls.length });
+      }
+      setDlState("done");
+    } catch(e) {
+      console.warn("Offline download failed:", e);
+      setDlState("error");
+    }
+  };
 
   const previewEnVoice = async (voiceId) => {
     setPlaying(voiceId);
@@ -4887,6 +4927,16 @@ function SettingsTab({ settings, updSettings }) {
             <button key={s.k} onClick={()=>updSettings("defaultSpeed",s.k)} style={{flex:1,padding:"10px 8px",borderRadius:12,border:(settings.defaultSpeed||"normal")===s.k?"2px solid var(--lime)":"1.5px solid var(--st)",background:(settings.defaultSpeed||"normal")===s.k?"rgba(196,240,0,.1)":"var(--wh)",cursor:"pointer",fontSize:".72rem",fontWeight:700,color:"var(--ink)",textAlign:"center"}}>{s.l}</button>
           )}
         </div>
+      </div>
+
+      {/* Download for offline */}
+      <div className="set-card">
+        <div className="set-lb">Offline audio</div>
+        <div style={{fontSize:".68rem",color:"var(--ink2)",lineHeight:1.5,marginBottom:10}}>Download all audio files so you can use the app without internet. This only needs to be done once.</div>
+        {dlState==="idle"&&<button onClick={downloadOfflineAudio} style={{width:"100%",padding:"12px",borderRadius:12,border:"none",background:"var(--for)",cursor:"pointer",fontSize:".78rem",fontWeight:700,color:"var(--lime)",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>Download for offline use</button>}
+        {dlState==="loading"&&<div><div style={{fontSize:".72rem",fontWeight:700,color:"var(--ink)",marginBottom:6}}>Downloading... {dlProgress.done}/{dlProgress.total}</div><div style={{width:"100%",height:8,borderRadius:4,background:"var(--st)",overflow:"hidden"}}><div style={{width:`${dlProgress.total?((dlProgress.done/dlProgress.total)*100):0}%`,height:"100%",background:"var(--lime)",borderRadius:4,transition:"width .3s"}}></div></div></div>}
+        {dlState==="done"&&<div style={{fontSize:".72rem",fontWeight:700,color:"#27ae60"}}>All audio downloaded! You can now use the app offline.</div>}
+        {dlState==="error"&&<div><div style={{fontSize:".72rem",fontWeight:700,color:"#e74c3c",marginBottom:6}}>Download failed. Make sure you're online and try again.</div><button onClick={()=>{setDlState("idle");}} style={{padding:"8px 16px",borderRadius:10,border:"1.5px solid var(--st)",background:"var(--wh)",fontSize:".72rem",fontWeight:700,color:"var(--ink)",cursor:"pointer"}}>Retry</button></div>}
       </div>
 
       {/* Switch language */}

@@ -4354,7 +4354,7 @@ function VoiceOnboarding({ onComplete }) {
 function SettingsTab({ settings, updSettings }) {
   const [playing, setPlaying] = useState(null);
   const [confirmReset, setConfirmReset] = useState(false);
-  const [dlState, setDlState] = useState("idle");
+  const [dlState, setDlState] = useState(() => localStorage.getItem("mandarin-audio-downloaded") === "true" ? "done" : "idle");
   const [dlProgress, setDlProgress] = useState({ done: 0, total: 0 });
 
   const downloadOfflineAudio = async () => {
@@ -4378,10 +4378,11 @@ function SettingsTab({ settings, updSettings }) {
         if (navigator.serviceWorker?.controller) {
           navigator.serviceWorker.controller.postMessage({ type: "precache-audio", urls: batch });
         }
-        await new Promise(r => setTimeout(r, 300));
+        await new Promise(r => setTimeout(r, 500));
         done += batch.length;
         setDlProgress({ done: Math.min(done, urls.length), total: urls.length });
       }
+      localStorage.setItem("mandarin-audio-downloaded", "true");
       setDlState("done");
     } catch(e) {
       console.warn("Offline download failed:", e);

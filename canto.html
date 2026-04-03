@@ -4837,7 +4837,7 @@ function VoiceOnboarding({ onComplete }) {
 function SettingsTab({ settings, updSettings }) {
   const [playing, setPlaying] = useState(null);
   const [confirmReset, setConfirmReset] = useState(false);
-  const [dlState, setDlState] = useState("idle"); // idle | loading | done | error
+  const [dlState, setDlState] = useState(() => localStorage.getItem("canto-audio-downloaded") === "true" ? "done" : "idle");
   const [dlProgress, setDlProgress] = useState({ done: 0, total: 0 });
 
   const downloadOfflineAudio = async () => {
@@ -4845,7 +4845,6 @@ function SettingsTab({ settings, updSettings }) {
     try {
       const manifest = await loadAudioManifest();
       if (!manifest) { setDlState("error"); return; }
-      // Collect all audio URLs from the manifest
       const urls = [];
       for (const app of Object.values(manifest)) {
         for (const lang of Object.values(app)) {
@@ -4855,7 +4854,6 @@ function SettingsTab({ settings, updSettings }) {
         }
       }
       setDlProgress({ done: 0, total: urls.length });
-      // Cache in batches via service worker
       const batchSize = 20;
       let done = 0;
       for (let i = 0; i < urls.length; i += batchSize) {
@@ -4863,11 +4861,11 @@ function SettingsTab({ settings, updSettings }) {
         if (navigator.serviceWorker?.controller) {
           navigator.serviceWorker.controller.postMessage({ type: "precache-audio", urls: batch });
         }
-        // Small delay between batches to avoid overwhelming the network
-        await new Promise(r => setTimeout(r, 300));
+        await new Promise(r => setTimeout(r, 500));
         done += batch.length;
         setDlProgress({ done: Math.min(done, urls.length), total: urls.length });
       }
+      localStorage.setItem("canto-audio-downloaded", "true");
       setDlState("done");
     } catch(e) {
       console.warn("Offline download failed:", e);

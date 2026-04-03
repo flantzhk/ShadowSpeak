@@ -2167,6 +2167,12 @@ function QuizTab({ progress, upd }) {
   const [score, setScore] = useState({ right: 0, almost: 0, wrong: 0 });
   const [done, setDone] = useState(false);
   const [dictAnswer, setDictAnswer] = useState("");
+  const [isRecording, setIsRecording] = useState(false);
+  const [scoring, setScoring] = useState(false);
+  const [scoreResult, setScoreResult] = useState(null);
+  const [picking, setPicking] = useState(false); // unit picker mode
+  const [selectedUnits, setSelectedUnits] = useState(new Set());
+  const [source, setSource] = useState("known"); // "known" | "units" | "all"
 
   // Get known phrases for quizzing
   const knownPhrases = useMemo(() => {
@@ -2182,56 +2188,151 @@ function QuizTab({ progress, upd }) {
     return items;
   }, [progress]);
 
-  const startQuiz = (m) => {
-    const shuffled = [...knownPhrases].sort(() => Math.random() - 0.5).slice(0, 20);
+  // Get all phrases from selected units
+  const getUnitPhrases = () => {
+    const items = [];
+    UNITS.forEach(u => {
+      if (selectedUnits.has(u.id)) {
+        u.phrases.forEach((p, i) => {
+          items.push({ ...p, unitId: u.id, phraseIdx: i, key: `${u.id}-${i}` });
+        });
+      }
+    });
+    return items;
+  };
+
+  const startQuiz = (m, src) => {
+    let pool = [];
+    if (src === "units") {
+      pool = getUnitPhrases();
+    } else if (src === "all") {
+      pool = UNITS.flatMap(u => u.phrases.map((p, i) => ({ ...p, unitId: u.id, phraseIdx: i, key: `${u.id}-${i}` })));
+    } else {
+      pool = knownPhrases;
+    }
+    const shuffled = [...pool].sort(() => Math.random() - 0.5).slice(0, 20);
     setQuizItems(shuffled);
     setMode(m);
+    setSource(src);
     setIdx(0);
     setRevealed(false);
     setScore({ right: 0, almost: 0, wrong: 0 });
     setDone(false);
     setDictAnswer("");
+    setPicking(false);
   };
 
   const grade = (result) => {
     const item = quizItems[idx];
-    if (result === "wrong") {
-      // Un-mark as known
+    if (result === "wrong" && source === "known") {
       upd(`phrases.${item.key}`, false);
     }
     setScore(prev => ({ ...prev, [result]: prev[result] + 1 }));
     setRevealed(false);
     setDictAnswer("");
+    setScoreResult(null);
     if (idx + 1 >= quizItems.length) setDone(true);
     else setIdx(i => i + 1);
   };
+
+  const toggleUnit = (id) => {
+    setSelectedUnits(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  // Pronunciation scoring
+  const qStartTest = async () => {
+    stopAudio();
+    try { const ok = await startRecording(); if (ok) setIsRecording(true); } catch(e) { console.warn("Mic error:", e); }
+  };
+  const qStopTest = async () => {
+    setIsRecording(false);
+    setScoring(true);
+    const blob = await stopRecording();
+    const ph = quizItems[idx];
+    if (blob && ph) {
+      try {
+        const result = await scorePronunciation(blob, ph.cn, "cantonese");
+        let chars = [];
+        if (result.expectedJyutping && result.transcribedJyutping) {
+          const expSyls = result.expectedJyutping.trim().split(/\s+/);
+          const yourSyls = result.transcribedJyutping.trim().split(/\s+/);
+          const cnChars = ph.cn.replace(/[，,。！？!?\s]/g, "").split("");
+          for (let i = 0; i < Math.max(expSyls.length, cnChars.length); i++) {
+            chars.push({ cn: cnChars[i] || "", e: expSyls[i] || "", y: yourSyls[i] || "", m: expSyls[i] === yourSyls[i] ? 1 : 0 });
+          }
+        }
+        setScoreResult({ score: result.score, passed: result.passed, chars, phrase: ph });
+      } catch(e) { console.error("Scoring error:", e); setScoreResult(null); }
+    }
+    setScoring(false);
+  };
+
+  // Unit picker screen
+  if (picking) {
+    const pickerMode = picking; // "production" or "dictation"
+    const unitCount = selectedUnits.size;
+    const phraseCount = getUnitPhrases().length;
+    return (
+      <div className="mc">
+        <div className="pt">Pick units to quiz 📋</div>
+        <div className="ps">Choose which units you want to practise. Tap to select, then start!</div>
+        <div style={{display:"flex",flexWrap:"wrap",gap:6,margin:"12px 0"}}>
+          {UNITS.map(u => (
+            <button key={u.id} onClick={()=>toggleUnit(u.id)} style={{padding:"8px 12px",borderRadius:10,border:selectedUnits.has(u.id)?"2px solid var(--lime)":"1.5px solid var(--st)",background:selectedUnits.has(u.id)?"rgba(196,240,0,.1)":"var(--wh)",cursor:"pointer",fontSize:".68rem",fontWeight:700,color:"var(--ink)"}}>
+              {selectedUnits.has(u.id)?"✓ ":""}{u.id}. {u.title}
+            </button>
+          ))}
+        </div>
+        <div style={{display:"flex",gap:6,margin:"8px 0"}}>
+          <button onClick={()=>setSelectedUnits(new Set(UNITS.map(u=>u.id)))} style={{flex:1,padding:"8px",borderRadius:8,border:"1px solid var(--st)",background:"var(--wh)",fontSize:".65rem",fontWeight:700,color:"var(--ink)",cursor:"pointer"}}>Select all</button>
+          <button onClick={()=>setSelectedUnits(new Set())} style={{flex:1,padding:"8px",borderRadius:8,border:"1px solid var(--st)",background:"var(--wh)",fontSize:".65rem",fontWeight:700,color:"var(--ink)",cursor:"pointer"}}>Clear</button>
+        </div>
+        {unitCount > 0 && (
+          <div style={{textAlign:"center",margin:"12px 0"}}>
+            <div style={{fontSize:".72rem",color:"var(--ink2)",marginBottom:8}}>{unitCount} unit{unitCount>1?"s":""} selected, {phraseCount} phrases</div>
+            <button onClick={()=>startQuiz(pickerMode,"units")} style={{padding:"14px 28px",borderRadius:12,border:"none",background:"var(--lime)",color:"var(--for)",fontSize:".85rem",fontWeight:900,cursor:"pointer"}}>Start quiz with {Math.min(phraseCount,20)} phrases</button>
+          </div>
+        )}
+        <button onClick={()=>setPicking(false)} style={{display:"block",margin:"12px auto 0",background:"none",border:"none",cursor:"pointer",fontSize:".72rem",fontWeight:600,color:"var(--ink2)"}}>← Back</button>
+      </div>
+    );
+  }
 
   if (!mode) {
     return (
       <div className="mc">
         <div className="pt">Quiz Time! 🎯</div>
         <div className="ps">Test what you've learned. You'll be surprised how much you know!</div>
-        {knownPhrases.length < 3 ? (
-          <div style={{ textAlign: "center", padding: 28, color: "var(--ink2)", fontSize: ".88rem", lineHeight: 1.6 }}>
-            You're just getting started! Mark at least 3 phrases as known in the Phrases tab to unlock quizzes. You'll get there soon 💪
-          </div>
-        ) : (
-          <>
-            <div className="qs-card" onClick={() => startQuiz("production")}>
-              <div style={{ fontSize: "2rem", marginBottom: 8 }}>🗣</div>
-              <div className="qs-ti">Speaking Quiz</div>
-              <div className="qs-sub">See the English, try to say it in Cantonese, then check if you got it right!</div>
-            </div>
-            <div className="qs-card" onClick={() => startQuiz("dictation")}>
-              <div style={{ fontSize: "2rem", marginBottom: 8 }}>👂</div>
-              <div className="qs-ti">Listening Quiz</div>
-              <div className="qs-sub">Listen to Cantonese, then type what you think it means in English!</div>
-            </div>
-            <div style={{ fontSize: ".82rem", color: "var(--ink2)", textAlign: "center", marginTop: 14, lineHeight: 1.5, fontWeight: 600 }}>
-              You have {knownPhrases.length} phrases to practise with! 🎉
-            </div>
-          </>
-        )}
+        <div className="qs-card" onClick={() => startQuiz("production","known")} style={{opacity:knownPhrases.length<3?.4:1,pointerEvents:knownPhrases.length<3?"none":"auto"}}>
+          <div style={{ fontSize: "2rem", marginBottom: 8 }}>🗣</div>
+          <div className="qs-ti">Speaking Quiz</div>
+          <div className="qs-sub">See the English, try to say it in Cantonese out loud, then check!</div>
+        </div>
+        <div className="qs-card" onClick={() => startQuiz("dictation","known")} style={{opacity:knownPhrases.length<3?.4:1,pointerEvents:knownPhrases.length<3?"none":"auto"}}>
+          <div style={{ fontSize: "2rem", marginBottom: 8 }}>👂</div>
+          <div className="qs-ti">Listening Quiz</div>
+          <div className="qs-sub">Listen to Cantonese, then type what you think it means in English!</div>
+        </div>
+        <div style={{fontSize:".75rem",color:"var(--ink2)",textAlign:"center",marginTop:10,fontWeight:600}}>
+          {knownPhrases.length >= 3 ? `${knownPhrases.length} known phrases ready to quiz 🎉` : `Mark at least 3 phrases as known to unlock quizzes above 💪`}
+        </div>
+        <div style={{borderTop:"1.5px solid var(--st)",margin:"16px 0 12px"}} />
+        <div style={{fontSize:".72rem",fontWeight:800,color:"var(--ink)",marginBottom:8}}>Or pick specific units to quiz:</div>
+        <div className="qs-card" onClick={() => setPicking("production")}>
+          <div style={{ fontSize: "2rem", marginBottom: 8 }}>🎯</div>
+          <div className="qs-ti">Speaking Quiz (pick units)</div>
+          <div className="qs-sub">Choose exactly which units you want to practise speaking</div>
+        </div>
+        <div className="qs-card" onClick={() => setPicking("dictation")}>
+          <div style={{ fontSize: "2rem", marginBottom: 8 }}>🎧</div>
+          <div className="qs-ti">Listening Quiz (pick units)</div>
+          <div className="qs-sub">Choose units and test your listening comprehension</div>
+        </div>
+        <button onClick={()=>startQuiz("production","all")} style={{width:"100%",marginTop:10,padding:"12px",borderRadius:12,border:"1.5px solid var(--st)",background:"var(--wh)",cursor:"pointer",fontSize:".75rem",fontWeight:700,color:"var(--ink)"}}>🔀 Random quiz from all {UNITS.reduce((s,u)=>s+u.phrases.length,0)} phrases</button>
       </div>
     );
   }
@@ -2269,7 +2370,7 @@ function QuizTab({ progress, upd }) {
     return (
       <div className="quiz-ov">
         <div className="quiz-hd">
-          <button className="quiz-cl" onClick={() => setMode(null)}>✕ End quiz</button>
+          <button className="quiz-cl" onClick={() => {setMode(null);setScoreResult(null);}}>✕ End quiz</button>
           <div className="quiz-ti">🗣 Speaking Quiz</div>
           <div style={{ fontSize: ".65rem", color: "rgba(255,255,255,.4)" }}>{idx + 1}/{quizItems.length}</div>
         </div>
@@ -2285,6 +2386,22 @@ function QuizTab({ progress, upd }) {
                 <div className="quiz-ans-cn">{item.cn}</div>
                 <button style={{ marginTop: 8, background: "var(--for)", border: "none", borderRadius: 999, padding: "6px 14px", fontSize: ".62rem", cursor: "pointer", color: "var(--lime)", fontWeight: 700 }} onClick={() => speak(item.cn)}>▶ Listen to it</button>
               </div>
+              {/* Pronunciation scoring */}
+              <div style={{width:"100%",maxWidth:440,marginBottom:8}}>
+                {!isRecording && !scoring ? (
+                  <button onClick={qStartTest} style={{width:"100%",padding:"12px",borderRadius:12,border:"2px solid var(--lime)",background:"rgba(196,240,0,.08)",color:"var(--lime)",fontSize:".78rem",fontWeight:800,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
+                    🎙 Test your pronunciation
+                  </button>
+                ) : scoring ? (
+                  <div style={{width:"100%",padding:"12px",borderRadius:12,background:"rgba(255,255,255,.06)",textAlign:"center"}}>
+                    <div style={{fontSize:".75rem",fontWeight:700,color:"rgba(255,255,255,.5)"}}>Scoring your pronunciation...</div>
+                  </div>
+                ) : (
+                  <button onClick={qStopTest} style={{width:"100%",padding:"12px",borderRadius:12,border:"2px solid #e74c3c",background:"rgba(231,76,60,.12)",color:"#ff7a5c",fontSize:".78rem",fontWeight:800,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8,animation:"pulse 1s ease-in-out infinite"}}>
+                    ⏹ Stop recording & score
+                  </button>
+                )}
+              </div>
               <div style={{ fontSize: ".68rem", color: "var(--ink3)", marginBottom: 8 }}>How did you do?</div>
               <div className="quiz-grade">
                 <button className="quiz-g-btn quiz-g-yes" onClick={() => grade("right")}>✓ Got it</button>
@@ -2295,6 +2412,12 @@ function QuizTab({ progress, upd }) {
           )}
           <div className="quiz-score">{score.right} correct · {score.wrong} sent back for review</div>
         </div>
+        {scoreResult && <PronunciationScore
+          score={scoreResult.score} chars={scoreResult.chars} phrase={scoreResult.phrase}
+          onRetry={() => { setScoreResult(null); qStartTest(); }}
+          onNext={() => { setScoreResult(null); }}
+          onClose={() => { setScoreResult(null); }}
+        />}
       </div>
     );
   }
@@ -2349,6 +2472,7 @@ function App() {
   const [settings, setSettings] = useState({});
   const [popup, setPopup] = useState(null);
   const [playlist, setPlaylist] = useState(null);
+  const [profileMenu, setProfileMenu] = useState(false);
   const saveTimer = useRef(null);
 
   // Inject CSS
@@ -2500,11 +2624,26 @@ function App() {
         </div>
         <div style={{display:"flex",alignItems:"center",gap:8}}>
           <button onClick={()=>window.location.href="mandarin.html"} style={{background:"rgba(255,255,255,.1)",border:"none",borderRadius:8,padding:"4px 8px",fontSize:".85rem",cursor:"pointer",lineHeight:1}} title="Switch to Mandarin">🇨🇳</button>
-          {photoURL ? (
-            <img src={photoURL} referrerPolicy="no-referrer" style={{width:30,height:30,borderRadius:"50%",border:"2px solid var(--lime)",cursor:"pointer"}} onClick={()=>window.location.href="index.html"} title={displayName} />
-          ) : (
-            <div className="ha" style={{background:"var(--lime)",color:"var(--for)",cursor:"pointer"}} onClick={()=>window.location.href="index.html"}>{displayName[0]}</div>
-          )}
+          <div style={{position:"relative"}}>
+            {photoURL ? (
+              <img src={photoURL} referrerPolicy="no-referrer" style={{width:30,height:30,borderRadius:"50%",border:"2px solid var(--lime)",cursor:"pointer"}} onClick={()=>setProfileMenu(v=>!v)} title={displayName} />
+            ) : (
+              <div className="ha" style={{background:"var(--lime)",color:"var(--for)",cursor:"pointer"}} onClick={()=>setProfileMenu(v=>!v)}>{displayName[0]}</div>
+            )}
+            {profileMenu && <>
+              <div style={{position:"fixed",inset:0,zIndex:998}} onClick={()=>setProfileMenu(false)} />
+              <div style={{position:"absolute",right:0,top:"calc(100% + 8px)",background:"var(--wh)",border:"1.5px solid var(--st)",borderRadius:14,padding:"10px 0",minWidth:220,zIndex:999,boxShadow:"0 8px 32px rgba(0,0,0,.15)"}}>
+                <div style={{padding:"8px 16px",borderBottom:"1px solid var(--st)"}}>
+                  <div style={{fontSize:".78rem",fontWeight:800,color:"var(--ink)"}}>{displayName}</div>
+                  <div style={{fontSize:".62rem",color:"var(--ink2)"}}>{user.email}</div>
+                </div>
+                <button onClick={()=>{setProfileMenu(false);window.location.href="mandarin.html";}} style={{width:"100%",padding:"10px 16px",background:"none",border:"none",cursor:"pointer",fontSize:".75rem",fontWeight:700,color:"var(--ink)",textAlign:"left",display:"flex",alignItems:"center",gap:8}}>🇨🇳 Switch to Mandarin</button>
+                <button onClick={()=>{setProfileMenu(false);window.location.href="index.html";}} style={{width:"100%",padding:"10px 16px",background:"none",border:"none",cursor:"pointer",fontSize:".75rem",fontWeight:700,color:"var(--ink)",textAlign:"left",display:"flex",alignItems:"center",gap:8}}>🏠 Back to home</button>
+                <div style={{borderTop:"1px solid var(--st)",margin:"2px 0"}} />
+                <button onClick={()=>{fbAuth.signOut();window.location.href="index.html";}} style={{width:"100%",padding:"10px 16px",background:"none",border:"none",cursor:"pointer",fontSize:".75rem",fontWeight:700,color:"#e74c3c",textAlign:"left",display:"flex",alignItems:"center",gap:8}}>🚪 Sign out</button>
+              </div>
+            </>}
+          </div>
         </div>
       </div>
 

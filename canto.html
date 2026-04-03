@@ -1599,14 +1599,11 @@ async function _preloadCantoAudio(text) {
     }
     // Fall back to API
     if (!_isOnline) { _preloading.delete(cacheKey); return; }
-    const cjkLen = countCJK(text);
-    if (cjkLen >= 5) {
-      const res = await fetch(`${PROXY_URL}/tts`, {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text, language: "cantonese", speed: 1, output_extension: "mp3", voice_id: _activeCantoVoiceId })
-      });
-      if (res.ok) _ttsCache.set(cacheKey, await res.blob());
-    }
+    const res = await fetch(`${PROXY_URL}/tts`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text, language: "cantonese", speed: 1, output_extension: "mp3", voice_id: _activeCantoVoiceId })
+    });
+    if (res.ok) _ttsCache.set(cacheKey, await res.blob());
   } catch(e) { /* silent fail for preload */ }
   _preloading.delete(cacheKey);
 }

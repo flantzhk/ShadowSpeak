@@ -3834,11 +3834,10 @@ function TodayTab({ profile, progress, upd, markReviewed, setTab, setSelUnit, st
             @keyframes runnerBounce { 0%,100% { transform:translateY(0) scaleX(-1); } 50% { transform:translateY(-5px) scaleX(-1); } }
             @keyframes wiggle { 0%,100% { transform:rotate(0deg); } 25% { transform:rotate(-5deg); } 75% { transform:rotate(5deg); } }
           `}</style>
-          <div style={{fontSize:".68rem",color:"var(--ink2)",textAlign:"center",fontWeight:700,marginTop:4}}>
-            {totalLessons === 0 ? "Complete lessons to move along the path!" :
-             (totalLessons % 10 === 0 && totalLessons > 0) ? "🎉 You earned a reward! Ask mum or dad!" :
-             `${10 - (totalLessons % 10)} more to go. You've got this! 💪`}
-          </div>
+        <div style={{fontSize:".68rem",color:"var(--ink2)",textAlign:"center",fontWeight:700,marginTop:4}}>
+          {totalLessons === 0 ? "Complete lessons to move along the path!" :
+           (totalLessons % 10 === 0 && totalLessons > 0) ? "🎉 You earned a reward! Ask mum or dad!" :
+           `${10 - (totalLessons % 10)} more to go. You've got this! 💪`}
         </div>
       </div>
 

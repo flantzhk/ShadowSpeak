@@ -61,7 +61,7 @@ async function saveSettingsToFirestore(uid, data) {
   try { await fbDb.collection("settings").doc(uid + "-mandarin").set(data); }
   catch(e) { console.warn("Settings save failed:", e); }
 }
-const TTS_PROXY_URL = "https://your-worker.your-subdomain.workers.dev/tts";
+// TTS proxy is configured via PROXY_URL constant below
 
 // ---- UNITS (10 fixed + Life Sentences) ----
 
@@ -459,6 +459,157 @@ const UNITS = [
     { en: "Can I pay with Alipay?", pinyin: "kě yǐ yòng zhī fù bǎo ma", cn: "可以用支付宝吗？", tag: "Shenzhen" },
     { en: "I need to cross the border to Shenzhen", pinyin: "wǒ yào guò guān qù shēn zhèn", cn: "我要过关去深圳", tag: "Shenzhen" },
   ]},
+
+  // ── Unit 12: Weather Talk ──
+  { id: 12, title: "Weather Talk", phrases: [
+    { en: "It's so hot today!", pinyin: "jīn tiān hǎo rè a!", cn: "今天好热啊！", tag: "Commenting" },
+    { en: "The humidity is killing me", pinyin: "cháo shī sǐ le", cn: "潮湿死了", tag: "Complaining" },
+    { en: "Is it going to rain today?", pinyin: "jīn tiān huì xià yǔ ma", cn: "今天会下雨吗？", tag: "Asking" },
+    { en: "Better bring an umbrella", pinyin: "zuì hǎo dài bǎ sǎn", cn: "最好带把伞", tag: "Advising" },
+    { en: "It's really cold today!", pinyin: "jīn tiān hǎo lěng a!", cn: "今天好冷啊！", tag: "Commenting" },
+    { en: "There's a typhoon warning", pinyin: "yǒu tái fēng yù jǐng", cn: "有台风预警", tag: "Alert" },
+    { en: "Is there a typhoon coming?", pinyin: "shì bú shì yǒu tái fēng yào lái le", cn: "是不是有台风要来了？", tag: "Asking" },
+    { en: "The air conditioning is too cold", pinyin: "kōng tiáo tài lěng le", cn: "空调太冷了", tag: "Complaining" },
+    { en: "I'm sweating so much", pinyin: "wǒ chū le hǎo duō hàn", cn: "我出了好多汗", tag: "Suffering" },
+    { en: "The weather is so nice today!", pinyin: "jīn tiān tiān qì zhēn hǎo!", cn: "今天天气真好！", tag: "Happy" },
+    { en: "The smog is bad today", pinyin: "jīn tiān wù mái hěn yán zhòng", cn: "今天雾霾很严重", tag: "Describing" },
+    { en: "Shenzhen's summer is so long", pinyin: "shēn zhèn de xià tiān zhēn cháng", cn: "深圳的夏天真长", tag: "Commenting" },
+  ]},
+
+  // ── Unit 13: Money & Banking ──
+  { id: 13, title: "Money & Banking", phrases: [
+    { en: "What's the exchange rate today?", pinyin: "jīn tiān huì lǜ shì duō shao", cn: "今天汇率是多少？", tag: "Asking" },
+    { en: "I want to exchange money", pinyin: "wǒ xiǎng huàn qián", cn: "我想换钱", tag: "At bank" },
+    { en: "Can I pay with WeChat Pay?", pinyin: "kě yǐ yòng wēi xìn zhī fù ma", cn: "可以用微信支付吗？", tag: "Paying" },
+    { en: "Can I pay with Alipay?", pinyin: "kě yǐ yòng zhī fù bǎo ma", cn: "可以用支付宝吗？", tag: "Paying" },
+    { en: "Scan my QR code", pinyin: "sǎo wǒ de èr wéi mǎ", cn: "扫我的二维码", tag: "Paying" },
+    { en: "I need to transfer money", pinyin: "wǒ yào zhuǎn zhàng", cn: "我要转账", tag: "Banking" },
+    { en: "How much is it altogether?", pinyin: "yì gòng duō shao qián", cn: "一共多少钱？", tag: "Asking" },
+    { en: "That's too expensive!", pinyin: "tài guì le!", cn: "太贵了！", tag: "Reacting" },
+    { en: "Can you make it cheaper?", pinyin: "kě yǐ piān yi diǎn ma", cn: "可以便宜点吗？", tag: "Bargaining" },
+    { en: "Can I have a receipt?", pinyin: "kě yǐ gěi wǒ fā piào ma", cn: "可以给我发票吗？", tag: "Requesting" },
+    { en: "Keep the change", pinyin: "bú yòng zhǎo le", cn: "不用找了", tag: "Generous" },
+    { en: "Do you accept cash?", pinyin: "shōu xiàn jīn ma", cn: "收现金吗？", tag: "Asking" },
+  ]},
+
+  // ── Unit 14: At the Gym ──
+  { id: 14, title: "At the Gym", phrases: [
+    { en: "I want to get a membership", pinyin: "wǒ xiǎng bàn zhāng huì yuán kǎ", cn: "我想办张会员卡", tag: "Signing up" },
+    { en: "How much is the monthly fee?", pinyin: "yuè fèi duō shao qián", cn: "月费多少钱？", tag: "Asking" },
+    { en: "Where is the swimming pool?", pinyin: "yóu yǒng chí zài nǎ lǐ", cn: "游泳池在哪里？", tag: "Finding" },
+    { en: "What time is the yoga class?", pinyin: "yú jiā kè jǐ diǎn kāi shǐ", cn: "瑜伽课几点开始？", tag: "Asking" },
+    { en: "Can I book a class?", pinyin: "kě yǐ yù yuē kè ma", cn: "可以预约课吗？", tag: "Booking" },
+    { en: "The class is full", pinyin: "kè yǐ jīng mǎn le", cn: "课已经满了", tag: "Staff says" },
+    { en: "Where are the changing rooms?", pinyin: "gēng yī shì zài nǎ lǐ", cn: "更衣室在哪里？", tag: "Finding" },
+    { en: "Is there a locker I can use?", pinyin: "yǒu chǔ wù guì kě yǐ yòng ma", cn: "有储物柜可以用吗？", tag: "Asking" },
+    { en: "I need a towel", pinyin: "wǒ xū yào yì tiáo máo jīn", cn: "我需要一条毛巾", tag: "Requesting" },
+    { en: "My muscles are so sore today", pinyin: "jīn tiān jī ròu hǎo suān tòng", cn: "今天肌肉好酸痛", tag: "After workout" },
+  ]},
+
+  // ── Unit 15: Complaining / Service Issues ──
+  { id: 15, title: "Complaining", phrases: [
+    { en: "Excuse me, this isn't what I ordered", pinyin: "bù hǎo yì si, zhè ge bú shì wǒ diǎn de", cn: "不好意思，这个不是我点的", tag: "Restaurant" },
+    { en: "It's too cold in here", pinyin: "zhè lǐ tài lěng le", cn: "这里太冷了", tag: "Temperature" },
+    { en: "The wifi isn't working", pinyin: "wifi lián bù shàng", cn: "WiFi连不上", tag: "Technical" },
+    { en: "I've been waiting for a long time", pinyin: "wǒ děng le hěn jiǔ le", cn: "我等了很久了", tag: "Impatient" },
+    { en: "Can I speak to the manager?", pinyin: "kě yǐ zhǎo jīng lǐ ma", cn: "可以找经理吗？", tag: "Escalating" },
+    { en: "There's something wrong with the bill", pinyin: "zhàng dān hǎo xiàng yǒu cuò", cn: "账单好像有错", tag: "Billing" },
+    { en: "You charged me too much", pinyin: "nǐ duō shōu le wǒ qián", cn: "你多收了我钱", tag: "Overcharged" },
+    { en: "This is broken, can I exchange it?", pinyin: "zhè ge huài le, kě yǐ huàn yí ge ma", cn: "这个坏了，可以换一个吗？", tag: "Defective" },
+    { en: "The food is cold", pinyin: "cài liáng le", cn: "菜凉了", tag: "Restaurant" },
+    { en: "Can I get a refund?", pinyin: "kě yǐ tuì kuǎn ma", cn: "可以退款吗？", tag: "Refund" },
+    { en: "Sorry about that, let me fix it", pinyin: "bù hǎo yì si, wǒ bāng nín chǔ lǐ", cn: "不好意思，我帮您处理", tag: "Staff fixes" },
+  ]},
+
+  // ── Unit 16: On the Phone ──
+  { id: 16, title: "On the Phone", phrases: [
+    { en: "Hello? (answering phone)", pinyin: "wéi", cn: "喂？", tag: "Answering" },
+    { en: "Hi, is this [name]?", pinyin: "wéi, shì [name] ma", cn: "喂，是[name]吗？", tag: "Checking" },
+    { en: "Sorry, wrong number", pinyin: "duì bù qǐ, dǎ cuò le", cn: "对不起，打错了", tag: "Wrong number" },
+    { en: "Can I call you back later?", pinyin: "wǒ wǎn diǎn gěi nǐ huí diàn huà hǎo ma", cn: "我晚点给你回电话好吗？", tag: "Busy" },
+    { en: "I can't hear you clearly", pinyin: "wǒ tīng bù qīng chu nǐ shuō shén me", cn: "我听不清楚你说什么", tag: "Bad signal" },
+    { en: "The signal is really bad here", pinyin: "zhè lǐ xìn hào hěn chà", cn: "这里信号很差", tag: "Bad signal" },
+    { en: "Can you say that again?", pinyin: "kě yǐ zài shuō yí biàn ma", cn: "可以再说一遍吗？", tag: "Didn't hear" },
+    { en: "I'll send you a WeChat message", pinyin: "wǒ gěi nǐ fā wēi xìn", cn: "我给你发微信", tag: "Texting" },
+    { en: "Let me check and get back to you", pinyin: "wǒ chá yí xià, zài huí fù nǐ", cn: "我查一下，再回复你", tag: "Following up" },
+    { en: "Are you free to talk now?", pinyin: "nǐ xiàn zài fāng biàn shuō huà ma", cn: "你现在方便说话吗？", tag: "Checking" },
+    { en: "I'm on the phone, wait a moment", pinyin: "wǒ zài jiē diàn huà, děng yí xià", cn: "我在接电话，等一下", tag: "To someone nearby" },
+    { en: "Okay, bye bye!", pinyin: "hǎo de, bài bài!", cn: "好的，拜拜！", tag: "Hanging up" },
+  ]},
+
+  // ── Unit 17: Feelings & Emotions ──
+  { id: 17, title: "Feelings & Emotions", phrases: [
+    { en: "I'm so tired", pinyin: "wǒ hǎo lèi a", cn: "我好累啊", tag: "Exhausted" },
+    { en: "I'm really stressed out", pinyin: "wǒ yā lì hǎo dà", cn: "我压力好大", tag: "Stressed" },
+    { en: "That's so annoying!", pinyin: "hǎo fán a!", cn: "好烦啊！", tag: "Annoyed" },
+    { en: "I'm so happy!", pinyin: "wǒ hǎo kāi xīn a!", cn: "我好开心啊！", tag: "Happy" },
+    { en: "I feel a bit down today", pinyin: "wǒ jīn tiān xīn qíng bù tài hǎo", cn: "我今天心情不太好", tag: "Sad" },
+    { en: "Are you okay?", pinyin: "nǐ méi shì ba", cn: "你没事吧？", tag: "Concerned" },
+    { en: "I'm bored, there's nothing to do", pinyin: "hǎo wú liáo a, méi shén me shì zuò", cn: "好无聊啊，没什么事做", tag: "Bored" },
+    { en: "I'm so excited!", pinyin: "wǒ hǎo xīng fèn a!", cn: "我好兴奋啊！", tag: "Excited" },
+    { en: "I'm a bit nervous", pinyin: "wǒ yǒu diǎn jǐn zhāng", cn: "我有点紧张", tag: "Nervous" },
+    { en: "Don't be scared, it'll be fine", pinyin: "bié pà, huì méi shì de", cn: "别怕，会没事的", tag: "Reassuring" },
+    { en: "I'm so angry!", pinyin: "wǒ hǎo shēng qì a!", cn: "我好生气啊！", tag: "Angry" },
+    { en: "Calm down, relax", pinyin: "lěng jìng diǎn, fàng sōng", cn: "冷静点，放松", tag: "Calming" },
+    { en: "That scared me!", pinyin: "xià sǐ wǒ le!", cn: "吓死我了！", tag: "Shocked" },
+    { en: "I laughed so hard", pinyin: "wǒ xiào sǐ le", cn: "我笑死了", tag: "Amused" },
+  ]},
+
+  // ── Unit 18: Numbers, Time & Dates ──
+  { id: 18, title: "Numbers, Time & Dates", phrases: [
+    { en: "What time is it now?", pinyin: "xiàn zài jǐ diǎn", cn: "现在几点？", tag: "Asking" },
+    { en: "It's three thirty", pinyin: "sān diǎn bàn", cn: "三点半", tag: "Telling time" },
+    { en: "It's almost five o'clock", pinyin: "kuài wǔ diǎn le", cn: "快五点了", tag: "Telling time" },
+    { en: "What day is today?", pinyin: "jīn tiān xīng qī jǐ", cn: "今天星期几？", tag: "Asking" },
+    { en: "Today is Wednesday", pinyin: "jīn tiān xīng qī sān", cn: "今天星期三", tag: "Answering" },
+    { en: "What's today's date?", pinyin: "jīn tiān jǐ hào", cn: "今天几号？", tag: "Asking" },
+    { en: "It's the 15th", pinyin: "jīn tiān shí wǔ hào", cn: "今天十五号", tag: "Answering" },
+    { en: "Next Monday", pinyin: "xià ge xīng qī yī", cn: "下个星期一", tag: "Planning" },
+    { en: "Last weekend", pinyin: "shàng ge zhōu mò", cn: "上个周末", tag: "Past" },
+    { en: "The day after tomorrow", pinyin: "hòu tiān", cn: "后天", tag: "Future" },
+    { en: "How old are you?", pinyin: "nǐ jǐ suì le", cn: "你几岁了？", tag: "Asking" },
+    { en: "I'm thirty-five", pinyin: "wǒ sān shí wǔ suì", cn: "我三十五岁", tag: "Answering" },
+    { en: "What's your phone number?", pinyin: "nǐ diàn huà hào mǎ duō shao", cn: "你电话号码多少？", tag: "Asking" },
+    { en: "Half past twelve, okay?", pinyin: "shí èr diǎn bàn, hǎo ma", cn: "十二点半，好吗？", tag: "Suggesting" },
+  ]},
+
+  // ── Unit 19: Celebrations & Good Wishes ──
+  { id: 19, title: "Celebrations & Good Wishes", phrases: [
+    { en: "Happy birthday!", pinyin: "shēng rì kuài lè!", cn: "生日快乐！", tag: "Birthday" },
+    { en: "Wishing you all the best!", pinyin: "zhù nǐ yí qiè shùn lì!", cn: "祝你一切顺利！", tag: "General wish" },
+    { en: "Happy New Year!", pinyin: "xīn nián kuài lè!", cn: "新年快乐！", tag: "New Year" },
+    { en: "Wishing you prosperity! (CNY)", pinyin: "gōng xǐ fā cái!", cn: "恭喜发财！", tag: "CNY classic" },
+    { en: "May everything go smoothly", pinyin: "wàn shì rú yì!", cn: "万事如意！", tag: "CNY" },
+    { en: "Wishing you good health", pinyin: "shēn tǐ jiàn kāng!", cn: "身体健康！", tag: "CNY / Elders" },
+    { en: "May all your wishes come true", pinyin: "xīn xiǎng shì chéng!", cn: "心想事成！", tag: "CNY" },
+    { en: "Good luck with your studies!", pinyin: "xué yè jìn bù!", cn: "学业进步！", tag: "CNY / Students" },
+    { en: "May you have great fortune!", pinyin: "dà jí dà lì!", cn: "大吉大利！", tag: "CNY" },
+    { en: "Congratulations!", pinyin: "gōng xǐ nǐ!", cn: "恭喜你！", tag: "Congratulations" },
+    { en: "Well done! So proud of you!", pinyin: "tài bàng le! wǒ wèi nǐ gāo xìng!", cn: "太棒了！我为你高兴！", tag: "Praising" },
+    { en: "Happy Mid-Autumn Festival!", pinyin: "zhōng qiū jié kuài lè!", cn: "中秋节快乐！", tag: "Mid-Autumn" },
+    { en: "Happy Dragon Boat Festival!", pinyin: "duān wǔ jié kuài lè!", cn: "端午节快乐！", tag: "Dragon Boat" },
+    { en: "Merry Christmas!", pinyin: "shèng dàn kuài lè!", cn: "圣诞快乐！", tag: "Christmas" },
+    { en: "Happy wedding! Wishing you eternal love", pinyin: "xīn hūn kuài lè! bǎi nián hǎo hé!", cn: "新婚快乐！百年好合！", tag: "Wedding" },
+    { en: "Wishing you a speedy recovery", pinyin: "zhù nǐ zǎo rì kāng fù!", cn: "祝你早日康复！", tag: "Get well" },
+    { en: "Good luck! You can do it!", pinyin: "jiā yóu! nǐ kě yǐ de!", cn: "加油！你可以的！", tag: "Encouragement" },
+  ]},
+
+  // ── Unit 20: Daily Life ──
+  { id: 20, title: "Daily Life", phrases: [
+    { en: "Red packet for you!", pinyin: "hóng bāo gěi nǐ la!", cn: "红包给你啦！", tag: "CNY giving" },
+    { en: "Thank you for the red packet!", pinyin: "xiè xiè hóng bāo a!", cn: "谢谢红包啊！", tag: "CNY receiving" },
+    { en: "Have you bought your mooncakes yet?", pinyin: "nǐ mǎi le yuè bǐng le ma", cn: "你买了月饼了吗？", tag: "Mid-Autumn" },
+    { en: "Let's go watch the fireworks!", pinyin: "wǒ men qù kàn yān huā ba!", cn: "我们去看烟花吧！", tag: "Celebrations" },
+    { en: "The subway is so crowded!", pinyin: "dì tiě hǎo jǐ a!", cn: "地铁好挤啊！", tag: "Daily life" },
+    { en: "Let's go hiking this weekend", pinyin: "zhè ge zhōu mò qù pá shān ba", cn: "这个周末去爬山吧", tag: "Weekend" },
+    { en: "I need to queue up", pinyin: "wǒ yào pái duì", cn: "我要排队", tag: "Daily life" },
+    { en: "The queue is so long!", pinyin: "duì wǔ hǎo cháng a!", cn: "队伍好长啊！", tag: "Complaining" },
+    { en: "Shall we go get dim sum?", pinyin: "wǒ men qù chī zǎo chá hǎo ma", cn: "我们去吃早茶好吗？", tag: "Suggesting" },
+    { en: "Tomorrow is a holiday!", pinyin: "míng tiān fàng jià a!", cn: "明天放假啊！", tag: "Excited" },
+    { en: "Have you been to the flower market?", pinyin: "nǐ qù guò huā shì ma", cn: "你去过花市吗？", tag: "CNY" },
+    { en: "The scenery here is beautiful!", pinyin: "zhè lǐ de jǐng sè hǎo měi a!", cn: "这里的景色好美啊！", tag: "Sightseeing" },
+  ]},
+
 ];
 
 
@@ -563,6 +714,138 @@ const GLOSS_DATA = {
   "今晚真开心": [{cn:"今晚",py:"jīn wǎn",en:"tonight"},{cn:"真",py:"zhēn",en:"really"},{cn:"开心",py:"kāi xīn",en:"happy/fun"}],
   "小心回家！": [{cn:"小心",py:"xiǎo xīn",en:"be careful"},{cn:"回家",py:"huí jiā",en:"go home"}],
   "下次再约！": [{cn:"下次",py:"xià cì",en:"next time"},{cn:"再",py:"zài",en:"again"},{cn:"约",py:"yuē",en:"meet up"}],
+
+  // ── Unit 12: Weather Talk ──
+  "今天好热啊！": [{cn:"今天",py:"jīn tiān",en:"today"},{cn:"好热",py:"hǎo rè",en:"so hot"},{cn:"啊",py:"a",en:"(excl.)"}],
+  "潮湿死了": [{cn:"潮湿",py:"cháo shī",en:"humid"},{cn:"死了",py:"sǐ le",en:"extremely"}],
+  "今天会下雨吗？": [{cn:"今天",py:"jīn tiān",en:"today"},{cn:"会",py:"huì",en:"will"},{cn:"下雨",py:"xià yǔ",en:"rain"},{cn:"吗",py:"ma",en:"?"}],
+  "最好带把伞": [{cn:"最好",py:"zuì hǎo",en:"better"},{cn:"带",py:"dài",en:"bring"},{cn:"把",py:"bǎ",en:"(measure)"},{cn:"伞",py:"sǎn",en:"umbrella"}],
+  "今天好冷啊！": [{cn:"今天",py:"jīn tiān",en:"today"},{cn:"好冷",py:"hǎo lěng",en:"so cold"},{cn:"啊",py:"a",en:"(excl.)"}],
+  "有台风预警": [{cn:"有",py:"yǒu",en:"there is"},{cn:"台风",py:"tái fēng",en:"typhoon"},{cn:"预警",py:"yù jǐng",en:"warning"}],
+  "是不是有台风要来了？": [{cn:"是不是",py:"shì bú shì",en:"is it that"},{cn:"有",py:"yǒu",en:"there is"},{cn:"台风",py:"tái fēng",en:"typhoon"},{cn:"要来了",py:"yào lái le",en:"coming"}],
+  "空调太冷了": [{cn:"空调",py:"kōng tiáo",en:"AC"},{cn:"太",py:"tài",en:"too"},{cn:"冷",py:"lěng",en:"cold"},{cn:"了",py:"le",en:"(emphasis)"}],
+  "我出了好多汗": [{cn:"我",py:"wǒ",en:"I"},{cn:"出了",py:"chū le",en:"produced"},{cn:"好多",py:"hǎo duō",en:"so much"},{cn:"汗",py:"hàn",en:"sweat"}],
+  "今天天气真好！": [{cn:"今天",py:"jīn tiān",en:"today"},{cn:"天气",py:"tiān qì",en:"weather"},{cn:"真好",py:"zhēn hǎo",en:"really nice"}],
+  "今天雾霾很严重": [{cn:"今天",py:"jīn tiān",en:"today"},{cn:"雾霾",py:"wù mái",en:"smog"},{cn:"很严重",py:"hěn yán zhòng",en:"very serious"}],
+  "深圳的夏天真长": [{cn:"深圳",py:"shēn zhèn",en:"Shenzhen"},{cn:"的",py:"de",en:"'s"},{cn:"夏天",py:"xià tiān",en:"summer"},{cn:"真长",py:"zhēn cháng",en:"really long"}],
+
+  // ── Unit 13: Money & Banking ──
+  "今天汇率是多少？": [{cn:"今天",py:"jīn tiān",en:"today"},{cn:"汇率",py:"huì lǜ",en:"exchange rate"},{cn:"是",py:"shì",en:"is"},{cn:"多少",py:"duō shao",en:"how much"}],
+  "我想换钱": [{cn:"我",py:"wǒ",en:"I"},{cn:"想",py:"xiǎng",en:"want to"},{cn:"换钱",py:"huàn qián",en:"exchange money"}],
+  "可以用微信支付吗？": [{cn:"可以",py:"kě yǐ",en:"can"},{cn:"用",py:"yòng",en:"use"},{cn:"微信支付",py:"wēi xìn zhī fù",en:"WeChat Pay"},{cn:"吗",py:"ma",en:"?"}],
+  "可以用支付宝吗？": [{cn:"可以",py:"kě yǐ",en:"can"},{cn:"用",py:"yòng",en:"use"},{cn:"支付宝",py:"zhī fù bǎo",en:"Alipay"},{cn:"吗",py:"ma",en:"?"}],
+  "扫我的二维码": [{cn:"扫",py:"sǎo",en:"scan"},{cn:"我的",py:"wǒ de",en:"my"},{cn:"二维码",py:"èr wéi mǎ",en:"QR code"}],
+  "我要转账": [{cn:"我",py:"wǒ",en:"I"},{cn:"要",py:"yào",en:"need to"},{cn:"转账",py:"zhuǎn zhàng",en:"transfer money"}],
+  "一共多少钱？": [{cn:"一共",py:"yì gòng",en:"altogether"},{cn:"多少",py:"duō shao",en:"how much"},{cn:"钱",py:"qián",en:"money"}],
+  "太贵了！": [{cn:"太",py:"tài",en:"too"},{cn:"贵",py:"guì",en:"expensive"},{cn:"了",py:"le",en:"(emphasis)"}],
+  "可以便宜点吗？": [{cn:"可以",py:"kě yǐ",en:"can"},{cn:"便宜",py:"piān yi",en:"cheaper"},{cn:"点",py:"diǎn",en:"a bit"},{cn:"吗",py:"ma",en:"?"}],
+  "可以给我发票吗？": [{cn:"可以",py:"kě yǐ",en:"can"},{cn:"给我",py:"gěi wǒ",en:"give me"},{cn:"发票",py:"fā piào",en:"receipt"},{cn:"吗",py:"ma",en:"?"}],
+  "不用找了": [{cn:"不用",py:"bú yòng",en:"no need"},{cn:"找",py:"zhǎo",en:"change (money)"},{cn:"了",py:"le",en:"(done)"}],
+  "收现金吗？": [{cn:"收",py:"shōu",en:"accept"},{cn:"现金",py:"xiàn jīn",en:"cash"},{cn:"吗",py:"ma",en:"?"}],
+
+  // ── Unit 14: At the Gym ──
+  "我想办张会员卡": [{cn:"我",py:"wǒ",en:"I"},{cn:"想",py:"xiǎng",en:"want to"},{cn:"办",py:"bàn",en:"get/register"},{cn:"张",py:"zhāng",en:"(measure)"},{cn:"会员卡",py:"huì yuán kǎ",en:"membership card"}],
+  "月费多少钱？": [{cn:"月费",py:"yuè fèi",en:"monthly fee"},{cn:"多少",py:"duō shao",en:"how much"},{cn:"钱",py:"qián",en:"money"}],
+  "游泳池在哪里？": [{cn:"游泳池",py:"yóu yǒng chí",en:"swimming pool"},{cn:"在",py:"zài",en:"at"},{cn:"哪里",py:"nǎ lǐ",en:"where"}],
+  "瑜伽课几点开始？": [{cn:"瑜伽课",py:"yú jiā kè",en:"yoga class"},{cn:"几点",py:"jǐ diǎn",en:"what time"},{cn:"开始",py:"kāi shǐ",en:"start"}],
+  "可以预约课吗？": [{cn:"可以",py:"kě yǐ",en:"can"},{cn:"预约",py:"yù yuē",en:"book"},{cn:"课",py:"kè",en:"class"},{cn:"吗",py:"ma",en:"?"}],
+  "课已经满了": [{cn:"课",py:"kè",en:"class"},{cn:"已经",py:"yǐ jīng",en:"already"},{cn:"满了",py:"mǎn le",en:"full"}],
+  "更衣室在哪里？": [{cn:"更衣室",py:"gēng yī shì",en:"changing room"},{cn:"在",py:"zài",en:"at"},{cn:"哪里",py:"nǎ lǐ",en:"where"}],
+  "有储物柜可以用吗？": [{cn:"有",py:"yǒu",en:"is there"},{cn:"储物柜",py:"chǔ wù guì",en:"locker"},{cn:"可以",py:"kě yǐ",en:"can"},{cn:"用",py:"yòng",en:"use"},{cn:"吗",py:"ma",en:"?"}],
+  "我需要一条毛巾": [{cn:"我",py:"wǒ",en:"I"},{cn:"需要",py:"xū yào",en:"need"},{cn:"一条",py:"yì tiáo",en:"one (long)"},{cn:"毛巾",py:"máo jīn",en:"towel"}],
+  "今天肌肉好酸痛": [{cn:"今天",py:"jīn tiān",en:"today"},{cn:"肌肉",py:"jī ròu",en:"muscles"},{cn:"好酸痛",py:"hǎo suān tòng",en:"so sore"}],
+
+  // ── Unit 15: Complaining ──
+  "不好意思，这个不是我点的": [{cn:"不好意思",py:"bù hǎo yì si",en:"excuse me"},{cn:"这个",py:"zhè ge",en:"this"},{cn:"不是",py:"bú shì",en:"isn't"},{cn:"我",py:"wǒ",en:"I"},{cn:"点的",py:"diǎn de",en:"ordered"}],
+  "这里太冷了": [{cn:"这里",py:"zhè lǐ",en:"here"},{cn:"太冷",py:"tài lěng",en:"too cold"},{cn:"了",py:"le",en:"(emphasis)"}],
+  "WiFi连不上": [{cn:"WiFi",py:"WiFi",en:"WiFi"},{cn:"连不上",py:"lián bù shàng",en:"can't connect"}],
+  "我等了很久了": [{cn:"我",py:"wǒ",en:"I"},{cn:"等了",py:"děng le",en:"waited"},{cn:"很久",py:"hěn jiǔ",en:"a long time"},{cn:"了",py:"le",en:"(emphasis)"}],
+  "可以找经理吗？": [{cn:"可以",py:"kě yǐ",en:"can"},{cn:"找",py:"zhǎo",en:"find"},{cn:"经理",py:"jīng lǐ",en:"manager"},{cn:"吗",py:"ma",en:"?"}],
+  "账单好像有错": [{cn:"账单",py:"zhàng dān",en:"bill"},{cn:"好像",py:"hǎo xiàng",en:"seems like"},{cn:"有错",py:"yǒu cuò",en:"has error"}],
+  "你多收了我钱": [{cn:"你",py:"nǐ",en:"you"},{cn:"多收了",py:"duō shōu le",en:"overcharged"},{cn:"我",py:"wǒ",en:"me"},{cn:"钱",py:"qián",en:"money"}],
+  "这个坏了，可以换一个吗？": [{cn:"这个",py:"zhè ge",en:"this"},{cn:"坏了",py:"huài le",en:"broken"},{cn:"可以",py:"kě yǐ",en:"can"},{cn:"换",py:"huàn",en:"exchange"},{cn:"一个",py:"yí ge",en:"one"},{cn:"吗",py:"ma",en:"?"}],
+  "菜凉了": [{cn:"菜",py:"cài",en:"food"},{cn:"凉了",py:"liáng le",en:"cold (now)"}],
+  "可以退款吗？": [{cn:"可以",py:"kě yǐ",en:"can"},{cn:"退款",py:"tuì kuǎn",en:"refund"},{cn:"吗",py:"ma",en:"?"}],
+  "不好意思，我帮您处理": [{cn:"不好意思",py:"bù hǎo yì si",en:"sorry"},{cn:"我",py:"wǒ",en:"I"},{cn:"帮",py:"bāng",en:"help"},{cn:"您",py:"nín",en:"you (polite)"},{cn:"处理",py:"chǔ lǐ",en:"handle"}],
+
+  // ── Unit 16: On the Phone ──
+  "喂？": [{cn:"喂",py:"wéi",en:"hello? (phone)"}],
+  "喂，是[name]吗？": [{cn:"喂",py:"wéi",en:"hello?"},{cn:"是",py:"shì",en:"is this"},{cn:"[name]",py:"",en:"[name]"},{cn:"吗",py:"ma",en:"?"}],
+  "对不起，打错了": [{cn:"对不起",py:"duì bù qǐ",en:"sorry"},{cn:"打错了",py:"dǎ cuò le",en:"wrong number"}],
+  "我晚点给你回电话好吗？": [{cn:"我",py:"wǒ",en:"I"},{cn:"晚点",py:"wǎn diǎn",en:"later"},{cn:"给你",py:"gěi nǐ",en:"give you"},{cn:"回电话",py:"huí diàn huà",en:"call back"},{cn:"好吗",py:"hǎo ma",en:"okay?"}],
+  "我听不清楚你说什么": [{cn:"我",py:"wǒ",en:"I"},{cn:"听不清楚",py:"tīng bù qīng chu",en:"can't hear clearly"},{cn:"你",py:"nǐ",en:"you"},{cn:"说什么",py:"shuō shén me",en:"saying what"}],
+  "这里信号很差": [{cn:"这里",py:"zhè lǐ",en:"here"},{cn:"信号",py:"xìn hào",en:"signal"},{cn:"很差",py:"hěn chà",en:"very bad"}],
+  "可以再说一遍吗？": [{cn:"可以",py:"kě yǐ",en:"can"},{cn:"再",py:"zài",en:"again"},{cn:"说",py:"shuō",en:"say"},{cn:"一遍",py:"yí biàn",en:"one time"},{cn:"吗",py:"ma",en:"?"}],
+  "我给你发微信": [{cn:"我",py:"wǒ",en:"I"},{cn:"给你",py:"gěi nǐ",en:"to you"},{cn:"发",py:"fā",en:"send"},{cn:"微信",py:"wēi xìn",en:"WeChat"}],
+  "我查一下，再回复你": [{cn:"我",py:"wǒ",en:"I"},{cn:"查一下",py:"chá yí xià",en:"check"},{cn:"再",py:"zài",en:"then"},{cn:"回复",py:"huí fù",en:"reply"},{cn:"你",py:"nǐ",en:"you"}],
+  "你现在方便说话吗？": [{cn:"你",py:"nǐ",en:"you"},{cn:"现在",py:"xiàn zài",en:"now"},{cn:"方便",py:"fāng biàn",en:"convenient"},{cn:"说话",py:"shuō huà",en:"talk"},{cn:"吗",py:"ma",en:"?"}],
+  "我在接电话，等一下": [{cn:"我",py:"wǒ",en:"I"},{cn:"在",py:"zài",en:"am"},{cn:"接电话",py:"jiē diàn huà",en:"on the phone"},{cn:"等一下",py:"děng yí xià",en:"wait a moment"}],
+  "好的，拜拜！": [{cn:"好的",py:"hǎo de",en:"okay"},{cn:"拜拜",py:"bài bài",en:"bye bye"}],
+
+  // ── Unit 17: Feelings & Emotions ──
+  "我好累啊": [{cn:"我",py:"wǒ",en:"I"},{cn:"好累",py:"hǎo lèi",en:"so tired"},{cn:"啊",py:"a",en:"(excl.)"}],
+  "我压力好大": [{cn:"我",py:"wǒ",en:"I"},{cn:"压力",py:"yā lì",en:"pressure"},{cn:"好大",py:"hǎo dà",en:"so big"}],
+  "好烦啊！": [{cn:"好烦",py:"hǎo fán",en:"so annoying"},{cn:"啊",py:"a",en:"(excl.)"}],
+  "我好开心啊！": [{cn:"我",py:"wǒ",en:"I"},{cn:"好开心",py:"hǎo kāi xīn",en:"so happy"},{cn:"啊",py:"a",en:"(excl.)"}],
+  "我今天心情不太好": [{cn:"我",py:"wǒ",en:"I"},{cn:"今天",py:"jīn tiān",en:"today"},{cn:"心情",py:"xīn qíng",en:"mood"},{cn:"不太好",py:"bù tài hǎo",en:"not great"}],
+  "你没事吧？": [{cn:"你",py:"nǐ",en:"you"},{cn:"没事",py:"méi shì",en:"nothing wrong"},{cn:"吧",py:"ba",en:"right?"}],
+  "好无聊啊，没什么事做": [{cn:"好无聊",py:"hǎo wú liáo",en:"so bored"},{cn:"啊",py:"a",en:"(excl.)"},{cn:"没什么",py:"méi shén me",en:"nothing"},{cn:"事做",py:"shì zuò",en:"to do"}],
+  "我好兴奋啊！": [{cn:"我",py:"wǒ",en:"I"},{cn:"好兴奋",py:"hǎo xīng fèn",en:"so excited"},{cn:"啊",py:"a",en:"(excl.)"}],
+  "我有点紧张": [{cn:"我",py:"wǒ",en:"I"},{cn:"有点",py:"yǒu diǎn",en:"a bit"},{cn:"紧张",py:"jǐn zhāng",en:"nervous"}],
+  "别怕，会没事的": [{cn:"别怕",py:"bié pà",en:"don't be scared"},{cn:"会",py:"huì",en:"will"},{cn:"没事的",py:"méi shì de",en:"be fine"}],
+  "我好生气啊！": [{cn:"我",py:"wǒ",en:"I"},{cn:"好生气",py:"hǎo shēng qì",en:"so angry"},{cn:"啊",py:"a",en:"(excl.)"}],
+  "冷静点，放松": [{cn:"冷静",py:"lěng jìng",en:"calm"},{cn:"点",py:"diǎn",en:"a bit"},{cn:"放松",py:"fàng sōng",en:"relax"}],
+  "吓死我了！": [{cn:"吓死",py:"xià sǐ",en:"scared to death"},{cn:"我",py:"wǒ",en:"me"},{cn:"了",py:"le",en:"(completed)"}],
+  "我笑死了": [{cn:"我",py:"wǒ",en:"I"},{cn:"笑死",py:"xiào sǐ",en:"laughed to death"},{cn:"了",py:"le",en:"(completed)"}],
+
+  // ── Unit 18: Numbers, Time & Dates ──
+  "现在几点？": [{cn:"现在",py:"xiàn zài",en:"now"},{cn:"几点",py:"jǐ diǎn",en:"what time"}],
+  "三点半": [{cn:"三",py:"sān",en:"three"},{cn:"点",py:"diǎn",en:"o'clock"},{cn:"半",py:"bàn",en:"half"}],
+  "快五点了": [{cn:"快",py:"kuài",en:"almost"},{cn:"五点",py:"wǔ diǎn",en:"five o'clock"},{cn:"了",py:"le",en:"(now)"}],
+  "今天星期几？": [{cn:"今天",py:"jīn tiān",en:"today"},{cn:"星期几",py:"xīng qī jǐ",en:"what day"}],
+  "今天星期三": [{cn:"今天",py:"jīn tiān",en:"today"},{cn:"星期三",py:"xīng qī sān",en:"Wednesday"}],
+  "今天几号？": [{cn:"今天",py:"jīn tiān",en:"today"},{cn:"几号",py:"jǐ hào",en:"what date"}],
+  "今天十五号": [{cn:"今天",py:"jīn tiān",en:"today"},{cn:"十五号",py:"shí wǔ hào",en:"the 15th"}],
+  "下个星期一": [{cn:"下个",py:"xià ge",en:"next"},{cn:"星期一",py:"xīng qī yī",en:"Monday"}],
+  "上个周末": [{cn:"上个",py:"shàng ge",en:"last"},{cn:"周末",py:"zhōu mò",en:"weekend"}],
+  "后天": [{cn:"后天",py:"hòu tiān",en:"day after tomorrow"}],
+  "你几岁了？": [{cn:"你",py:"nǐ",en:"you"},{cn:"几岁",py:"jǐ suì",en:"how old"},{cn:"了",py:"le",en:"(now)"}],
+  "我三十五岁": [{cn:"我",py:"wǒ",en:"I"},{cn:"三十五",py:"sān shí wǔ",en:"thirty-five"},{cn:"岁",py:"suì",en:"years old"}],
+  "你电话号码多少？": [{cn:"你",py:"nǐ",en:"your"},{cn:"电话号码",py:"diàn huà hào mǎ",en:"phone number"},{cn:"多少",py:"duō shao",en:"what is"}],
+  "十二点半，好吗？": [{cn:"十二点半",py:"shí èr diǎn bàn",en:"12:30"},{cn:"好吗",py:"hǎo ma",en:"okay?"}],
+
+  // ── Unit 19: Celebrations & Good Wishes ──
+  "生日快乐！": [{cn:"生日",py:"shēng rì",en:"birthday"},{cn:"快乐",py:"kuài lè",en:"happy"}],
+  "祝你一切顺利！": [{cn:"祝你",py:"zhù nǐ",en:"wish you"},{cn:"一切",py:"yí qiè",en:"everything"},{cn:"顺利",py:"shùn lì",en:"smoothly"}],
+  "新年快乐！": [{cn:"新年",py:"xīn nián",en:"new year"},{cn:"快乐",py:"kuài lè",en:"happy"}],
+  "恭喜发财！": [{cn:"恭喜",py:"gōng xǐ",en:"congratulations"},{cn:"发财",py:"fā cái",en:"get rich"}],
+  "万事如意！": [{cn:"万事",py:"wàn shì",en:"all things"},{cn:"如意",py:"rú yì",en:"as wished"}],
+  "身体健康！": [{cn:"身体",py:"shēn tǐ",en:"body"},{cn:"健康",py:"jiàn kāng",en:"health"}],
+  "心想事成！": [{cn:"心想",py:"xīn xiǎng",en:"heart wishes"},{cn:"事成",py:"shì chéng",en:"come true"}],
+  "学业进步！": [{cn:"学业",py:"xué yè",en:"studies"},{cn:"进步",py:"jìn bù",en:"progress"}],
+  "大吉大利！": [{cn:"大吉",py:"dà jí",en:"great luck"},{cn:"大利",py:"dà lì",en:"great fortune"}],
+  "恭喜你！": [{cn:"恭喜",py:"gōng xǐ",en:"congratulations"},{cn:"你",py:"nǐ",en:"you"}],
+  "太棒了！我为你高兴！": [{cn:"太棒了",py:"tài bàng le",en:"amazing!"},{cn:"我",py:"wǒ",en:"I"},{cn:"为你",py:"wèi nǐ",en:"for you"},{cn:"高兴",py:"gāo xìng",en:"happy"}],
+  "中秋节快乐！": [{cn:"中秋节",py:"zhōng qiū jié",en:"Mid-Autumn Festival"},{cn:"快乐",py:"kuài lè",en:"happy"}],
+  "端午节快乐！": [{cn:"端午节",py:"duān wǔ jié",en:"Dragon Boat Festival"},{cn:"快乐",py:"kuài lè",en:"happy"}],
+  "圣诞快乐！": [{cn:"圣诞",py:"shèng dàn",en:"Christmas"},{cn:"快乐",py:"kuài lè",en:"happy"}],
+  "新婚快乐！百年好合！": [{cn:"新婚",py:"xīn hūn",en:"wedding"},{cn:"快乐",py:"kuài lè",en:"happy"},{cn:"百年",py:"bǎi nián",en:"100 years"},{cn:"好合",py:"hǎo hé",en:"harmony"}],
+  "祝你早日康复！": [{cn:"祝你",py:"zhù nǐ",en:"wish you"},{cn:"早日",py:"zǎo rì",en:"speedy"},{cn:"康复",py:"kāng fù",en:"recovery"}],
+  "加油！你可以的！": [{cn:"加油",py:"jiā yóu",en:"go for it!"},{cn:"你",py:"nǐ",en:"you"},{cn:"可以的",py:"kě yǐ de",en:"can do it"}],
+
+  // ── Unit 20: Daily Life ──
+  "红包给你啦！": [{cn:"红包",py:"hóng bāo",en:"red packet"},{cn:"给你",py:"gěi nǐ",en:"for you"},{cn:"啦",py:"la",en:"(joy)"}],
+  "谢谢红包啊！": [{cn:"谢谢",py:"xiè xiè",en:"thank you"},{cn:"红包",py:"hóng bāo",en:"red packet"},{cn:"啊",py:"a",en:"(excl.)"}],
+  "你买了月饼了吗？": [{cn:"你",py:"nǐ",en:"you"},{cn:"买了",py:"mǎi le",en:"bought"},{cn:"月饼",py:"yuè bǐng",en:"mooncakes"},{cn:"了吗",py:"le ma",en:"yet?"}],
+  "我们去看烟花吧！": [{cn:"我们",py:"wǒ men",en:"we"},{cn:"去",py:"qù",en:"go"},{cn:"看",py:"kàn",en:"watch"},{cn:"烟花",py:"yān huā",en:"fireworks"},{cn:"吧",py:"ba",en:"(let's)"}],
+  "地铁好挤啊！": [{cn:"地铁",py:"dì tiě",en:"subway"},{cn:"好挤",py:"hǎo jǐ",en:"so crowded"},{cn:"啊",py:"a",en:"(excl.)"}],
+  "这个周末去爬山吧": [{cn:"这个周末",py:"zhè ge zhōu mò",en:"this weekend"},{cn:"去",py:"qù",en:"go"},{cn:"爬山",py:"pá shān",en:"hiking"},{cn:"吧",py:"ba",en:"(let's)"}],
+  "我要排队": [{cn:"我",py:"wǒ",en:"I"},{cn:"要",py:"yào",en:"need to"},{cn:"排队",py:"pái duì",en:"queue up"}],
+  "队伍好长啊！": [{cn:"队伍",py:"duì wǔ",en:"queue"},{cn:"好长",py:"hǎo cháng",en:"so long"},{cn:"啊",py:"a",en:"(excl.)"}],
+  "我们去吃早茶好吗？": [{cn:"我们",py:"wǒ men",en:"we"},{cn:"去",py:"qù",en:"go"},{cn:"吃",py:"chī",en:"eat"},{cn:"早茶",py:"zǎo chá",en:"dim sum"},{cn:"好吗",py:"hǎo ma",en:"okay?"}],
+  "明天放假啊！": [{cn:"明天",py:"míng tiān",en:"tomorrow"},{cn:"放假",py:"fàng jià",en:"holiday"},{cn:"啊",py:"a",en:"(excl.)"}],
+  "你去过花市吗？": [{cn:"你",py:"nǐ",en:"you"},{cn:"去过",py:"qù guò",en:"been to"},{cn:"花市",py:"huā shì",en:"flower market"},{cn:"吗",py:"ma",en:"?"}],
+  "这里的景色好美啊！": [{cn:"这里",py:"zhè lǐ",en:"here"},{cn:"的",py:"de",en:"'s"},{cn:"景色",py:"jǐng sè",en:"scenery"},{cn:"好美",py:"hǎo měi",en:"so beautiful"},{cn:"啊",py:"a",en:"(excl.)"}],
 };
 
 
@@ -745,6 +1028,40 @@ const VOCAB_CATS = [
     { cn:"危险",pinyin:"wēi xiǎn",en:"dangerous" },{ cn:"包裹",pinyin:"bāo guǒ",en:"parcel" },{ cn:"门卡",pinyin:"mén kǎ",en:"access card" },
     { cn:"地图",pinyin:"dì tú",en:"map" },{ cn:"送货",pinyin:"sòng huò",en:"delivery" },{ cn:"签名",pinyin:"qiān míng",en:"sign/signature" },{ cn:"修",pinyin:"xiū",en:"repair/fix" },
   ]},
+  { id: "weather", label: "🌤 Weather", tier: 2, words: [
+    { cn:"热",pinyin:"rè",en:"hot" },{ cn:"冷",pinyin:"lěng",en:"cold" },{ cn:"下雨",pinyin:"xià yǔ",en:"raining" },
+    { cn:"伞",pinyin:"sǎn",en:"umbrella" },{ cn:"台风",pinyin:"tái fēng",en:"typhoon" },
+    { cn:"潮湿",pinyin:"cháo shī",en:"humid/damp" },{ cn:"雾",pinyin:"wù",en:"fog" },{ cn:"天气",pinyin:"tiān qì",en:"weather" },
+    { cn:"空调",pinyin:"kōng tiáo",en:"air conditioning" },{ cn:"汗",pinyin:"hàn",en:"sweat" },{ cn:"雾霾",pinyin:"wù mái",en:"smog" },
+  ]},
+  { id: "money", label: "💰 Money & Payments", tier: 2, words: [
+    { cn:"钱",pinyin:"qián",en:"money" },{ cn:"汇率",pinyin:"huì lǜ",en:"exchange rate" },{ cn:"换钱",pinyin:"huàn qián",en:"exchange money" },
+    { cn:"转账",pinyin:"zhuǎn zhàng",en:"transfer" },{ cn:"发票",pinyin:"fā piào",en:"receipt/invoice" },
+    { cn:"现金",pinyin:"xiàn jīn",en:"cash" },{ cn:"贵",pinyin:"guì",en:"expensive" },
+    { cn:"便宜",pinyin:"pián yi",en:"cheap" },{ cn:"微信支付",pinyin:"wēi xìn zhī fù",en:"WeChat Pay" },
+    { cn:"支付宝",pinyin:"zhī fù bǎo",en:"Alipay" },{ cn:"二维码",pinyin:"èr wéi mǎ",en:"QR code" },
+  ]},
+  { id: "feelings", label: "💭 Feelings", tier: 2, words: [
+    { cn:"累",pinyin:"lèi",en:"tired" },{ cn:"压力",pinyin:"yā lì",en:"pressure/stress" },{ cn:"烦",pinyin:"fán",en:"annoyed" },
+    { cn:"开心",pinyin:"kāi xīn",en:"happy" },{ cn:"无聊",pinyin:"wú liáo",en:"bored" },{ cn:"兴奋",pinyin:"xīng fèn",en:"excited" },
+    { cn:"紧张",pinyin:"jǐn zhāng",en:"nervous" },{ cn:"生气",pinyin:"shēng qì",en:"angry" },{ cn:"害怕",pinyin:"hài pà",en:"scared" },
+    { cn:"想念",pinyin:"xiǎng niàn",en:"miss (someone)" },
+  ]},
+  { id: "celebrate", label: "🎉 Celebrations", tier: 2, words: [
+    { cn:"生日",pinyin:"shēng rì",en:"birthday" },{ cn:"快乐",pinyin:"kuài lè",en:"happy/joyful" },{ cn:"新年",pinyin:"xīn nián",en:"new year" },
+    { cn:"恭喜",pinyin:"gōng xǐ",en:"congratulations" },{ cn:"发财",pinyin:"fā cái",en:"get rich/prosperity" },
+    { cn:"红包",pinyin:"hóng bāo",en:"red packet" },{ cn:"月饼",pinyin:"yuè bǐng",en:"mooncake" },{ cn:"烟花",pinyin:"yān huā",en:"fireworks" },
+    { cn:"加油",pinyin:"jiā yóu",en:"go for it!/fighting!" },{ cn:"圣诞",pinyin:"shèng dàn",en:"Christmas" },
+  ]},
+  { id: "gym", label: "🏋 Gym & Exercise", tier: 3, words: [
+    { cn:"会员卡",pinyin:"huì yuán kǎ",en:"membership card" },{ cn:"月费",pinyin:"yuè fèi",en:"monthly fee" },
+    { cn:"游泳池",pinyin:"yóu yǒng chí",en:"swimming pool" },{ cn:"更衣室",pinyin:"gēng yī shì",en:"changing room" },
+    { cn:"毛巾",pinyin:"máo jīn",en:"towel" },{ cn:"肌肉",pinyin:"jī ròu",en:"muscle" },{ cn:"酸痛",pinyin:"suān tòng",en:"sore" },
+  ]},
+  { id: "phone", label: "📞 Phone & Comms", tier: 3, words: [
+    { cn:"打电话",pinyin:"dǎ diàn huà",en:"make a call" },{ cn:"信号",pinyin:"xìn hào",en:"signal" },
+    { cn:"回复",pinyin:"huí fù",en:"reply" },{ cn:"微信",pinyin:"wēi xìn",en:"WeChat" },{ cn:"打错",pinyin:"dǎ cuò",en:"wrong number" },
+  ]},
 ];
 
 const ALL_WORDS = VOCAB_CATS.flatMap(c => c.words.map(w => ({ ...w, catId: c.id, catLabel: c.label, tier: c.tier })));
@@ -860,29 +1177,37 @@ async function minimaxTTS(text, lang) {
   });
 }
 
-// Google Translate TTS as fallback
-// ---- ElevenLabs TTS ----
-const ELEVEN_API_KEY = "cf28029efad6b9e11d5802931a441e6a26d070d426bd3dc8a9e4bdd124a59755";
-const ELEVEN_VOICE_ID = "pFZP5JQG7iQjIQuC4Bku"; // Lily - multilingual v2
-const ELEVEN_VOICE_EN = "JBFqnCBsd6RMkjVDRZzb"; // George - English
+// ---- API PROXY ----
+const PROXY_URL = "https://shadowspeak-proxy.faith-lantz-ee8.workers.dev";
+
+// ---- ElevenLabs TTS (via proxy) ----
+
+// Voice options
+const EN_VOICES = [
+  { id: "4yoylgRRiLD7CqjKHeTx", label: "American woman", accent: "American", gender: "female" },
+  { id: "wWWn96OtTHu1sn8SRGEr", label: "American man", accent: "American", gender: "male" },
+  { id: "oW8bn5YtBB89X2nJ0DT9", label: "British woman", accent: "British", gender: "female" },
+  { id: "HF0hjxElqeS2vwmlzj6g", label: "British man", accent: "British", gender: "male" },
+];
+const ZH_VOICES = [
+  { id: "bhJUNIXWQQ94l8eI2VUf", label: "Mandarin woman", gender: "female" },
+  { id: "BWN0mOtkGHghA3CYFzFK", label: "Mandarin man", gender: "male" },
+];
+const DEFAULT_EN_VOICE = "4yoylgRRiLD7CqjKHeTx";
+const DEFAULT_ZH_VOICE = "bhJUNIXWQQ94l8eI2VUf";
+
+let _activeEnVoiceId = DEFAULT_EN_VOICE;
+let _activeZhVoiceId = DEFAULT_ZH_VOICE;
 
 function elevenLabsTTS(text, lang) {
   return new Promise((resolve, reject) => {
     stopAudio();
-    const voiceId = (lang === "en" || lang === "en-US") ? ELEVEN_VOICE_EN : ELEVEN_VOICE_ID;
-    fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "xi-api-key": ELEVEN_API_KEY },
-      body: JSON.stringify({
-        text: text,
-        model_id: "eleven_multilingual_v2",
-        voice_settings: { stability: 0.5, similarity_boost: 0.75, style: 0.0 }
-      })
+    const voiceId = (lang === "en" || lang === "en-US") ? _activeEnVoiceId : _activeZhVoiceId;
+    fetch(`${PROXY_URL}/elevenlabs/tts`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text, voice_id: voiceId, model_id: "eleven_multilingual_v2", voice_settings: { stability: 0.5, similarity_boost: 0.75, style: 0.0 } })
     })
-    .then(res => {
-      if (!res.ok) throw new Error("ElevenLabs " + res.status);
-      return res.blob();
-    })
+    .then(res => { if (!res.ok) throw new Error("ElevenLabs " + res.status); return res.blob(); })
     .then(blob => {
       const url = URL.createObjectURL(blob);
       const audio = new Audio(url);
@@ -890,8 +1215,7 @@ function elevenLabsTTS(text, lang) {
       audio.onended = () => { _currentAudio = null; URL.revokeObjectURL(url); resolve(); };
       audio.onerror = () => { _currentAudio = null; URL.revokeObjectURL(url); reject(new Error("ElevenLabs playback failed")); };
       audio.play().catch(e => { _currentAudio = null; URL.revokeObjectURL(url); reject(e); });
-    })
-    .catch(reject);
+    }).catch(reject);
   });
 }
 
@@ -910,7 +1234,6 @@ function googleTTS(text, lang) {
 
 async function speak(text){
   stopAudio();
-  // ElevenLabs first, Google TTS fallback, system voice last resort
   try { await elevenLabsTTS(text, "cmn-CN"); return; } catch(e) { console.warn("ElevenLabs failed:", e.message); }
   try { await googleTTS(text, "cmn-CN"); return; } catch(e) {}
   return speakAsync(text, "cmn-CN", 0.85);
@@ -927,6 +1250,82 @@ async function speakPhrase(item) {
   await speakEnglish(item.en);
   await new Promise(r => setTimeout(r, 800));
   await speak(item.cn);
+}
+
+// ---- Pronunciation Scoring via cantonese.ai (supports Mandarin too) ----
+async function scorePronunciation(audioBlob, text, language = "mandarin") {
+  const formData = new FormData();
+  formData.append("text", text);
+  formData.append("language", language);
+  formData.append("audio", audioBlob, "recording.webm");
+  const res = await fetch(`${PROXY_URL}/score`, { method: "POST", body: formData });
+  if (!res.ok) throw new Error("Scoring failed: " + res.status);
+  return res.json();
+}
+
+let _mediaRecorder = null;
+let _audioChunks = [];
+let _micStream = null;
+
+async function getMicStream() {
+  if (_micStream && _micStream.active) return _micStream;
+  _micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  return _micStream;
+}
+
+async function startRecording() {
+  const stream = await getMicStream();
+  _audioChunks = [];
+  _mediaRecorder = new MediaRecorder(stream, { mimeType: "audio/webm;codecs=opus" });
+  _mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) _audioChunks.push(e.data); };
+  _mediaRecorder.start();
+  return true;
+}
+
+function stopRecording() {
+  return new Promise((resolve) => {
+    if (!_mediaRecorder || _mediaRecorder.state === "inactive") { resolve(null); return; }
+    _mediaRecorder.onstop = () => {
+      const blob = new Blob(_audioChunks, { type: "audio/webm" });
+      // Don't stop tracks — keep stream alive for next recording
+      resolve(blob);
+    };
+    _mediaRecorder.stop();
+  });
+}
+
+function releaseMic() {
+  if (_micStream) { _micStream.getTracks().forEach(t => t.stop()); _micStream = null; }
+}
+
+function playScoreSound(type) {
+  try {
+    const ax = new (window.AudioContext || window.webkitAudioContext)();
+    if (type === "perfect") {
+      [523.25,659.25,783.99,1046.50,1318.51].forEach((f,i) => {
+        const o=ax.createOscillator(),o2=ax.createOscillator(),g=ax.createGain();
+        o.type="sine";o2.type="triangle";o.frequency.value=f;o2.frequency.value=f*2;
+        g.gain.setValueAtTime(0,ax.currentTime+i*.1);g.gain.linearRampToValueAtTime(.12,ax.currentTime+i*.1+.04);
+        g.gain.exponentialRampToValueAtTime(.001,ax.currentTime+i*.1+.6);
+        o.connect(g);o2.connect(g);g.connect(ax.destination);
+        o.start(ax.currentTime+i*.1);o.stop(ax.currentTime+i*.1+.6);o2.start(ax.currentTime+i*.1);o2.stop(ax.currentTime+i*.1+.6);
+      });
+    } else if (type === "good") {
+      [440,554.37].forEach((f,i) => {
+        const o=ax.createOscillator(),g=ax.createGain();o.type="sine";o.frequency.value=f;
+        g.gain.setValueAtTime(0,ax.currentTime+i*.15);g.gain.linearRampToValueAtTime(.12,ax.currentTime+i*.15+.05);
+        g.gain.exponentialRampToValueAtTime(.001,ax.currentTime+i*.15+.5);
+        o.connect(g).connect(ax.destination);o.start(ax.currentTime+i*.15);o.stop(ax.currentTime+i*.15+.5);
+      });
+    } else {
+      [392,330].forEach((f,i) => {
+        const o=ax.createOscillator(),g=ax.createGain();o.type="sine";o.frequency.value=f;
+        g.gain.setValueAtTime(0,ax.currentTime+i*.2);g.gain.linearRampToValueAtTime(.1,ax.currentTime+i*.2+.05);
+        g.gain.exponentialRampToValueAtTime(.001,ax.currentTime+i*.2+.4);
+        o.connect(g).connect(ax.destination);o.start(ax.currentTime+i*.2);o.stop(ax.currentTime+i*.2+.4);
+      });
+    }
+  } catch(e) {}
 }
 
 // ---- Spaced Repetition helpers ----
@@ -1616,10 +2015,16 @@ function App() {
         }
       }
       const cloudSettings = await loadSettingsFromFirestore(user.uid);
-      if (cloudSettings) setSettings(cloudSettings);
-      else {
+      if (cloudSettings) {
+        setSettings(cloudSettings);
+        _activeEnVoiceId = cloudSettings.enVoice || DEFAULT_EN_VOICE;
+        _activeZhVoiceId = cloudSettings.zhVoice || DEFAULT_ZH_VOICE;
+      } else {
         const ls = JSON.parse(localStorage.getItem("mandarin-settings")||"{}");
-        setSettings({ learnMode: ls.learnMode||"speaking" });
+        const defaults = { learnMode: ls.learnMode||"speaking", enVoice: DEFAULT_EN_VOICE, zhVoice: DEFAULT_ZH_VOICE, defaultSpeed: "normal", onboardingDone: false };
+        setSettings(defaults);
+        _activeEnVoiceId = DEFAULT_EN_VOICE;
+        _activeZhVoiceId = DEFAULT_ZH_VOICE;
       }
     })();
   }, [user]);
@@ -1659,6 +2064,8 @@ function App() {
     setSettings(prev => {
       const u = { ...prev }; const p = path.split(".");
       if (p.length === 1) u[p[0]] = val; else u[p[0]] = { ...u[p[0]], [p[1]]: val };
+      if (path === "enVoice") _activeEnVoiceId = val;
+      if (path === "zhVoice") _activeZhVoiceId = val;
       localStorage.setItem("mandarin-settings", JSON.stringify(u));
       if (user) saveSettingsToFirestore(user.uid, u);
       return u;
@@ -1694,6 +2101,15 @@ function App() {
   const photoURL = user.photoURL;
   const vk = Object.keys(progress.vocab||{}).filter(k=>progress.vocab[k]).length;
 
+  // Voice onboarding — show once on first visit
+  if (settings.onboardingDone === false) {
+    return <VoiceOnboarding onComplete={(enVoice, zhVoice) => {
+      updSettings("enVoice", enVoice);
+      updSettings("zhVoice", zhVoice);
+      updSettings("onboardingDone", true);
+    }} />;
+  }
+
   return (
     <div className={`ca ${settings.learnMode === "reading" ? "reading-mode" : ""}`}>
       <div className="hdr">
@@ -1706,11 +2122,14 @@ function App() {
             )}
           </div>
         </div>
-        {photoURL ? (
-          <img src={photoURL} referrerPolicy="no-referrer" style={{width:30,height:30,borderRadius:"50%",border:"2px solid var(--lime)",cursor:"pointer"}} onClick={()=>window.location.href="index.html"} title={displayName} />
-        ) : (
-          <div className="ha" style={{background:"var(--lime)",color:"var(--for)",cursor:"pointer"}} onClick={()=>window.location.href="index.html"}>{displayName[0]}</div>
-        )}
+        <div style={{display:"flex",alignItems:"center",gap:8}}>
+          <button onClick={()=>window.location.href="canto.html"} style={{background:"rgba(255,255,255,.1)",border:"none",borderRadius:8,padding:"4px 8px",fontSize:".85rem",cursor:"pointer",lineHeight:1}} title="Switch to Cantonese">🇭🇰</button>
+          {photoURL ? (
+            <img src={photoURL} referrerPolicy="no-referrer" style={{width:30,height:30,borderRadius:"50%",border:"2px solid var(--lime)",cursor:"pointer"}} onClick={()=>window.location.href="index.html"} title={displayName} />
+          ) : (
+            <div className="ha" style={{background:"var(--lime)",color:"var(--for)",cursor:"pointer"}} onClick={()=>window.location.href="index.html"}>{displayName[0]}</div>
+          )}
+        </div>
       </div>
 
       {tab==="home"&&<TodayTab profile={displayName} progress={progress} upd={upd} markReviewed={markReviewed} setTab={setTab} setSelUnit={setSelUnit} startPlaylist={startPlaylist} openPlBuilder={()=>setShowPlBuilder(true)} />}
@@ -1907,7 +2326,7 @@ function DrillView({ item, items, innerIdx, safeIdx, showPinyin }) {
   );
 }
 
-function LessonMode({ progress, upd, profile, onComplete, onQuit }) {
+function LessonMode({ progress, upd, profile, settings, onComplete, onQuit }) {
   const saved = useMemo(() => {
     try { const s = sessionStorage.getItem("mandarin-lesson"); return s ? JSON.parse(s) : null; } catch(e) { return null; }
   }, []);
@@ -1923,9 +2342,12 @@ function LessonMode({ progress, upd, profile, onComplete, onQuit }) {
   const [revealed, setRevealed] = useState(false);
   const [quizScore, setQuizScore] = useState(saved?.quizScore || {right:0,wrong:0});
   const [lessonDone, setLessonDone] = useState(false);
-  const [speed, setSpeed] = useState("normal");
+  const [speed, setSpeed] = useState(settings?.defaultSpeed || "normal");
   const [showPinyin, setShowPinyin] = useState(true);
   const [showTransition, setShowTransition] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const [scoring, setScoring] = useState(false);
+  const [scoreResult, setScoreResult] = useState(null);
   const timerRef = useRef(null);
   const shadowTimer = useRef(null);
 
@@ -2048,6 +2470,45 @@ function LessonMode({ progress, upd, profile, onComplete, onQuit }) {
     setQuizScore(prev=>({...prev,[result]:(prev[result]||0)+1}));
     setRevealed(false);
     if (innerIdx+1 < items.length) setInnerIdx(i=>i+1);
+  };
+
+  // Pronunciation scoring in quiz phase
+  const quizStartTest = async () => {
+    setPaused(true);
+    stopAudio();
+    try { const ok = await startRecording(); if (ok) setIsRecording(true); } catch(e) { console.warn("Mic error:", e); }
+  };
+  const quizStopTest = async () => {
+    setIsRecording(false);
+    setScoring(true);
+    const blob = await stopRecording();
+    const items = getPhaseItems();
+    const safeIdx = innerIdx % (items?.length || 1);
+    const ph = items?.[safeIdx];
+    if (blob && ph) {
+      try {
+        const result = await scorePronunciation(blob, ph.cn, "mandarin");
+        let chars = [];
+        if (result.wordScores && result.wordScores.length > 0) {
+          const cnChars = ph.cn.replace(/[，,。！？!?\s]/g, "").split("");
+          result.wordScores.forEach((ws, i) => {
+            chars.push({ cn: ws.word || cnChars[i] || "", e: ws.word || "", y: ws.word || "", m: ws.score >= 70 ? 1 : 0, wordScore: ws.score });
+          });
+        } else if (result.expectedJyutping && result.transcribedJyutping) {
+          const expSyls = (result.expectedText || "").split("");
+          const yourSyls = (result.transcribedText || "").split("");
+          const cnChars = ph.cn.replace(/[，,。！？!?\s]/g, "").split("");
+          for (let i = 0; i < cnChars.length; i++) {
+            chars.push({ cn: cnChars[i], e: expSyls[i] || "", y: yourSyls[i] || "", m: expSyls[i] === yourSyls[i] ? 1 : 0 });
+          }
+        }
+        setScoreResult({ score: result.score, passed: result.passed, chars, phrase: ph });
+      } catch(e) {
+        console.error("Quiz scoring error:", e);
+        setScoreResult(null);
+      }
+    }
+    setScoring(false);
   };
 
   const markKnownInLesson = () => {
@@ -2226,6 +2687,22 @@ function LessonMode({ progress, upd, profile, onComplete, onQuit }) {
                 <div className="quiz-ans-cn">{item.cn}</div>
                 <button style={{marginTop:6,background:"var(--st)",border:"none",borderRadius:999,padding:"8px 12px",fontSize:".72rem",cursor:"pointer"}} onClick={()=>speak(item.cn)}>▶ Listen</button>
               </div>
+              {/* Pronunciation scoring in quiz */}
+              <div style={{width:"100%",maxWidth:440,marginBottom:10}}>
+                {!isRecording && !scoring ? (
+                  <button onClick={quizStartTest} style={{width:"100%",padding:"12px",borderRadius:12,border:"2px solid var(--lime)",background:"rgba(196,240,0,.08)",color:"var(--lime)",fontSize:".78rem",fontWeight:800,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
+                    🎙 Test your pronunciation
+                  </button>
+                ) : scoring ? (
+                  <div style={{width:"100%",padding:"12px",borderRadius:12,background:"rgba(255,255,255,.06)",textAlign:"center"}}>
+                    <div style={{fontSize:".75rem",fontWeight:700,color:"rgba(255,255,255,.5)"}}>Scoring your pronunciation...</div>
+                  </div>
+                ) : (
+                  <button onClick={quizStopTest} style={{width:"100%",padding:"12px",borderRadius:12,border:"2px solid #e74c3c",background:"rgba(231,76,60,.12)",color:"#ff7a5c",fontSize:".78rem",fontWeight:800,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8,animation:"pulse 1s ease-in-out infinite"}}>
+                    ⏹ Stop recording & score
+                  </button>
+                )}
+              </div>
               <div className="quiz-grade">
                 <button className="quiz-g-btn quiz-g-yes" onClick={()=>handleQuizGrade("right")}>✓ Got it</button>
                 <button className="quiz-g-btn quiz-g-no" onClick={()=>handleQuizGrade("wrong")}>✗ Nope</button>
@@ -2284,6 +2761,16 @@ function LessonMode({ progress, upd, profile, onComplete, onQuit }) {
           <div className="l-know-row"><button className="l-know-btn" onClick={markKnownInLesson}><span style={{fontSize:"1rem"}}>💪</span><span>I know this now</span></button></div>
         </div>
       )}
+
+      {/* Quiz pronunciation score overlay */}
+      {scoreResult && <PronunciationScore
+        score={scoreResult.score}
+        chars={scoreResult.chars}
+        phrase={scoreResult.phrase}
+        onRetry={() => { setScoreResult(null); quizStartTest(); }}
+        onNext={() => { setScoreResult(null); setPaused(false); }}
+        onClose={() => { setScoreResult(null); setPaused(false); }}
+      />}
     </div>
   );
 }
@@ -2386,7 +2873,7 @@ function TodayTab({ profile, progress, upd, markReviewed, setTab, setSelUnit, st
     </div>
   );
 
-  if (inLesson) return <LessonMode progress={progress} upd={upd} profile={profile} onComplete={completeLesson} onQuit={()=>setConfirmQuit(true)} />;
+  if (inLesson) return <LessonMode progress={progress} upd={upd} profile={profile} settings={settings} onComplete={completeLesson} onQuit={()=>setConfirmQuit(true)} />;
 
   return (
     <div className="mc" style={{padding:"0 14px 80px"}}>
@@ -2749,7 +3236,7 @@ function PhrasesTab({ progress, upd, selUnit, setSelUnit }) {
   // Sort: unknown first
   const sorted = unit.phrases.map((p,i)=>({...p,origIdx:i,known:!!(progress.phrases||{})[`${unit.id}-${i}`]})).sort((a,b)=>a.known-b.known);
 
-  if (shadow !== null) return <ShadowMode unit={unit} progress={progress} upd={upd} onClose={()=>setShadow(null)} startIdx={shadow==="unit"?0:shadow} single={shadow!=="unit"} />;
+  if (shadow !== null) return <ShadowMode unit={unit} progress={progress} upd={upd} settings={settings} onClose={()=>{if(typeof releaseMic==='function')releaseMic();setShadow(null);}} startIdx={shadow==="unit"?0:shadow} single={shadow!=="unit"} />;
 
   // Topic icons for visual picker
   const topicIcons = {1:"👋",2:"🤝",3:"🚕",4:"☕",5:"🍜",6:"🛍",7:"🏫",8:"🏠",9:"🕐",10:"❤️"};
@@ -2869,13 +3356,16 @@ function PhraseCard({ ph, unit, upd, setShadow }) {
 }
 
 // ---- SHADOW MODE ----
-function ShadowMode({ unit, progress, upd, onClose, startIdx=0, single=false }) {
+function ShadowMode({ unit, progress, upd, settings, onClose, startIdx=0, single=false }) {
   const [idx, setIdx] = useState(startIdx);
   const [phase, setPhase] = useState("play");
   const [playing, setPlaying] = useState(true);
   const [showPinyin, setShowPinyin] = useState(true);
-  const [speed, setSpeed] = useState("normal");
+  const [speed, setSpeed] = useState(settings?.defaultSpeed || "normal");
   const [complete, setComplete] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const [scoring, setScoring] = useState(false);
+  const [scoreResult, setScoreResult] = useState(null);
   const timer = useRef(null);
   const knownN = useRef(0);
 
@@ -2914,6 +3404,50 @@ function ShadowMode({ unit, progress, upd, onClose, startIdx=0, single=false }) 
   },[phase,playing,idx,complete,single,speed]);
 
   const markKn = () => { if(!isKn){knownN.current++;upd(`phrases.${unit.id}-${realIdx}`,true);} };
+
+  // Pronunciation test
+  const startTest = async () => {
+    setPlaying(false);
+    stopAudio();
+    try { const ok = await startRecording(); if (ok) setIsRecording(true); } catch(e) { console.warn("Mic error:", e); }
+  };
+  const stopTest = async () => {
+    setIsRecording(false);
+    setScoring(true);
+    const blob = await stopRecording();
+    if (blob && ph) {
+      try {
+        const result = await scorePronunciation(blob, ph.cn, "mandarin");
+        let chars = [];
+        if (result.wordScores && result.wordScores.length > 0) {
+          // Mandarin API returns per-character wordScores
+          const cnChars = ph.cn.replace(/[，,。！？!?\s]/g, "").split("");
+          result.wordScores.forEach((ws, i) => {
+            chars.push({
+              cn: ws.word || cnChars[i] || "",
+              e: ws.word || "",
+              y: ws.word || "",
+              m: ws.score >= 70 ? 1 : 0,
+              wordScore: ws.score
+            });
+          });
+        } else if (result.expectedJyutping && result.transcribedJyutping) {
+          // Fallback: jyutping-style comparison
+          const expSyls = (result.expectedText || "").split("");
+          const yourSyls = (result.transcribedText || "").split("");
+          const cnChars = ph.cn.replace(/[，,。！？!?\s]/g, "").split("");
+          for (let i = 0; i < cnChars.length; i++) {
+            chars.push({ cn: cnChars[i], e: expSyls[i] || "", y: yourSyls[i] || "", m: expSyls[i] === yourSyls[i] ? 1 : 0 });
+          }
+        }
+        setScoreResult({ score: result.score, passed: result.passed, chars, phrase: ph });
+      } catch(e) {
+        console.error("Scoring error:", e);
+        setScoreResult(null);
+      }
+    }
+    setScoring(false);
+  };
 
   if(complete) return (
     <div className="comp-ov">
@@ -2963,6 +3497,24 @@ function ShadowMode({ unit, progress, upd, onClose, startIdx=0, single=false }) 
           <div className="lt-wrap"><button className="lt-btn pri" onClick={()=>setPlaying(p=>!p)}>{playing?"⏸":"▶"}</button><span className="lt-lbl">{playing?"Pause":"Play"}</span></div>
           {!single&&<div className="lt-wrap"><button className="lt-btn sec" onClick={()=>{clear();if(idx+1>=total)setComplete(true);else{setIdx(i=>i+1);setPhase("play");}}}>⏭</button><span className="lt-lbl">Next</span></div>}
         </div>
+
+        {/* Test yourself — pronunciation scoring */}
+        <div style={{padding:"8px 0"}}>
+          {!isRecording && !scoring ? (
+            <button onClick={startTest} style={{width:"100%",padding:"14px",borderRadius:14,border:"2px solid var(--lime)",background:"rgba(196,240,0,.08)",color:"var(--lime)",fontSize:".82rem",fontWeight:800,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
+              🎙 Test your pronunciation
+            </button>
+          ) : scoring ? (
+            <div style={{width:"100%",padding:"14px",borderRadius:14,background:"rgba(255,255,255,.06)",textAlign:"center"}}>
+              <div style={{fontSize:".78rem",fontWeight:700,color:"rgba(255,255,255,.5)"}}>Scoring your pronunciation...</div>
+            </div>
+          ) : (
+            <button onClick={stopTest} style={{width:"100%",padding:"14px",borderRadius:14,border:"2px solid #e74c3c",background:"rgba(231,76,60,.12)",color:"#ff7a5c",fontSize:".82rem",fontWeight:800,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8,animation:"pulse 1s ease-in-out infinite"}}>
+              ⏹ Stop recording & score
+            </button>
+          )}
+        </div>
+
         <div className="l-know-row">
           <button className="l-know-btn" style={isKn?{opacity:.4}:{}} onClick={markKn}>
             <span style={{fontSize:"1rem"}}>💪</span>
@@ -2984,6 +3536,16 @@ function ShadowMode({ unit, progress, upd, onClose, startIdx=0, single=false }) 
           </button>
         </div>
       </div>
+
+      {/* Pronunciation score overlay */}
+      {scoreResult && <PronunciationScore
+        score={scoreResult.score}
+        chars={scoreResult.chars}
+        phrase={scoreResult.phrase}
+        onRetry={() => { setScoreResult(null); startTest(); }}
+        onNext={() => { setScoreResult(null); if(!single && idx+1<total){setIdx(i=>i+1);setPhase("play");setPlaying(true);}else{setPhase("play");setPlaying(true);} }}
+        onClose={() => { setScoreResult(null); setPlaying(true); }}
+      />}
     </div>
   );
 }
@@ -3299,25 +3861,292 @@ function PlaylistBuilder({ onClose, onPlay, progress }) {
 }
 
 // ---- SETTINGS ----
+// ---- PRONUNCIATION SCORE CARD ----
+function PronunciationScore({ score, chars, phrase, onRetry, onNext, onClose }) {
+  const [animDone, setAnimDone] = useState(false);
+  const type = score >= 90 ? "perfect" : score >= 70 ? "good" : "try-again";
+  const label = score >= 90 ? "Perfect pronunciation!" : score >= 70 ? "Good effort! Almost there." : "Keep practicing! You got this.";
+  const circ = 2 * Math.PI * 58;
+  const offset = circ - (score / 100) * circ;
+
+  useEffect(() => {
+    const t = setTimeout(() => { setAnimDone(true); playScoreSound(type); }, 700);
+    return () => clearTimeout(t);
+  }, []);
+
+  const chunk = (a, n) => { const r=[]; for(let i=0;i<a.length;i+=n) r.push(a.slice(i,i+n)); return r; };
+  const chunks = chunk(chars || [], 5);
+
+  return (
+    <div style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"rgba(0,0,0,.6)",zIndex:200,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
+      <div style={{width:"100%",maxWidth:420,background:"var(--wh)",borderRadius:24,overflow:"hidden",boxShadow:"0 8px 40px rgba(0,0,0,.15)"}}>
+        <div style={{padding:"24px 20px 18px",textAlign:"center",position:"relative",overflow:"hidden",
+          background:type==="perfect"?"var(--for)":type==="good"?"#1a3a2a":"#3a2020"}}>
+          <div style={{width:110,height:110,margin:"0 auto 10px",position:"relative"}}>
+            <svg viewBox="0 0 140 140" style={{width:"100%",height:"100%"}}>
+              <circle cx="70" cy="70" r="58" fill="none" stroke="rgba(255,255,255,.1)" strokeWidth="8" />
+              <circle cx="70" cy="70" r="58" fill="none" strokeWidth="8" strokeLinecap="round"
+                stroke={type==="perfect"?"var(--lime)":type==="good"?"#7AAA00":"var(--cor)"}
+                strokeDasharray={circ} strokeDashoffset={animDone?offset:circ}
+                style={{transform:"rotate(-90deg)",transformOrigin:"center",transition:"stroke-dashoffset 1s cubic-bezier(.4,0,.2,1)"}} />
+            </svg>
+            <div style={{position:"absolute",top:"50%",left:"50%",transform:"translate(-50%,-50%)",fontSize:"1.8rem",fontWeight:900,color:"#fff"}}>
+              {score}<span style={{fontSize:".75rem",fontWeight:600,opacity:.5}}>%</span>
+            </div>
+          </div>
+          <div style={{display:"inline-block",fontSize:".75rem",fontWeight:800,padding:"6px 16px",borderRadius:999,
+            background:type==="perfect"?"rgba(196,240,0,.15)":type==="good"?"rgba(122,170,0,.15)":"rgba(240,90,58,.15)",
+            color:type==="perfect"?"var(--lime)":type==="good"?"#9dcc33":"#ff7a5c",
+            opacity:animDone?1:0,transform:animDone?"translateY(0)":"translateY(10px)",transition:"all .3s"}}>{label}</div>
+        </div>
+
+        <div style={{padding:"16px 20px 8px"}}>
+          <div style={{fontFamily:"'Noto Sans SC'",fontSize:"1.3rem",fontWeight:900,color:"var(--ink)",marginBottom:2}}>{phrase?.cn}</div>
+          <div style={{fontSize:".75rem",color:"var(--plum)",fontWeight:600,fontStyle:"italic",marginBottom:2}}>{phrase?.pinyin}</div>
+          <div style={{fontSize:".7rem",color:"var(--ink3)",marginBottom:12}}>{phrase?.en}</div>
+
+          {chars && chars.length > 0 && <>
+            <div style={{fontSize:".55rem",fontWeight:700,color:"var(--ink3)",textTransform:"uppercase",letterSpacing:1,marginBottom:8}}>Your pronunciation <span style={{fontWeight:500,textTransform:"none",letterSpacing:0}}>(tap to hear)</span></div>
+            {chunks.map((ch, ci) => (
+              <div key={ci} style={{marginBottom:8}}>
+                <div style={{display:"flex",gap:2}}>
+                  <div style={{width:28}}></div>
+                  {ch.map((c,i) => <div key={i} style={{flex:1,textAlign:"center",fontFamily:"'Noto Sans SC'",fontSize:"1.1rem",fontWeight:900,color:"var(--ink)",cursor:"pointer",padding:"2px 0"}} onClick={()=>googleTTS(c.cn,"cmn-CN")}>{c.cn}</div>)}
+                </div>
+                <div style={{display:"flex",gap:2,marginTop:2}}>
+                  <div style={{width:28,fontSize:".42rem",fontWeight:700,color:"var(--ink3)",display:"flex",alignItems:"center"}}>EXP</div>
+                  {ch.map((c,i) => <div key={i} style={{flex:1,textAlign:"center"}}><span style={{display:"inline-block",fontSize:".58rem",fontWeight:700,padding:"3px 5px",borderRadius:6,background:"rgba(143,106,232,.08)",color:"var(--plum)",cursor:"pointer"}} onClick={()=>googleTTS(c.cn,"cmn-CN")}>{c.expected || c.e}</span></div>)}
+                </div>
+                <div style={{display:"flex",gap:2,marginTop:2}}>
+                  <div style={{width:28,fontSize:".42rem",fontWeight:700,color:"var(--ink3)",display:"flex",alignItems:"center"}}>YOU</div>
+                  {ch.map((c,i) => {
+                    const match = c.match || c.m;
+                    return <div key={i} style={{flex:1,textAlign:"center"}}><span style={{display:"inline-block",fontSize:".58rem",fontWeight:700,padding:"3px 5px",borderRadius:6,cursor:"pointer",
+                      background:match?"rgba(196,240,0,.12)":"rgba(240,90,58,.1)",
+                      color:match?"var(--ld)":"var(--cor)",
+                      border:match?"1.5px solid rgba(196,240,0,.3)":"1.5px solid rgba(240,90,58,.25)"
+                    }} onClick={()=>googleTTS(c.cn,"cmn-CN")}>{c.yours || c.y}</span></div>;
+                  })}
+                </div>
+                <div style={{display:"flex",gap:2,marginTop:2}}>
+                  <div style={{width:28}}></div>
+                  {ch.map((c,i) => <div key={i} style={{flex:1,textAlign:"center",fontSize:".55rem"}}>{(c.match||c.m)?"✅":"❌"}</div>)}
+                </div>
+              </div>
+            ))}
+          </>}
+        </div>
+
+        <div style={{padding:"0 20px 20px",display:"flex",gap:8}}>
+          <button style={{flex:1,padding:12,borderRadius:14,border:"none",background:"var(--st)",color:"var(--ink)",fontSize:".78rem",fontWeight:800,cursor:"pointer"}} onClick={onRetry}>🔄 Try again</button>
+          <button style={{flex:1,padding:12,borderRadius:14,border:"none",background:"var(--for)",color:"var(--lime)",fontSize:".78rem",fontWeight:800,cursor:"pointer"}} onClick={score>=70?onNext:onClose}>{score>=70?"→ Next phrase":"👂 Listen again"}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---- VOICE ONBOARDING (first-time only) ----
+function VoiceOnboarding({ onComplete }) {
+  const [selectedEn, setSelectedEn] = useState(DEFAULT_EN_VOICE);
+  const [selectedZh, setSelectedZh] = useState(DEFAULT_ZH_VOICE);
+  const [step, setStep] = useState(1); // 1 = English, 2 = Mandarin
+  const [playing, setPlaying] = useState(null);
+
+  const previewVoice = async (voiceId, lang) => {
+    setPlaying(voiceId);
+    try {
+      stopAudio();
+      const orig = lang === "en" ? _activeEnVoiceId : _activeZhVoiceId;
+      if (lang === "en") _activeEnVoiceId = voiceId; else _activeZhVoiceId = voiceId;
+      const text = lang === "en" ? "Hello! I'll be your English voice throughout your Mandarin learning journey." : "你好！我会陪你一起学习普通话。";
+      await elevenLabsTTS(text, lang === "en" ? "en" : "cmn-CN");
+      if (lang === "en") _activeEnVoiceId = orig; else _activeZhVoiceId = orig;
+    } catch(e) { console.warn("Preview failed:", e); }
+    setPlaying(null);
+  };
+
+  const voices = step === 1 ? EN_VOICES : ZH_VOICES;
+  const selected = step === 1 ? selectedEn : selectedZh;
+  const setSelected = step === 1 ? setSelectedEn : setSelectedZh;
+  const lang = step === 1 ? "en" : "zh";
+
+  return (
+    <div className="ca" style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",minHeight:"100vh",padding:24}}>
+      <div style={{maxWidth:400,width:"100%"}}>
+        <div style={{fontSize:"2rem",marginBottom:8}}>{step===1?"🎧":"🗣"}</div>
+        <div style={{fontSize:"1.3rem",fontWeight:900,color:"var(--ink)",marginBottom:6}}>{step===1?"Choose your English voice":"Choose your Mandarin voice"}</div>
+        <div style={{fontSize:".78rem",color:"var(--ink2)",lineHeight:1.5,marginBottom:24}}>{step===1?"This voice will speak English translations and instructions.":"This voice will speak Mandarin phrases and vocabulary."} You can change this later in Settings.</div>
+
+        <div style={{display:"flex",gap:6,marginBottom:16}}>
+          <div style={{flex:1,height:3,borderRadius:2,background:"var(--lime)"}}></div>
+          <div style={{flex:1,height:3,borderRadius:2,background:step===2?"var(--lime)":"var(--st)"}}></div>
+        </div>
+
+        <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:28}}>
+          {voices.map(v => (
+            <div key={v.id} onClick={()=>setSelected(v.id)} style={{display:"flex",alignItems:"center",gap:12,padding:"14px 16px",borderRadius:14,border:selected===v.id?"2px solid var(--lime)":"1.5px solid var(--st)",background:selected===v.id?"rgba(196,240,0,.08)":"var(--wh)",cursor:"pointer",transition:"all .15s"}}>
+              <div style={{width:40,height:40,borderRadius:"50%",background:selected===v.id?"var(--lime)":"var(--st)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:".9rem",flexShrink:0}}>{v.gender==="female"?"👩":"👨"}</div>
+              <div style={{flex:1}}>
+                <div style={{fontSize:".82rem",fontWeight:700,color:"var(--ink)"}}>{v.label}</div>
+                {v.accent && <div style={{fontSize:".65rem",color:"var(--ink3)"}}>{v.accent} accent</div>}
+              </div>
+              <button onClick={(e)=>{e.stopPropagation();previewVoice(v.id,lang);}} style={{background:"var(--for)",color:"var(--lime)",border:"none",borderRadius:999,padding:"8px 14px",fontSize:".68rem",fontWeight:700,cursor:"pointer"}}>{playing===v.id?"...":"▶ Preview"}</button>
+            </div>
+          ))}
+        </div>
+
+        {step === 1 ? (
+          <button onClick={()=>setStep(2)} style={{width:"100%",padding:"16px",borderRadius:14,border:"none",background:"var(--lime)",color:"var(--for)",fontSize:".9rem",fontWeight:800,cursor:"pointer"}}>Next →</button>
+        ) : (
+          <div style={{display:"flex",gap:8}}>
+            <button onClick={()=>setStep(1)} style={{flex:1,padding:"16px",borderRadius:14,border:"1.5px solid var(--st)",background:"var(--wh)",color:"var(--ink)",fontSize:".9rem",fontWeight:800,cursor:"pointer"}}>← Back</button>
+            <button onClick={()=>onComplete(selectedEn, selectedZh)} style={{flex:2,padding:"16px",borderRadius:14,border:"none",background:"var(--lime)",color:"var(--for)",fontSize:".9rem",fontWeight:800,cursor:"pointer"}}>Continue →</button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ---- SETTINGS (redesigned) ----
 function SettingsTab({ settings, updSettings }) {
-  const [voices, setVoices] = useState([]);
-  const [showVoices, setShowVoices] = useState(false);
-  const loadVoices = () => {
-    const v = speechSynthesis.getVoices();
-    setVoices(v);
-    setShowVoices(true);
+  const [playing, setPlaying] = useState(null);
+  const [confirmReset, setConfirmReset] = useState(false);
+
+  const previewVoice = async (voiceId, lang) => {
+    setPlaying(voiceId);
+    try {
+      const origEn = _activeEnVoiceId;
+      const origZh = _activeZhVoiceId;
+      if (lang === "en") _activeEnVoiceId = voiceId; else _activeZhVoiceId = voiceId;
+      const text = lang === "en" ? "Hello! This is what I sound like." : "你好！这是我的声音。";
+      await elevenLabsTTS(text, lang === "en" ? "en" : "cmn-CN");
+      _activeEnVoiceId = origEn;
+      _activeZhVoiceId = origZh;
+    } catch(e) {}
+    setPlaying(null);,
+  "今天好热啊！": [{cn:"今天",py:"jīn tiān",en:"today"},{cn:"好热",py:"hǎo rè",en:"very hot"},{cn:"啊",py:"a",en:"(!)"}],
+  "潮湿死了": [{cn:"潮湿",py:"cháo shī",en:"humid"},{cn:"死了",py:"sǐ le",en:"extremely"}],
+  "今天会下雨吗？": [{cn:"今天",py:"jīn tiān",en:"today"},{cn:"会",py:"huì",en:"will"},{cn:"下雨",py:"xià yǔ",en:"rain"},{cn:"吗",py:"ma",en:"(?)"}],
+  "最好带把伞": [{cn:"最好",py:"zuì hǎo",en:"better"},{cn:"带",py:"dài",en:"bring"},{cn:"把伞",py:"bǎ sǎn",en:"umbrella"}],
+  "今天好冷啊！": [{cn:"今天",py:"jīn tiān",en:"today"},{cn:"好冷",py:"hǎo lěng",en:"very cold"},{cn:"啊",py:"a",en:"(!)"}],
+  "有台风预警": [{cn:"有",py:"yǒu",en:"there is"},{cn:"台风",py:"tái fēng",en:"typhoon"},{cn:"预警",py:"yù jǐng",en:"warning"}],
+  "是不是有台风要来了？": [{cn:"是不是",py:"shì bú shì",en:"is it"},{cn:"有",py:"yǒu",en:"there is"},{cn:"台风",py:"tái fēng",en:"typhoon"},{cn:"要来了",py:"yào lái le",en:"coming"}],
+  "空调太冷了": [{cn:"空调",py:"kōng tiáo",en:"AC"},{cn:"太冷了",py:"tài lěng le",en:"too cold"}],
+  "我出了好多汗": [{cn:"我",py:"wǒ",en:"I"},{cn:"出了",py:"chū le",en:"produced"},{cn:"好多",py:"hǎo duō",en:"a lot of"},{cn:"汗",py:"hàn",en:"sweat"}],
+  "今天天气真好！": [{cn:"今天",py:"jīn tiān",en:"today"},{cn:"天气",py:"tiān qì",en:"weather"},{cn:"真好",py:"zhēn hǎo",en:"really good"}],
+  "今天雾霾很严重": [{cn:"今天",py:"jīn tiān",en:"today"},{cn:"雾霾",py:"wù mái",en:"smog"},{cn:"很严重",py:"hěn yán zhòng",en:"very serious"}],
+  "深圳的夏天真长": [{cn:"深圳",py:"shēn zhèn",en:"Shenzhen"},{cn:"的",py:"de",en:"'s"},{cn:"夏天",py:"xià tiān",en:"summer"},{cn:"真长",py:"zhēn cháng",en:"really long"}],
+  "今天汇率是多少？": [{cn:"今天",py:"jīn tiān",en:"today"},{cn:"汇率",py:"huì lǜ",en:"exchange rate"},{cn:"是",py:"shì",en:"is"},{cn:"多少",py:"duō shao",en:"how much"}],
+  "我想换钱": [{cn:"我想",py:"wǒ xiǎng",en:"I want to"},{cn:"换钱",py:"huàn qián",en:"exchange money"}],
+  "可以用微信支付吗？": [{cn:"可以",py:"kě yǐ",en:"can I"},{cn:"用",py:"yòng",en:"use"},{cn:"微信支付",py:"wēi xìn zhī fù",en:"WeChat Pay"},{cn:"吗",py:"ma",en:"(?)"}],
+  "可以用支付宝吗？": [{cn:"可以",py:"kě yǐ",en:"can I"},{cn:"用",py:"yòng",en:"use"},{cn:"支付宝",py:"zhī fù bǎo",en:"Alipay"},{cn:"吗",py:"ma",en:"(?)"}],
+  "扫我的二维码": [{cn:"扫",py:"sǎo",en:"scan"},{cn:"我的",py:"wǒ de",en:"my"},{cn:"二维码",py:"èr wéi mǎ",en:"QR code"}],
+  "我要转账": [{cn:"我",py:"wǒ",en:"I"},{cn:"要",py:"yào",en:"need to"},{cn:"转账",py:"zhuǎn zhàng",en:"transfer"}],
+  "一共多少钱？": [{cn:"一共",py:"yì gòng",en:"altogether"},{cn:"多少钱",py:"duō shao qián",en:"how much"}],
+  "太贵了！": [{cn:"太贵",py:"tài guì",en:"too expensive"},{cn:"了",py:"le",en:"(!)"}],
+  "可以便宜点吗？": [{cn:"可以",py:"kě yǐ",en:"can you"},{cn:"便宜点",py:"piān yi diǎn",en:"cheaper"},{cn:"吗",py:"ma",en:"(?)"}],
+  "可以给我发票吗？": [{cn:"可以",py:"kě yǐ",en:"can you"},{cn:"给我",py:"gěi wǒ",en:"give me"},{cn:"发票",py:"fā piào",en:"receipt/invoice"},{cn:"吗",py:"ma",en:"(?)"}],
+  "不用找了": [{cn:"不用",py:"bú yòng",en:"no need"},{cn:"找",py:"zhǎo",en:"change"},{cn:"了",py:"le",en:"(anymore)"}],
+  "收现金吗？": [{cn:"收",py:"shōu",en:"accept"},{cn:"现金",py:"xiàn jīn",en:"cash"},{cn:"吗",py:"ma",en:"(?)"}],
+  "我想办张会员卡": [{cn:"我想",py:"wǒ xiǎng",en:"I want to"},{cn:"办",py:"bàn",en:"get"},{cn:"张",py:"zhāng",en:"(measure word)"},{cn:"会员卡",py:"huì yuán kǎ",en:"membership card"}],
+  "月费多少钱？": [{cn:"月费",py:"yuè fèi",en:"monthly fee"},{cn:"多少钱",py:"duō shao qián",en:"how much"}],
+  "游泳池在哪里？": [{cn:"游泳池",py:"yóu yǒng chí",en:"swimming pool"},{cn:"在哪里",py:"zài nǎ lǐ",en:"where is"}],
+  "瑜伽课几点开始？": [{cn:"瑜伽课",py:"yú jiā kè",en:"yoga class"},{cn:"几点",py:"jǐ diǎn",en:"what time"},{cn:"开始",py:"kāi shǐ",en:"start"}],
+  "可以预约课吗？": [{cn:"可以",py:"kě yǐ",en:"can I"},{cn:"预约",py:"yù yuē",en:"book"},{cn:"课",py:"kè",en:"class"},{cn:"吗",py:"ma",en:"(?)"}],
+  "课已经满了": [{cn:"课",py:"kè",en:"class"},{cn:"已经",py:"yǐ jīng",en:"already"},{cn:"满了",py:"mǎn le",en:"is full"}],
+  "更衣室在哪里？": [{cn:"更衣室",py:"gēng yī shì",en:"changing room"},{cn:"在哪里",py:"zài nǎ lǐ",en:"where is"}],
+  "有储物柜可以用吗？": [{cn:"有",py:"yǒu",en:"is there"},{cn:"储物柜",py:"chǔ wù guì",en:"locker"},{cn:"可以用",py:"kě yǐ yòng",en:"can use"},{cn:"吗",py:"ma",en:"(?)"}],
+  "我需要一条毛巾": [{cn:"我需要",py:"wǒ xū yào",en:"I need"},{cn:"一条",py:"yì tiáo",en:"one (long obj)"},{cn:"毛巾",py:"máo jīn",en:"towel"}],
+  "今天肌肉好酸痛": [{cn:"今天",py:"jīn tiān",en:"today"},{cn:"肌肉",py:"jī ròu",en:"muscles"},{cn:"好酸痛",py:"hǎo suān tòng",en:"very sore"}],
+  "不好意思，这个不是我点的": [{cn:"不好意思",py:"bù hǎo yì si",en:"excuse me"},{cn:"这个",py:"zhè ge",en:"this"},{cn:"不是",py:"bú shì",en:"is not"},{cn:"我点的",py:"wǒ diǎn de",en:"what I ordered"}],
+  "这里太冷了": [{cn:"这里",py:"zhè lǐ",en:"here"},{cn:"太冷了",py:"tài lěng le",en:"too cold"}],
+  "WiFi连不上": [{cn:"WiFi",py:"wifi",en:"wifi"},{cn:"连不上",py:"lián bù shàng",en:"can't connect"}],
+  "我等了很久了": [{cn:"我",py:"wǒ",en:"I"},{cn:"等了",py:"děng le",en:"have waited"},{cn:"很久",py:"hěn jiǔ",en:"a long time"},{cn:"了",py:"le",en:"(already)"}],
+  "可以找经理吗？": [{cn:"可以",py:"kě yǐ",en:"can I"},{cn:"找",py:"zhǎo",en:"find"},{cn:"经理",py:"jīng lǐ",en:"manager"},{cn:"吗",py:"ma",en:"(?)"}],
+  "账单好像有错": [{cn:"账单",py:"zhàng dān",en:"bill"},{cn:"好像",py:"hǎo xiàng",en:"seems"},{cn:"有错",py:"yǒu cuò",en:"has error"}],
+  "你多收了我钱": [{cn:"你",py:"nǐ",en:"you"},{cn:"多收了",py:"duō shōu le",en:"overcharged"},{cn:"我",py:"wǒ",en:"me"},{cn:"钱",py:"qián",en:"money"}],
+  "这个坏了，可以换一个吗？": [{cn:"这个",py:"zhè ge",en:"this"},{cn:"坏了",py:"huài le",en:"is broken"},{cn:"可以",py:"kě yǐ",en:"can I"},{cn:"换一个",py:"huàn yí ge",en:"exchange"}],
+  "菜凉了": [{cn:"菜",py:"cài",en:"food"},{cn:"凉了",py:"liáng le",en:"has gone cold"}],
+  "可以退款吗？": [{cn:"可以",py:"kě yǐ",en:"can I"},{cn:"退款",py:"tuì kuǎn",en:"refund"},{cn:"吗",py:"ma",en:"(?)"}],
+  "不好意思，我帮您处理": [{cn:"不好意思",py:"bù hǎo yì si",en:"sorry"},{cn:"我",py:"wǒ",en:"I"},{cn:"帮您",py:"bāng nín",en:"help you"},{cn:"处理",py:"chǔ lǐ",en:"handle it"}],
+  "喂？": [{cn:"喂",py:"wéi",en:"hello (phone)"}],
+  "喂，是[name]吗？": [{cn:"喂",py:"wéi",en:"hello"},{cn:"是",py:"shì",en:"is this"},{cn:"吗",py:"ma",en:"(?)"}],
+  "对不起，打错了": [{cn:"对不起",py:"duì bù qǐ",en:"sorry"},{cn:"打错了",py:"dǎ cuò le",en:"wrong number"}],
+  "我晚点给你回电话好吗？": [{cn:"我",py:"wǒ",en:"I"},{cn:"晚点",py:"wǎn diǎn",en:"later"},{cn:"给你",py:"gěi nǐ",en:"to you"},{cn:"回电话",py:"huí diàn huà",en:"call back"},{cn:"好吗",py:"hǎo ma",en:"okay?"}],
+  "我听不清楚你说什么": [{cn:"我",py:"wǒ",en:"I"},{cn:"听不清楚",py:"tīng bù qīng chu",en:"can't hear clearly"},{cn:"你说什么",py:"nǐ shuō shén me",en:"what you said"}],
+  "这里信号很差": [{cn:"这里",py:"zhè lǐ",en:"here"},{cn:"信号",py:"xìn hào",en:"signal"},{cn:"很差",py:"hěn chà",en:"very bad"}],
+  "可以再说一遍吗？": [{cn:"可以",py:"kě yǐ",en:"can you"},{cn:"再",py:"zài",en:"again"},{cn:"说一遍",py:"shuō yí biàn",en:"say once"},{cn:"吗",py:"ma",en:"(?)"}],
+  "我给你发微信": [{cn:"我",py:"wǒ",en:"I"},{cn:"给你",py:"gěi nǐ",en:"to you"},{cn:"发",py:"fā",en:"send"},{cn:"微信",py:"wēi xìn",en:"WeChat"}],
+  "我查一下，再回复你": [{cn:"我",py:"wǒ",en:"I"},{cn:"查一下",py:"chá yí xià",en:"check"},{cn:"再",py:"zài",en:"then"},{cn:"回复你",py:"huí fù nǐ",en:"get back to you"}],
+  "你现在方便说话吗？": [{cn:"你",py:"nǐ",en:"you"},{cn:"现在",py:"xiàn zài",en:"now"},{cn:"方便",py:"fāng biàn",en:"convenient"},{cn:"说话",py:"shuō huà",en:"talk"},{cn:"吗",py:"ma",en:"(?)"}],
+  "我在接电话，等一下": [{cn:"我",py:"wǒ",en:"I"},{cn:"在接",py:"zài jiē",en:"answering"},{cn:"电话",py:"diàn huà",en:"phone"},{cn:"等一下",py:"děng yí xià",en:"wait a moment"}],
+  "好的，拜拜！": [{cn:"好的",py:"hǎo de",en:"okay"},{cn:"拜拜",py:"bài bài",en:"bye bye"}],
+  "我好累啊": [{cn:"我",py:"wǒ",en:"I"},{cn:"好累",py:"hǎo lèi",en:"very tired"},{cn:"啊",py:"a",en:"(!)"}],
+  "我压力好大": [{cn:"我",py:"wǒ",en:"I"},{cn:"压力",py:"yā lì",en:"pressure"},{cn:"好大",py:"hǎo dà",en:"very big"}],
+  "好烦啊！": [{cn:"好烦",py:"hǎo fán",en:"so annoying"},{cn:"啊",py:"a",en:"(!)"}],
+  "我好开心啊！": [{cn:"我",py:"wǒ",en:"I"},{cn:"好开心",py:"hǎo kāi xīn",en:"very happy"},{cn:"啊",py:"a",en:"(!)"}],
+  "我今天心情不太好": [{cn:"我",py:"wǒ",en:"I"},{cn:"今天",py:"jīn tiān",en:"today"},{cn:"心情",py:"xīn qíng",en:"mood"},{cn:"不太好",py:"bù tài hǎo",en:"not great"}],
+  "你没事吧？": [{cn:"你",py:"nǐ",en:"you"},{cn:"没事",py:"méi shì",en:"nothing wrong"},{cn:"吧",py:"ba",en:"(right?)"}],
+  "好无聊啊，没什么事做": [{cn:"好无聊",py:"hǎo wú liáo",en:"so bored"},{cn:"没什么",py:"méi shén me",en:"nothing"},{cn:"事做",py:"shì zuò",en:"to do"}],
+  "我好兴奋啊！": [{cn:"我",py:"wǒ",en:"I"},{cn:"好兴奋",py:"hǎo xīng fèn",en:"very excited"},{cn:"啊",py:"a",en:"(!)"}],
+  "我有点紧张": [{cn:"我",py:"wǒ",en:"I"},{cn:"有点",py:"yǒu diǎn",en:"a bit"},{cn:"紧张",py:"jǐn zhāng",en:"nervous"}],
+  "别怕，会没事的": [{cn:"别怕",py:"bié pà",en:"don't be scared"},{cn:"会",py:"huì",en:"will"},{cn:"没事的",py:"méi shì de",en:"be fine"}],
+  "我好生气啊！": [{cn:"我",py:"wǒ",en:"I"},{cn:"好生气",py:"hǎo shēng qì",en:"very angry"},{cn:"啊",py:"a",en:"(!)"}],
+  "冷静点，放松": [{cn:"冷静点",py:"lěng jìng diǎn",en:"calm down"},{cn:"放松",py:"fàng sōng",en:"relax"}],
+  "吓死我了！": [{cn:"吓死",py:"xià sǐ",en:"scared to death"},{cn:"我",py:"wǒ",en:"me"},{cn:"了",py:"le",en:"(!)"}],
+  "我笑死了": [{cn:"我",py:"wǒ",en:"I"},{cn:"笑死了",py:"xiào sǐ le",en:"laughed to death"}],
+  "现在几点？": [{cn:"现在",py:"xiàn zài",en:"now"},{cn:"几点",py:"jǐ diǎn",en:"what time"}],
+  "三点半": [{cn:"三点",py:"sān diǎn",en:"three o'clock"},{cn:"半",py:"bàn",en:"half"}],
+  "快五点了": [{cn:"快",py:"kuài",en:"almost"},{cn:"五点",py:"wǔ diǎn",en:"five o'clock"},{cn:"了",py:"le",en:"(now)"}],
+  "今天星期几？": [{cn:"今天",py:"jīn tiān",en:"today"},{cn:"星期几",py:"xīng qī jǐ",en:"what day"}],
+  "今天星期三": [{cn:"今天",py:"jīn tiān",en:"today"},{cn:"星期三",py:"xīng qī sān",en:"Wednesday"}],
+  "今天几号？": [{cn:"今天",py:"jīn tiān",en:"today"},{cn:"几号",py:"jǐ hào",en:"what date"}],
+  "今天十五号": [{cn:"今天",py:"jīn tiān",en:"today"},{cn:"十五号",py:"shí wǔ hào",en:"the 15th"}],
+  "下个星期一": [{cn:"下个",py:"xià ge",en:"next"},{cn:"星期一",py:"xīng qī yī",en:"Monday"}],
+  "上个周末": [{cn:"上个",py:"shàng ge",en:"last"},{cn:"周末",py:"zhōu mò",en:"weekend"}],
+  "后天": [{cn:"后天",py:"hòu tiān",en:"day after tomorrow"}],
+  "你几岁了？": [{cn:"你",py:"nǐ",en:"you"},{cn:"几岁",py:"jǐ suì",en:"how old"},{cn:"了",py:"le",en:"(?)"}],
+  "我三十五岁": [{cn:"我",py:"wǒ",en:"I"},{cn:"三十五岁",py:"sān shí wǔ suì",en:"35 years old"}],
+  "你电话号码多少？": [{cn:"你",py:"nǐ",en:"your"},{cn:"电话号码",py:"diàn huà hào mǎ",en:"phone number"},{cn:"多少",py:"duō shao",en:"what is"}],
+  "十二点半，好吗？": [{cn:"十二点半",py:"shí èr diǎn bàn",en:"12:30"},{cn:"好吗",py:"hǎo ma",en:"okay?"}],
+  "生日快乐！": [{cn:"生日",py:"shēng rì",en:"birthday"},{cn:"快乐",py:"kuài lè",en:"happy"}],
+  "祝你一切顺利！": [{cn:"祝你",py:"zhù nǐ",en:"wish you"},{cn:"一切",py:"yí qiè",en:"everything"},{cn:"顺利",py:"shùn lì",en:"smooth"}],
+  "新年快乐！": [{cn:"新年",py:"xīn nián",en:"new year"},{cn:"快乐",py:"kuài lè",en:"happy"}],
+  "恭喜发财！": [{cn:"恭喜",py:"gōng xǐ",en:"congratulations"},{cn:"发财",py:"fā cái",en:"get rich"}],
+  "万事如意！": [{cn:"万事",py:"wàn shì",en:"all things"},{cn:"如意",py:"rú yì",en:"as you wish"}],
+  "身体健康！": [{cn:"身体",py:"shēn tǐ",en:"body"},{cn:"健康",py:"jiàn kāng",en:"healthy"}],
+  "心想事成！": [{cn:"心想",py:"xīn xiǎng",en:"what you wish"},{cn:"事成",py:"shì chéng",en:"comes true"}],
+  "学业进步！": [{cn:"学业",py:"xué yè",en:"studies"},{cn:"进步",py:"jìn bù",en:"progress"}],
+  "大吉大利！": [{cn:"大吉大利",py:"dà jí dà lì",en:"great luck & fortune"}],
+  "恭喜你！": [{cn:"恭喜",py:"gōng xǐ",en:"congratulations"},{cn:"你",py:"nǐ",en:"you"}],
+  "太棒了！我为你高兴！": [{cn:"太棒了",py:"tài bàng le",en:"awesome"},{cn:"我",py:"wǒ",en:"I"},{cn:"为你",py:"wèi nǐ",en:"for you"},{cn:"高兴",py:"gāo xìng",en:"happy"}],
+  "中秋节快乐！": [{cn:"中秋节",py:"zhōng qiū jié",en:"Mid-Autumn Festival"},{cn:"快乐",py:"kuài lè",en:"happy"}],
+  "端午节快乐！": [{cn:"端午节",py:"duān wǔ jié",en:"Dragon Boat Festival"},{cn:"快乐",py:"kuài lè",en:"happy"}],
+  "圣诞快乐！": [{cn:"圣诞",py:"shèng dàn",en:"Christmas"},{cn:"快乐",py:"kuài lè",en:"happy"}],
+  "新婚快乐！百年好合！": [{cn:"新婚",py:"xīn hūn",en:"newly wed"},{cn:"快乐",py:"kuài lè",en:"happy"},{cn:"百年好合",py:"bǎi nián hǎo hé",en:"100 years of harmony"}],
+  "祝你早日康复！": [{cn:"祝你",py:"zhù nǐ",en:"wish you"},{cn:"早日",py:"zǎo rì",en:"soon"},{cn:"康复",py:"kāng fù",en:"recovery"}],
+  "加油！你可以的！": [{cn:"加油",py:"jiā yóu",en:"go for it"},{cn:"你",py:"nǐ",en:"you"},{cn:"可以的",py:"kě yǐ de",en:"can do it"}],
+  "红包给你！": [{cn:"红包",py:"hóng bāo",en:"red packet"},{cn:"给你",py:"gěi nǐ",en:"for you"}],
+  "谢谢红包！": [{cn:"谢谢",py:"xiè xie",en:"thank you"},{cn:"红包",py:"hóng bāo",en:"red packet"}],
+  "你买月饼了吗？": [{cn:"你",py:"nǐ",en:"you"},{cn:"买",py:"mǎi",en:"bought"},{cn:"月饼",py:"yuè bǐng",en:"mooncakes"},{cn:"了吗",py:"le ma",en:"yet?"}],
+  "我们去Coco Park吧！": [{cn:"我们",py:"wǒ men",en:"we"},{cn:"去",py:"qù",en:"go to"},{cn:"Coco Park",py:"Coco Park",en:"Coco Park"},{cn:"吧",py:"ba",en:"(let's)"}],
+  "地铁好挤啊！": [{cn:"地铁",py:"dì tiě",en:"metro"},{cn:"好挤",py:"hǎo jǐ",en:"very crowded"},{cn:"啊",py:"a",en:"(!)"}],
+  "这个周末我们过关去香港吧": [{cn:"这个周末",py:"zhè ge zhōu mò",en:"this weekend"},{cn:"我们",py:"wǒ men",en:"we"},{cn:"过关",py:"guò guān",en:"cross border"},{cn:"去香港",py:"qù xiāng gǎng",en:"to HK"}],
+  "我要排队": [{cn:"我",py:"wǒ",en:"I"},{cn:"要",py:"yào",en:"need to"},{cn:"排队",py:"pái duì",en:"queue up"}],
+  "队伍好长啊！": [{cn:"队伍",py:"duì wǔ",en:"queue"},{cn:"好长",py:"hǎo cháng",en:"very long"},{cn:"啊",py:"a",en:"(!)"}],
+  "我们去吃早茶好吗？": [{cn:"我们",py:"wǒ men",en:"we"},{cn:"去",py:"qù",en:"go"},{cn:"吃早茶",py:"chī zǎo chá",en:"eat dim sum"},{cn:"好吗",py:"hǎo ma",en:"okay?"}],
+  "明天放假！": [{cn:"明天",py:"míng tiān",en:"tomorrow"},{cn:"放假",py:"fàng jià",en:"holiday/day off"}],
+  "你去过世界之窗吗？": [{cn:"你",py:"nǐ",en:"you"},{cn:"去过",py:"qù guò",en:"been to"},{cn:"世界之窗",py:"shì jiè zhī chuāng",en:"Window of the World"},{cn:"吗",py:"ma",en:"(?)"}],
+  "我们去东门逛街吧": [{cn:"我们",py:"wǒ men",en:"we"},{cn:"去",py:"qù",en:"go to"},{cn:"东门",py:"dōng mén",en:"Dongmen"},{cn:"逛街",py:"guàng jiē",en:"shopping"}]
   };
-  const testVoice = (voice) => {
-    speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(voice.lang.startsWith("en") ? "Hello, how are you today?" : "你好，你好吗？今天天气不错。");
-    u.voice = voice;
-    u.rate = 0.85;
-    speechSynthesis.speak(u);
-  };
+
   return (
     <div className="mc">
       <div className="pt">Settings</div>
-      <div className="ps">Family configuration</div>
+
+      {/* Learning focus */}
       <div className="set-card">
         <div className="set-lb">Learning focus</div>
         <div style={{fontSize:".68rem",color:"var(--ink2)",lineHeight:1.5,marginBottom:10}}>Speaking mode shows pinyin large for pronunciation practice. Reading mode shows Chinese characters large for character recognition.</div>
@@ -3334,34 +4163,84 @@ function SettingsTab({ settings, updSettings }) {
           </button>
         </div>
       </div>
+
+      {/* English voice picker */}
       <div className="set-card">
-        <div className="set-lb">Family ages (used in practice phrases)</div>
-        <div className="set-row"><div className="set-nm">Signed in via Google</div></div>
-      </div>
-      <div className="set-card">
-        <div className="set-lb">Audio</div>
-        <div style={{fontSize:".68rem",color:"var(--ink2)",lineHeight:1.5,marginBottom:8}}>Uses Google Translate for Mandarin and English voices.</div>
-        <div style={{fontSize:".68rem",color:"var(--ink2)",lineHeight:1.5,marginBottom:8}}>
-          <strong>Current voices:</strong> English: {_enVoice ? `${_enVoice.name} (${_enVoice.lang})` : "none found"} · Mandarin: {_mandarinVoice ? `${_mandarinVoice.name} (${_mandarinVoice.lang})` : "none found"}
-        </div>
-        <button style={{background:"var(--for)",color:"var(--lime)",border:"none",borderRadius:999,padding:"8px 14px",fontSize:".7rem",fontWeight:700,cursor:"pointer"}} onClick={loadVoices}>🔍 Show all available voices</button>
-        {showVoices && (
-          <div style={{marginTop:10,maxHeight:300,overflowY:"auto",fontSize:".65rem",lineHeight:1.8}}>
-            <div style={{fontWeight:700,marginBottom:4}}>{voices.length} voices found on your system:</div>
-            {voices.map((v,i)=>(
-              <div key={i} style={{display:"flex",alignItems:"center",gap:6,padding:"2px 0",borderBottom:"1px solid var(--st)"}}>
-                <button style={{background:"var(--st)",border:"none",borderRadius:4,padding:"2px 6px",fontSize:".6rem",cursor:"pointer"}} onClick={()=>testVoice(v)}>▶</button>
-                <span style={{fontWeight:600}}>{v.name}</span>
-                <span style={{color:"var(--ink3)"}}>{v.lang}</span>
-                {v.localService && <span style={{color:"var(--ld)",fontSize:".55rem"}}>LOCAL</span>}
+        <div className="set-lb">English voice</div>
+        <div style={{display:"flex",flexDirection:"column",gap:6}}>
+          {EN_VOICES.map(v => (
+            <div key={v.id} onClick={()=>updSettings("enVoice",v.id)} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 12px",borderRadius:12,border:(settings.enVoice||DEFAULT_EN_VOICE)===v.id?"2px solid var(--lime)":"1.5px solid var(--st)",background:(settings.enVoice||DEFAULT_EN_VOICE)===v.id?"rgba(196,240,0,.08)":"var(--wh)",cursor:"pointer"}}>
+              <div style={{fontSize:".85rem"}}>{v.gender==="female"?"👩":"👨"}</div>
+              <div style={{flex:1}}>
+                <div style={{fontSize:".75rem",fontWeight:700,color:"var(--ink)"}}>{v.label}</div>
               </div>
-            ))}
+              <button onClick={(e)=>{e.stopPropagation();previewVoice(v.id,"en");}} style={{background:"var(--for)",color:"var(--lime)",border:"none",borderRadius:999,padding:"6px 12px",fontSize:".62rem",fontWeight:700,cursor:"pointer"}}>{playing===v.id?"...":"▶"}</button>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Mandarin voice picker */}
+      <div className="set-card">
+        <div className="set-lb">Mandarin voice</div>
+        <div style={{display:"flex",flexDirection:"column",gap:6}}>
+          {ZH_VOICES.map(v => (
+            <div key={v.id} onClick={()=>updSettings("zhVoice",v.id)} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 12px",borderRadius:12,border:(settings.zhVoice||DEFAULT_ZH_VOICE)===v.id?"2px solid var(--lime)":"1.5px solid var(--st)",background:(settings.zhVoice||DEFAULT_ZH_VOICE)===v.id?"rgba(196,240,0,.08)":"var(--wh)",cursor:"pointer"}}>
+              <div style={{fontSize:".85rem"}}>{v.gender==="female"?"👩":"👨"}</div>
+              <div style={{flex:1}}>
+                <div style={{fontSize:".75rem",fontWeight:700,color:"var(--ink)"}}>{v.label}</div>
+              </div>
+              <button onClick={(e)=>{e.stopPropagation();previewVoice(v.id,"zh");}} style={{background:"var(--for)",color:"var(--lime)",border:"none",borderRadius:999,padding:"6px 12px",fontSize:".62rem",fontWeight:700,cursor:"pointer"}}>{playing===v.id?"...":"▶"}</button>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Default speed */}
+      <div className="set-card">
+        <div className="set-lb">Default speed</div>
+        <div style={{fontSize:".68rem",color:"var(--ink2)",lineHeight:1.5,marginBottom:10}}>Sets the starting speed for lessons and shadow mode.</div>
+        <div style={{display:"flex",gap:8}}>
+          {[{k:"slow",l:"🐢 Slow"},{k:"normal",l:"Normal"},{k:"fast",l:"🐇 Fast"}].map(s=>
+            <button key={s.k} onClick={()=>updSettings("defaultSpeed",s.k)} style={{flex:1,padding:"10px 8px",borderRadius:12,border:(settings.defaultSpeed||"normal")===s.k?"2px solid var(--lime)":"1.5px solid var(--st)",background:(settings.defaultSpeed||"normal")===s.k?"rgba(196,240,0,.1)":"var(--wh)",cursor:"pointer",fontSize:".72rem",fontWeight:700,color:"var(--ink)",textAlign:"center"}}>{s.l}</button>
+          )}
+        </div>
+      </div>
+
+      {/* Switch language */}
+      <div className="set-card">
+        <div className="set-lb">Switch language</div>
+        <button onClick={()=>window.location.href="canto.html"} style={{width:"100%",padding:"12px",borderRadius:12,border:"1.5px solid var(--st)",background:"var(--wh)",cursor:"pointer",fontSize:".78rem",fontWeight:700,color:"var(--ink)",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>🇭🇰 Switch to Cantonese</button>
+      </div>
+
+      {/* Reset progress */}
+      <div className="set-card">
+        {!confirmReset ? (
+          <button onClick={()=>setConfirmReset(true)} style={{background:"none",border:"none",cursor:"pointer",fontSize:".75rem",fontWeight:600,color:"#e74c3c",padding:0}}>Reset all progress</button>
+        ) : (
+          <div>
+            <div style={{fontSize:".72rem",color:"#e74c3c",fontWeight:700,marginBottom:8}}>Are you sure? This will erase all your progress and cannot be undone.</div>
+            <div style={{display:"flex",gap:8}}>
+              <button onClick={()=>{
+                const uid = fbAuth.currentUser?.uid;
+                if(uid){
+                  fbDb.collection(MANDO_COLLECTION).doc(uid).delete();
+                  fbDb.collection("settings").doc(uid+"-mandarin").delete();
+                }
+                localStorage.removeItem("mandarin-settings");
+                window.location.reload();
+              }} style={{flex:1,padding:"10px",borderRadius:10,border:"none",background:"#e74c3c",color:"#fff",fontSize:".72rem",fontWeight:700,cursor:"pointer"}}>Yes, reset everything</button>
+              <button onClick={()=>setConfirmReset(false)} style={{flex:1,padding:"10px",borderRadius:10,border:"1.5px solid var(--st)",background:"var(--wh)",fontSize:".72rem",fontWeight:700,color:"var(--ink)",cursor:"pointer"}}>Cancel</button>
+            </div>
           </div>
         )}
       </div>
+
+      {/* About */}
       <div className="set-card">
         <div className="set-lb">About</div>
-        <div style={{fontSize:".68rem",color:"var(--ink2)",lineHeight:1.5}}>Mandarin is Easy v3. Built for the Lantz family. Shadowing method + spaced repetition. {ALL_WORDS.length} vocabulary words across {VOCAB_CATS.length} categories. {UNITS.reduce((s,u)=>s+u.phrases.length,0)} phrases across {UNITS.length} units.</div>
+        <div style={{fontSize:".68rem",color:"var(--ink2)",lineHeight:1.5}}>ShadowSpeak Mandarin v1.0. Shadowing method + spaced repetition. {ALL_WORDS.length} vocabulary words across {VOCAB_CATS.length} categories. {UNITS.reduce((s,u)=>s+u.phrases.length,0)} phrases across {UNITS.length} units.</div>
+        <button onClick={()=>window.location.href="index.html"} style={{marginTop:8,background:"none",border:"none",cursor:"pointer",fontSize:".68rem",fontWeight:600,color:"var(--lime)",padding:0}}>← Back to landing page</button>
       </div>
     </div>
   );

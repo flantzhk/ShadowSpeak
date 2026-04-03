@@ -1702,10 +1702,7 @@ async function speak(text){
   // 2. Offline? Can't call API
   if (!_isOnline) { console.warn("Offline: no local audio for", text); return; }
   // 3. Online fallbacks
-  const cjkLen = countCJK(text);
-  if (cjkLen >= 5) {
-    try { await cantoneseAiTTS(text); return; } catch(e) { console.warn("cantonese.ai failed:", e.message); }
-  }
+  try { await cantoneseAiTTS(text); return; } catch(e) { console.warn("cantonese.ai failed:", e.message); }
   try { await googleTTS(text, "yue-HK"); return; } catch(e) {}
   return speakAsync(text, "yue-HK", 0.85);
 }

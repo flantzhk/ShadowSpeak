@@ -3841,21 +3841,6 @@ function ShadowMode({ unit, progress, upd, settings, onClose, startIdx=0, single
           {!single&&<div className="lt-wrap"><button className="lt-btn sec" onClick={()=>{clear();setScoreResult(null);if(idx+1>=total)setComplete(true);else{setIdx(i=>i+1);setPhase("play");}}}>⏭</button><span className="lt-lbl">Next</span></div>}
         </div>
 
-        {/* Test yourself — pronunciation scoring */}
-        <div style={{padding:"8px 0"}}>
-          {!isRecording && !scoring ? (
-            <RecordBtn onClick={startTest} label="🎙 Test your pronunciation" style={{width:"100%",padding:"14px",borderRadius:14,border:"2px solid var(--lime)",background:"rgba(196,240,0,.08)",color:"var(--lime)",fontSize:".82rem",fontWeight:800,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8}} />
-          ) : scoring ? (
-            <div style={{width:"100%",padding:"14px",borderRadius:14,background:"rgba(255,255,255,.06)",textAlign:"center"}}>
-              <div style={{fontSize:".78rem",fontWeight:700,color:"rgba(255,255,255,.5)"}}>Scoring your pronunciation...</div>
-            </div>
-          ) : (
-            <button onClick={stopTest} style={{width:"100%",padding:"14px",borderRadius:14,border:"2px solid #e74c3c",background:"rgba(231,76,60,.12)",color:"#ff7a5c",fontSize:".82rem",fontWeight:800,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8,animation:"pulse 1s ease-in-out infinite"}}>
-              ⏹ Stop recording & score
-            </button>
-          )}
-        </div>
-
         <div className="l-know-row">
           <button className="l-know-btn" style={isKn?{opacity:.4}:{}} onClick={markKn}>
             <span style={{fontSize:"1rem"}}>💪</span>
@@ -4510,7 +4495,7 @@ function SettingsTab({ settings, updSettings }) {
       {/* About */}
       <div className="set-card">
         <div className="set-lb">About</div>
-        <div style={{fontSize:".68rem",color:"var(--ink2)",lineHeight:1.5}}>ShadowSpeak Mandarin v1.7.0. Shadowing method + spaced repetition. {ALL_WORDS.length} vocabulary words across {VOCAB_CATS.length} categories. {UNITS.reduce((s,u)=>s+u.phrases.length,0)} phrases across {UNITS.length} units.</div>
+        <div style={{fontSize:".68rem",color:"var(--ink2)",lineHeight:1.5}}>ShadowSpeak Mandarin v2.0.0. Shadowing method + spaced repetition. {ALL_WORDS.length} vocabulary words across {VOCAB_CATS.length} categories. {UNITS.reduce((s,u)=>s+u.phrases.length,0)} phrases across {UNITS.length} units.</div>
         <button onClick={()=>window.location.href="index.html"} style={{marginTop:8,background:"none",border:"none",cursor:"pointer",fontSize:".68rem",fontWeight:600,color:"var(--lime)",padding:0}}>← Back to landing page</button>
       </div>
     </div>

@@ -1606,6 +1606,13 @@ async function _preloadCantoAudio(text) {
       });
       if (res.ok) { _ttsCache.set(cacheKey, await res.blob()); _preloading.delete(cacheKey); return; }
     } catch(e) { /* cantonese.ai preload failed */ }
+    try {
+      const res = await fetch(`${PROXY_URL}/elevenlabs/tts`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text, voice_id: _activeCantoVoiceId, model_id: "eleven_multilingual_v2", voice_settings: { stability: 0.5, similarity_boost: 0.75, style: 0.0 } })
+      });
+      if (res.ok) _ttsCache.set(cacheKey, await res.blob());
+    } catch(e) { /* ElevenLabs preload failed */ }
   } catch(e) { /* silent fail for preload */ }
   _preloading.delete(cacheKey);
 }
@@ -1700,9 +1707,10 @@ async function speak(text){
   if (await tryLocalAudio(text, "canto.cn")) return;
   // 2. Offline? Can't call API
   if (!_isOnline) { console.warn("Offline: no local audio for", text); return; }
-  // 3. Online fallbacks: cantonese.ai → Google TTS → browser
+  // 3. Online fallbacks: cantonese.ai → Google TTS → ElevenLabs → browser
   try { await cantoneseAiTTS(text); return; } catch(e) { console.warn("cantonese.ai failed:", e.message); }
-  try { await googleTTS(text, "yue-HK"); return; } catch(e) {}
+  try { await googleTTS(text, "yue-HK"); return; } catch(e) { console.warn("Google TTS failed:", e.message); }
+  try { await elevenLabsTTS(text, "yue-HK"); return; } catch(e) { console.warn("ElevenLabs Canto failed:", e.message); }
   return speakAsync(text, "yue-HK", 0.85);
 }
 
@@ -4141,57 +4149,32 @@ function ShadowMode({ unit, progress, upd, settings, onClose, startIdx=0, single
   const isKn = (progress.phrases||{})[`${unit.id}-${realIdx}`];
   const gaps = { slow: [4000,4500], normal: [2800,3200], fast: [1500,1800] };
 
-  const clearTimer = () => { if(timer.current)clearTimeout(timer.current); };
+  const clear = () => { if(timer.current)clearTimeout(timer.current); };
   const playingRef = useRef(playing);
   playingRef.current = playing;
-  const idxRef = useRef(idx);
-  idxRef.current = idx;
-  const phaseRef = useRef(phase);
-  phaseRef.current = phase;
-  const loopRef = useRef(null);
 
-  // Single playback loop that runs until paused or complete
-  useEffect(() => {
-    if (!playing || complete) return;
-    let stopped = false;
-
-    async function loop() {
-      while (!stopped && playingRef.current && !complete) {
-        const currentIdx = idxRef.current;
-        const currentPh = phrases[single ? 0 : currentIdx];
-        if (!currentPh) break;
-
-        // PLAY phase — play English then Cantonese
-        setPhase("play");
-        try { await speakPhrase(currentPh); } catch(e) { console.warn("speakPhrase error:", e); }
-        if (stopped || !playingRef.current) break;
-
-        // Brief pause then SHADOW phase
-        await new Promise(r => setTimeout(r, 400));
-        if (stopped || !playingRef.current) break;
+  useEffect(()=>{
+    if(!playing||complete)return; clear();
+    let cancelled = false;
+    async function playSequence() {
+      if (phase === "play" && ph) {
+        try { await speakPhrase(ph); } catch(e) {}
+        if (cancelled || !playingRef.current) return;
+        await new Promise(r => setTimeout(r, 600));
+        if (cancelled || !playingRef.current) return;
         setPhase("shadow");
-
-        // Shadow gap — user repeats
+      } else if (phase === "shadow") {
         const [,shadowGap] = gaps[speed];
-        await new Promise(r => setTimeout(r, shadowGap));
-        if (stopped || !playingRef.current) break;
-
-        // Advance to next phrase
-        if (single) {
-          // Single phrase mode — loop back
-          continue;
-        } else if (currentIdx + 1 >= total) {
-          setComplete(true);
-          break;
-        } else {
-          setIdx(currentIdx + 1);
-          idxRef.current = currentIdx + 1;
-        }
+        timer.current = setTimeout(() => {
+          if (single) { setPhase("play"); }
+          else if (idx + 1 >= total) setComplete(true);
+          else { setIdx(i => i + 1); setPhase("play"); }
+        }, shadowGap);
       }
     }
-    loop();
-    return () => { stopped = true; clearTimer(); stopAudio(); };
-  }, [playing, complete, speed]);
+    playSequence();
+    return () => { cancelled = true; clear(); stopAudio(); };
+  },[phase,playing,idx,complete,single,speed]);
 
   const markKn = () => { if(!isKn){knownN.current++;upd(`phrases.${unit.id}-${realIdx}`,true);} };
 
@@ -4283,36 +4266,21 @@ function ShadowMode({ unit, progress, upd, settings, onClose, startIdx=0, single
         {/* Transport: Replay / Pause / Next */}
         <div className="l-transport">
           {!single&&<div className="lt-wrap">
-            <button className="lt-btn sec" disabled={idx===0} style={idx===0?{opacity:.3}:{}} onClick={()=>{if(idx>0){stopAudio();setScoreResult(null);setPlaying(false);const ni=idx-1;setIdx(ni);idxRef.current=ni;setTimeout(()=>setPlaying(true),50);}}}>⏮</button>
+            <button className="lt-btn sec" disabled={idx===0} style={idx===0?{opacity:.3}:{}} onClick={()=>{if(idx>0){clear();setScoreResult(null);setIdx(i=>i-1);setPhase("play");}}}>⏮</button>
             <span className="lt-lbl">Back</span>
           </div>}
           <div className="lt-wrap">
-            <button className="lt-btn sec" onClick={()=>{stopAudio();setPlaying(false);setTimeout(()=>setPlaying(true),50);}}>↻</button>
+            <button className="lt-btn sec" onClick={()=>{clear();setPhase("play");}}>↻</button>
             <span className="lt-lbl">Replay</span>
           </div>
           <div className="lt-wrap">
-            <button className="lt-btn pri" onClick={()=>{if(playing)stopAudio();setPlaying(p=>!p);}}>{playing?"⏸":"▶"}</button>
+            <button className="lt-btn pri" onClick={()=>setPlaying(p=>!p)}>{playing?"⏸":"▶"}</button>
             <span className="lt-lbl">{playing?"Pause":"Play"}</span>
           </div>
           {!single&&<div className="lt-wrap">
-            <button className="lt-btn sec" onClick={()=>{stopAudio();setScoreResult(null);if(idx+1>=total)setComplete(true);else{setPlaying(false);const ni=idx+1;setIdx(ni);idxRef.current=ni;setTimeout(()=>setPlaying(true),50);}}}>⏭</button>
+            <button className="lt-btn sec" onClick={()=>{clear();setScoreResult(null);if(idx+1>=total)setComplete(true);else{setIdx(i=>i+1);setPhase("play");}}}>⏭</button>
             <span className="lt-lbl">Next</span>
           </div>}
-        </div>
-
-        {/* Test yourself — pronunciation scoring */}
-        <div style={{padding:"8px 0"}}>
-          {!isRecording && !scoring ? (
-            <RecordBtn onClick={startTest} label="🎙 Test your pronunciation" style={{width:"100%",padding:"14px",borderRadius:14,border:"2px solid var(--lime)",background:"rgba(196,240,0,.08)",color:"var(--lime)",fontSize:".82rem",fontWeight:800,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8}} />
-          ) : scoring ? (
-            <div style={{width:"100%",padding:"14px",borderRadius:14,background:"rgba(255,255,255,.06)",textAlign:"center"}}>
-              <div style={{fontSize:".78rem",fontWeight:700,color:"rgba(255,255,255,.5)"}}>Scoring your pronunciation...</div>
-            </div>
-          ) : (
-            <button onClick={stopTest} style={{width:"100%",padding:"14px",borderRadius:14,border:"2px solid #e74c3c",background:"rgba(231,76,60,.12)",color:"#ff7a5c",fontSize:".82rem",fontWeight:800,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8,animation:"pulse 1s ease-in-out infinite"}}>
-              ⏹ Stop recording & score
-            </button>
-          )}
         </div>
 
         {/* I know this now pill */}
@@ -5025,7 +4993,7 @@ function SettingsTab({ settings, updSettings }) {
       {/* About */}
       <div className="set-card">
         <div className="set-lb">About</div>
-        <div style={{fontSize:".68rem",color:"var(--ink2)",lineHeight:1.5}}>ShadowSpeak Cantonese v1.9.0. Shadowing method + spaced repetition. {ALL_WORDS.length} vocabulary words across {VOCAB_CATS.length} categories. {UNITS.reduce((s,u)=>s+u.phrases.length,0)} phrases across {UNITS.length} units.</div>
+        <div style={{fontSize:".68rem",color:"var(--ink2)",lineHeight:1.5}}>ShadowSpeak Cantonese v2.0.0. Shadowing method + spaced repetition. {ALL_WORDS.length} vocabulary words across {VOCAB_CATS.length} categories. {UNITS.reduce((s,u)=>s+u.phrases.length,0)} phrases across {UNITS.length} units.</div>
         <button onClick={()=>window.location.href="index.html"} style={{marginTop:8,background:"none",border:"none",cursor:"pointer",fontSize:".68rem",fontWeight:600,color:"var(--lime)",padding:0}}>← Back to landing page</button>
       </div>
     </div>

@@ -986,6 +986,17 @@ const CSS = `
 .uc-ti{font-size:.82rem;font-weight:900;margin-bottom:2px}
 .uc-sc{font-size:.68rem;color:var(--ink3);margin-bottom:5px;line-height:1.3}
 .bt{height:2px;background:var(--st);border-radius:999px;overflow:hidden}.bf{height:100%;border-radius:999px;background:var(--lime);transition:width .3s}
+.home-search{width:100%;background:var(--wh);border:1.5px solid var(--st);border-radius:12px;padding:12px 14px;font-size:.85rem;color:var(--ink);outline:none;font-family:inherit;min-height:48px;transition:border-color .2s}
+.home-search:focus{border-color:var(--plum)}
+.search-results{background:var(--wh);border:1px solid var(--st);border-radius:12px;margin-top:6px;overflow:hidden;box-shadow:0 4px 16px rgba(0,0,0,.08)}
+.search-result{display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid var(--st);cursor:pointer}
+.search-result:last-child{border-bottom:none}
+.search-result:active{background:var(--cream)}
+.search-badge{font-size:.6rem;font-weight:800;padding:3px 8px;border-radius:999px;text-transform:uppercase;letter-spacing:.5px}
+.topics-scroll{display:grid;grid-auto-flow:column;grid-template-rows:repeat(3,1fr);gap:10px;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;padding:4px 0 12px;scrollbar-width:none}
+.topics-scroll::-webkit-scrollbar{display:none}
+.topic-card{width:145px;border-radius:14px;overflow:hidden;border:1px solid var(--st);cursor:pointer;scroll-snap-align:start;transition:transform .15s;background:var(--wh)}
+.topic-card:active{transform:scale(.97)}
 `;
 
 // ============================================================
@@ -2390,7 +2401,9 @@ function AddNewSection({ progress, upd }) {
 // ---- HOME TAB (Phase 2a) ----
 function HomeTab({ profile, progress, upd, settings, setTab, recentTopics, setRecentTopics, practiceCount, library, selUnit, setSelUnit, markReviewed, startPlaylist, openPlBuilder }) {
   const [shadow, setShadow] = useState(null);
+  const [searchQ, setSearchQ] = useState("");
   const phraseListRef = useRef(null);
+  const searchRef = useRef(null);
   const stats = useMemo(() => getStats(progress), [progress]);
   const userName = profile;
 
@@ -2416,6 +2429,69 @@ function HomeTab({ profile, progress, upd, settings, setTab, recentTopics, setRe
   });
   const selectUnit = (id) => { setSelUnit(id); setTimeout(() => { if (phraseListRef.current) phraseListRef.current.scrollIntoView({ behavior: "smooth" }); }, 80); };
 
+  // Gradient colors for topic cards
+  const TOPIC_GRADIENTS = [
+    "linear-gradient(135deg, #2D5A3D, #1F3329)",
+    "linear-gradient(135deg, #3D4A5A, #1F2939)",
+    "linear-gradient(135deg, #4A3D5A, #291F39)",
+    "linear-gradient(135deg, #5A4A3D, #39291F)",
+    "linear-gradient(135deg, #3D5A4A, #1F3929)",
+    "linear-gradient(135deg, #5A3D4A, #391F29)",
+  ];
+
+  // Search across ALL units + GLOSS_DATA
+  const searchResults = useMemo(() => {
+    const q = searchQ.trim().toLowerCase();
+    if (!q) return [];
+    const results = [];
+    // Search phrases from all units
+    UNITS.forEach(u => {
+      u.phrases.forEach((ph, i) => {
+        const matchEn = (ph.en || "").toLowerCase().includes(q);
+        const matchCn = (ph.cn || "").toLowerCase().includes(q);
+        const matchJyut = (ph.jyut || "").toLowerCase().includes(q);
+        if (matchEn || matchCn || matchJyut) {
+          results.push({ type: "phrase", en: ph.en, cn: ph.cn, jyut: ph.jyut, unitId: u.id, unitTitle: u.title, idx: i });
+        }
+      });
+    });
+    // Search GLOSS_DATA keys
+    Object.keys(GLOSS_DATA || {}).forEach(key => {
+      if (key.toLowerCase().includes(q)) {
+        const g = GLOSS_DATA[key];
+        if (Array.isArray(g)) {
+          g.forEach(w => {
+            results.push({ type: "word", en: w.en || "", cn: w.cn || key, jyut: w.jy || "", unitId: null, unitTitle: null });
+          });
+        }
+      }
+    });
+    return results.slice(0, 8);
+  }, [searchQ]);
+
+  // Continue practicing: in-progress topics (at least 1 known but not all)
+  const inProgressTopics = useMemo(() => {
+    return UNITS.filter(u => {
+      const k = u.phrases.filter((_, i) => (progress.phrases || {})[`${u.id}-${i}`]).length;
+      return k > 0 && k < u.phrases.length;
+    });
+  }, [progress]);
+
+  // Use recentTopics to order in-progress, fallback to natural order
+  const continueTopics = useMemo(() => {
+    const ordered = [];
+    // Add recent ones first if they are in-progress
+    (recentTopics || []).forEach(rid => {
+      const found = inProgressTopics.find(u => u.id === rid);
+      if (found && !ordered.find(o => o.id === found.id)) ordered.push(found);
+    });
+    // Fill rest
+    inProgressTopics.forEach(u => {
+      if (!ordered.find(o => o.id === u.id)) ordered.push(u);
+    });
+    return ordered.slice(0, 4);
+  }, [inProgressTopics, recentTopics]);
+
   // Preload audio for selected unit
   useEffect(() => { preloadUnitAudio(unit.phrases); }, [selUnit]);
 
@@ -2423,63 +2499,124 @@ function HomeTab({ profile, progress, upd, settings, setTab, recentTopics, setRe
 
   return (
     <div className="mc" style={{ padding: "0 14px 80px" }}>
-      {/* Hero section */}
-      <div style={{ padding: "20px 0 16px" }}>
-        <div style={{ fontSize: "1.3rem", fontWeight: 900, color: "var(--ink)" }}>{greeting}, {userName.split(" ")[0]} 👋</div>
-        <div style={{ fontSize: ".82rem", color: "var(--ink2)", lineHeight: 1.5, marginTop: 4 }}>
-          {knownPhrases === 0 ? "Welcome! Let's get you started with " + LANG_CONFIG.name + "." :
-            `${knownPhrases} of ${totalPhrases} phrases mastered.`}
+      {/* Hero section — dark forest green */}
+      <div style={{ background: "#1F3329", borderRadius: 20, padding: 16, marginBottom: 16, marginTop: 12 }}>
+        <div style={{ fontSize: "1.25rem", fontWeight: 900, color: "#fff" }}>{greeting}, {userName.split(" ")[0]} 👋</div>
+        <div style={{ fontSize: ".78rem", color: "rgba(255,255,255,.55)", marginTop: 4 }}>
+          {knownPhrases} of {totalPhrases} mastered
         </div>
-      </div>
-
-      {/* Progress bar */}
-      <div style={{ background: "var(--wh)", borderRadius: 14, padding: "14px 16px", marginBottom: 16, border: "1px solid var(--st)" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-          <span style={{ fontSize: ".75rem", fontWeight: 800, color: "var(--ink)" }}>{knownPhrases} of {totalPhrases} mastered</span>
-          <span style={{ fontSize: ".72rem", fontWeight: 700, color: "var(--ink3)" }}>{pct}%</span>
-        </div>
-        <div style={{ height: 8, background: "var(--st)", borderRadius: 4, overflow: "hidden" }}>
-          <div style={{ height: "100%", width: pct + "%", background: "linear-gradient(90deg, var(--lime), var(--ld))", borderRadius: 4, transition: "width .5s ease" }} />
+        {/* Progress bar */}
+        <div style={{ height: 5, background: "rgba(255,255,255,.1)", borderRadius: 3, overflow: "hidden", marginTop: 10 }}>
+          <div style={{ height: "100%", width: pct + "%", background: "var(--lime)", borderRadius: 3, transition: "width .5s ease" }} />
         </div>
         {practiceCount > 0 && (
-          <div style={{ fontSize: ".68rem", color: "var(--ink3)", marginTop: 8 }}>Practice sessions completed: <strong style={{ color: "var(--for)" }}>{practiceCount}</strong></div>
+          <div style={{ fontSize: ".72rem", color: "rgba(255,255,255,.5)", marginTop: 8 }}>🔥 {practiceCount} daily practice{practiceCount !== 1 ? "s" : ""} completed</div>
+        )}
+        {/* Start practice CTA */}
+        <button onClick={() => setTab("practice")} style={{ width: "100%", background: "var(--lime)", color: "#1F3329", border: "none", borderRadius: 12, padding: "14px 20px", fontSize: ".88rem", fontWeight: 900, cursor: "pointer", marginTop: 14, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <span>Start today's practice</span>
+          <span style={{ fontSize: ".72rem", fontWeight: 700, background: "rgba(31,51,41,.12)", padding: "4px 10px", borderRadius: 8 }}>30 min</span>
+        </button>
+      </div>
+
+      {/* Search Bar */}
+      <div style={{ position: "relative", marginBottom: 16 }}>
+        <div style={{ position: "relative" }}>
+          <span style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", fontSize: ".85rem", pointerEvents: "none" }}>🔍</span>
+          <input
+            ref={searchRef}
+            className="home-search"
+            style={{ paddingLeft: 38, paddingRight: searchQ ? 38 : 14 }}
+            placeholder={"Search phrases & words..."}
+            value={searchQ}
+            onChange={e => setSearchQ(e.target.value)}
+          />
+          {searchQ && (
+            <span onClick={() => { setSearchQ(""); if (searchRef.current) searchRef.current.focus(); }} style={{ position: "absolute", right: 14, top: "50%", transform: "translateY(-50%)", fontSize: ".9rem", cursor: "pointer", color: "var(--ink3)", lineHeight: 1 }}>✕</span>
+          )}
+        </div>
+        {searchResults.length > 0 && (
+          <div className="search-results">
+            {searchResults.map((r, ri) => (
+              <div key={ri} className="search-result" onClick={() => {
+                if (r.unitId) { selectUnit(r.unitId); setSearchQ(""); }
+              }}>
+                <span className="search-badge" style={{ background: r.type === "phrase" ? "rgba(122,170,0,.15)" : "rgba(143,106,232,.15)", color: r.type === "phrase" ? "var(--ld)" : "var(--plum)" }}>
+                  {r.type === "phrase" ? "PHRASE" : "WORD"}
+                </span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: ".82rem", fontWeight: 700, color: "var(--ink)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.en}</div>
+                  <div style={{ fontSize: ".72rem", color: "var(--plum)", fontStyle: "italic" }}>{r.jyut}</div>
+                </div>
+                <div style={{ fontSize: ".82rem", color: "var(--ink3)", flexShrink: 0 }}>{r.cn}</div>
+                <span style={{ fontSize: "1rem", color: "var(--ink3)", cursor: "pointer", flexShrink: 0, padding: "4px" }}>+</span>
+              </div>
+            ))}
+          </div>
         )}
       </div>
 
-      {/* Start practice CTA */}
-      <button onClick={() => setTab("practice")} style={{ width: "100%", background: "var(--for)", color: "#fff", border: "none", borderRadius: 14, padding: "16px 20px", fontSize: ".9rem", fontWeight: 900, cursor: "pointer", marginBottom: 24, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, boxShadow: "0 4px 12px rgba(0,0,0,.12)" }}>
-        🧠 Start today's practice
-      </button>
+      {/* Continue Practicing section */}
+      {continueTopics.length > 0 && (
+        <div style={{ marginBottom: 20 }}>
+          <div style={{ fontSize: ".88rem", fontWeight: 900, color: "var(--ink)", marginBottom: 8 }}>Continue Practicing</div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+            {continueTopics.map(u => {
+              const k = u.phrases.filter((_, i) => (progress.phrases || {})[`${u.id}-${i}`]).length;
+              const upct = Math.round(k / u.phrases.length * 100);
+              return (
+                <div key={u.id} onClick={() => { setRecentTopics(prev => [u.id, ...(prev || []).filter(x => x !== u.id)].slice(0, 10)); selectUnit(u.id); }} style={{ background: "var(--wh)", borderRadius: 12, padding: "12px 14px", border: "1px solid var(--st)", cursor: "pointer", transition: "transform .15s" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                    <span style={{ fontSize: "1.1rem" }}>{topicIcons[u.id] || "📖"}</span>
+                    <span style={{ fontSize: ".78rem", fontWeight: 800, color: "var(--ink)", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{u.title}</span>
+                    <span style={{ fontSize: ".72rem", fontWeight: 700, color: "var(--ink3)" }}>{k}/{u.phrases.length}</span>
+                  </div>
+                  <div style={{ height: 3, background: "var(--st)", borderRadius: 2, overflow: "hidden" }}>
+                    <div style={{ height: "100%", width: upct + "%", background: "var(--lime)", borderRadius: 2, transition: "width .3s" }} />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
-      <div style={{ height: 1, background: "var(--st)", margin: "0 0 20px" }} />
-
-      {/* Topic grid from PhrasesTab */}
-      <div className="pt">Phrases</div>
-      <div className="ps">Pick a topic to practice! Tap any one to start.</div>
-
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 24 }}>
-        {sortedUnits.map(u => {
-          const k = u.phrases.filter((_, i) => (progress.phrases || {})[`${u.id}-${i}`]).length;
-          const upct = Math.round(k / u.phrases.length * 100);
-          const isComplete = upct === 100;
-          const isActive = u.id === selUnit;
-          return (
-            <div key={u.id} onClick={() => selectUnit(u.id)} style={{
-              background: isComplete ? "#F0F9E0" : isActive ? "#FAFFF0" : "var(--wh)",
-              borderRadius: 12, padding: "14px 12px 10px",
-              border: isActive ? "2px solid var(--ld)" : isComplete ? "2px solid var(--ld)" : "1px solid var(--st)",
-              cursor: "pointer", transition: "all .15s",
-              opacity: isComplete && !isActive ? 0.75 : 1
-            }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                <span style={{ fontSize: "1.3rem" }}>{isComplete ? "✅" : topicIcons[u.id] || "📖"}</span>
-                <span style={{ fontSize: ".72rem", fontWeight: 800, color: isComplete ? "var(--ld)" : "var(--ink3)" }}>{isComplete ? "Complete!" : ` ${k}/${u.phrases.length}`}</span>
+      {/* All Topics — horizontal scrolling grid, 3 rows */}
+      <div style={{ marginBottom: 20 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+          <span style={{ fontSize: ".88rem", fontWeight: 900, color: "var(--ink)" }}>All Topics</span>
+          <span style={{ fontSize: ".72rem", fontWeight: 700, color: "var(--ink3)" }}>{UNITS.length} topics</span>
+        </div>
+        <div className="topics-scroll">
+          {sortedUnits.map((u, ui) => {
+            const k = u.phrases.filter((_, i) => (progress.phrases || {})[`${u.id}-${i}`]).length;
+            const upct = Math.round(k / u.phrases.length * 100);
+            const isMastered = upct === 100;
+            const grad = TOPIC_GRADIENTS[ui % TOPIC_GRADIENTS.length];
+            return (
+              <div key={u.id} className="topic-card" onClick={() => selectUnit(u.id)} style={{ opacity: isMastered ? 0.8 : 1 }}>
+                {/* Gradient header */}
+                <div style={{ background: grad, padding: "14px 12px 10px", position: "relative" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                    <span style={{ fontSize: "1.4rem" }}>{topicIcons[u.id] || "📖"}</span>
+                    <span style={{ fontSize: ".6rem", fontWeight: 800, background: "rgba(255,255,255,.2)", color: "#fff", padding: "2px 7px", borderRadius: 999 }}>#{u.id}</span>
+                  </div>
+                  {isMastered && (
+                    <div style={{ position: "absolute", top: 8, right: 8, background: "var(--lime)", borderRadius: 999, width: 20, height: 20, display: "flex", alignItems: "center", justifyContent: "center", fontSize: ".65rem", fontWeight: 900, color: "#1F3329" }}>✓</div>
+                  )}
+                </div>
+                {/* Card body */}
+                <div style={{ padding: "8px 10px 10px" }}>
+                  <div style={{ fontSize: ".75rem", fontWeight: 800, color: "var(--ink)", lineHeight: 1.2, marginBottom: 4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{u.title}</div>
+                  <div style={{ fontSize: ".65rem", color: "var(--ink3)", marginBottom: 6 }}>{u.phrases.length} phrases</div>
+                  <div style={{ height: 3, background: "var(--st)", borderRadius: 2, overflow: "hidden" }}>
+                    <div style={{ height: "100%", width: upct + "%", background: isMastered ? "var(--ld)" : "var(--lime)", borderRadius: 2, transition: "width .3s" }} />
+                  </div>
+                </div>
               </div>
-              <div style={{ fontSize: ".82rem", fontWeight: 800, color: isComplete ? "var(--ld)" : "var(--ink)", lineHeight: 1.2, marginBottom: 5 }}>{u.title}</div>
-              <div style={{ height: 4, background: "var(--st)", borderRadius: 2, overflow: "hidden" }}><div style={{ height: "100%", width: upct + "%", background: isComplete ? "var(--ld)" : "var(--lime)", borderRadius: 2, transition: "width .3s" }} /></div>
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
       </div>
 
       {/* Selected unit content */}
@@ -3975,7 +4112,7 @@ function SettingsTab({ settings, updSettings }) {
       {/* About */}
       <div className="set-card">
         <div className="set-lb">About</div>
-        <div style={{fontSize:".68rem",color:"var(--ink2)",lineHeight:1.5}}>" + "ShadowSpeak " + LANG_CONFIG.name + " v3.1.0. Shadowing method + spaced repetition. {ALL_WORDS.length} vocabulary words across {VOCAB_CATS.length} categories. {UNITS.reduce((s,u)=>s+u.phrases.length,0)} phrases across {UNITS.length} units.</div>
+        <div style={{fontSize:".68rem",color:"var(--ink2)",lineHeight:1.5}}>" + "ShadowSpeak " + LANG_CONFIG.name + " v3.2.0. Shadowing method + spaced repetition. {ALL_WORDS.length} vocabulary words across {VOCAB_CATS.length} categories. {UNITS.reduce((s,u)=>s+u.phrases.length,0)} phrases across {UNITS.length} units.</div>
         <button onClick={()=>window.location.href="index.html"} style={{marginTop:8,background:"none",border:"none",cursor:"pointer",fontSize:".68rem",fontWeight:600,color:"var(--lime)",padding:0}}>← Back to landing page</button>
       </div>
     </div>

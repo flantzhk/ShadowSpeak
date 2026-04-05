@@ -635,7 +635,7 @@ const CSS = `
 
 /* Bottom nav — mobile only */
 .bn{position:fixed;bottom:0;left:0;right:0;background:var(--wh);border-top:1px solid var(--st2);display:flex;z-index:100;padding-bottom:env(safe-area-inset-bottom)}
-.bb{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 2px 6px;border:none;background:0;color:var(--ink3);font-size:11px;font-weight:700;cursor:pointer;position:relative;min-height:52px}
+.bb{flex:1 1 33.33%;display:flex;flex-direction:column;align-items:center;gap:2px;padding:10px 2px 8px;border:none;background:0;color:var(--ink3);font-size:12px;font-weight:700;cursor:pointer;position:relative;min-height:56px}
 .bb.on{color:var(--for)}.bb.on .bi{color:var(--ld)}
 .bb.on::before{content:'';position:absolute;top:0;left:25%;right:25%;height:2.5px;background:var(--lime);border-radius:0 0 2px 2px}
 .bi{font-size:20px;line-height:1}
@@ -1384,6 +1384,11 @@ function App() {
   const [popup, setPopup] = useState(null);
   const [playlist, setPlaylist] = useState(null);
   const [profileMenu, setProfileMenu] = useState(false);
+  const [library, setLibrary] = useState([]);
+  const [quickCheck, setQuickCheck] = useState(null);
+  const [practiceMode, setPracticeMode] = useState(null);
+  const [practiceCount, setPracticeCount] = useState(parseInt(localStorage.getItem(LANG_CONFIG.id + '-practice-count') || '0'));
+  const [recentTopics, setRecentTopics] = useState(JSON.parse(localStorage.getItem(LANG_CONFIG.id + '-recent-topics') || '[]'));
   const saveTimer = useRef(null);
 
   // Inject CSS
@@ -1559,7 +1564,7 @@ function App() {
             <div style={{fontSize:".58rem",fontWeight:700,color:"rgba(255,255,255,.5)",letterSpacing:".5px",marginTop:-1}}>CANTONESE</div>
           </div>
           <div className="tn">
-            {[{id:"home",icon:"🏠",l:"Today"},{id:"phrases",icon:"🗣",l:"Phrases"},{id:"vocab",icon:"📖",l:"Vocab"},{id:"quiz",icon:"📝",l:"Quiz"},{id:"unit10",icon:"📖",l:"Mine"},{id:"settings",icon:"⚙️",l:"Settings"}].map(t=>
+            {[{id:"home",icon:"🏠",l:"Home"},{id:"library",icon:"📚",l:"My Library"},{id:"practice",icon:"🧠",l:"Practice"}].map(t=>
               <button key={t.id} className={`tn-btn ${tab===t.id?"on":""}`} onClick={()=>setTab(t.id)}><span className="tn-icon">{t.icon}</span>{t.l}</button>
             )}
           </div>
@@ -1589,12 +1594,10 @@ function App() {
         </div>
       </div>
 
-      {tab==="home"&&<TodayTab profile={displayName} progress={progress} upd={upd} markReviewed={markReviewed} setTab={setTab} setSelUnit={setSelUnit} startPlaylist={startPlaylist} openPlBuilder={()=>setShowPlBuilder(true)} settings={settings} />}
-      {tab==="phrases"&&<PhrasesTab progress={progress} upd={upd} selUnit={selUnit} setSelUnit={setSelUnit} settings={settings} />}
-      {tab==="vocab"&&<VocabTab progress={progress} upd={upd} startPlaylist={startPlaylist} />}
-      {tab==="unit10"&&<Unit10Tab progress={progress} upd={upd} />}
+      {tab==="home"&&<HomeTab profile={displayName} progress={progress} upd={upd} settings={settings} setTab={setTab} recentTopics={recentTopics} setRecentTopics={setRecentTopics} practiceCount={practiceCount} library={library} selUnit={selUnit} setSelUnit={setSelUnit} markReviewed={markReviewed} startPlaylist={startPlaylist} openPlBuilder={()=>setShowPlBuilder(true)} />}
+      {tab==="library"&&<LibraryTab library={library} setLibrary={setLibrary} progress={progress} upd={upd} settings={settings} />}
+      {tab==="practice"&&<PracticeTab progress={progress} upd={upd} settings={settings} library={library} practiceCount={practiceCount} setPracticeCount={setPracticeCount} />}
       {tab==="settings"&&<SettingsTab settings={settings} updSettings={updSettings} />}
-      {tab==="quiz"&&<QuizTab progress={progress} upd={upd} />}
 
       {/* Playlist builder overlay */}
       {showPlBuilder && <PlaylistBuilder onClose={()=>setShowPlBuilder(false)} onPlay={(items,title)=>{setShowPlBuilder(false);startPlaylist(items,title);}} progress={progress} />}
@@ -1619,8 +1622,8 @@ function App() {
       </div></div>}
 
       <div className="bn">
-        {[{id:"home",icon:"🏠",l:"Today"},{id:"phrases",icon:"🗣",l:"Phrases"},{id:"vocab",icon:"📖",l:"Vocab"},{id:"quiz",icon:"📝",l:"Quiz"},{id:"unit10",icon:"📖",l:"Mine"},{id:"settings",icon:"⚙️",l:"Settings"}].map(t=>
-          <button key={t.id} className={`bb ${tab===t.id?"on":""}`} onClick={()=>setTab(t.id)}><span className="bi">{t.icon}</span>{t.l}</button>
+        {[{id:"home",icon:"🏠",l:"Home"},{id:"library",icon:"📚",l:"My Library",badge:library.filter(x=>!x.known).length||0},{id:"practice",icon:"🧠",l:"Practice"}].map(t=>
+          <button key={t.id} className={`bb ${tab===t.id?"on":""}`} onClick={()=>setTab(t.id)} style={{flex:"1 1 33.33%"}}><span className="bi">{t.icon}</span>{t.l}{t.badge>0&&<span style={{position:"absolute",top:4,right:"calc(50% - 18px)",background:"var(--cor,#e74c3c)",color:"#fff",fontSize:".55rem",fontWeight:900,borderRadius:999,minWidth:16,height:16,display:"flex",alignItems:"center",justifyContent:"center",padding:"0 4px"}}>{t.badge}</span>}</button>
         )}
       </div>
 
@@ -2380,6 +2383,286 @@ function AddNewSection({ progress, upd }) {
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+// ---- HOME TAB (Phase 2a) ----
+function HomeTab({ profile, progress, upd, settings, setTab, recentTopics, setRecentTopics, practiceCount, library, selUnit, setSelUnit, markReviewed, startPlaylist, openPlBuilder }) {
+  const [shadow, setShadow] = useState(null);
+  const phraseListRef = useRef(null);
+  const stats = useMemo(() => getStats(progress), [progress]);
+  const userName = profile;
+
+  const totalPhrases = UNITS.reduce((s, u) => s + u.phrases.length, 0);
+  const knownPhrases = Object.keys(progress.phrases || {}).filter(k => (progress.phrases || {})[k]).length;
+  const pct = totalPhrases ? Math.round(knownPhrases / totalPhrases * 100) : 0;
+
+  // Time-based greeting
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
+
+  // PhrasesTab logic
+  const unit = UNITS.find(u => u.id === selUnit) || UNITS[0];
+  const kc = unit.phrases.filter((_, i) => (progress.phrases || {})[`${unit.id}-${i}`]).length;
+  const sorted = unit.phrases.map((p, i) => ({ ...p, origIdx: i, known: !!(progress.phrases || {})[`${unit.id}-${i}`] })).sort((a, b) => a.known - b.known);
+  const topicIcons = {1:"👋",2:"🤝",3:"🚕",4:"☕",5:"🍜",6:"🛍",7:"🏫",8:"🏠",9:"🕐",10:"❤️",11:"🍻",12:"🌧",13:"💰",14:"💪",15:"😤",16:"📱",17:"🥺",18:"🔢",19:"🎉",20:"🌇"};
+  const sortedUnits = [...UNITS].sort((a, b) => {
+    const aDone = a.phrases.every((_, i) => (progress.phrases || {})[`${a.id}-${i}`]);
+    const bDone = b.phrases.every((_, i) => (progress.phrases || {})[`${b.id}-${i}`]);
+    if (aDone && !bDone) return 1;
+    if (!aDone && bDone) return -1;
+    return a.id - b.id;
+  });
+  const selectUnit = (id) => { setSelUnit(id); setTimeout(() => { if (phraseListRef.current) phraseListRef.current.scrollIntoView({ behavior: "smooth" }); }, 80); };
+
+  // Preload audio for selected unit
+  useEffect(() => { preloadUnitAudio(unit.phrases); }, [selUnit]);
+
+  if (shadow !== null) return <ShadowMode unit={unit} progress={progress} upd={upd} settings={settings} onClose={() => { releaseMicStream(); setShadow(null); }} startIdx={shadow === "unit" ? 0 : shadow} single={shadow !== "unit"} />;
+
+  return (
+    <div className="mc" style={{ padding: "0 14px 80px" }}>
+      {/* Hero section */}
+      <div style={{ padding: "20px 0 16px" }}>
+        <div style={{ fontSize: "1.3rem", fontWeight: 900, color: "var(--ink)" }}>{greeting}, {userName.split(" ")[0]} 👋</div>
+        <div style={{ fontSize: ".82rem", color: "var(--ink2)", lineHeight: 1.5, marginTop: 4 }}>
+          {knownPhrases === 0 ? "Welcome! Let's get you started with " + LANG_CONFIG.name + "." :
+            `${knownPhrases} of ${totalPhrases} phrases mastered.`}
+        </div>
+      </div>
+
+      {/* Progress bar */}
+      <div style={{ background: "var(--wh)", borderRadius: 14, padding: "14px 16px", marginBottom: 16, border: "1px solid var(--st)" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+          <span style={{ fontSize: ".75rem", fontWeight: 800, color: "var(--ink)" }}>{knownPhrases} of {totalPhrases} mastered</span>
+          <span style={{ fontSize: ".72rem", fontWeight: 700, color: "var(--ink3)" }}>{pct}%</span>
+        </div>
+        <div style={{ height: 8, background: "var(--st)", borderRadius: 4, overflow: "hidden" }}>
+          <div style={{ height: "100%", width: pct + "%", background: "linear-gradient(90deg, var(--lime), var(--ld))", borderRadius: 4, transition: "width .5s ease" }} />
+        </div>
+        {practiceCount > 0 && (
+          <div style={{ fontSize: ".68rem", color: "var(--ink3)", marginTop: 8 }}>Practice sessions completed: <strong style={{ color: "var(--for)" }}>{practiceCount}</strong></div>
+        )}
+      </div>
+
+      {/* Start practice CTA */}
+      <button onClick={() => setTab("practice")} style={{ width: "100%", background: "var(--for)", color: "#fff", border: "none", borderRadius: 14, padding: "16px 20px", fontSize: ".9rem", fontWeight: 900, cursor: "pointer", marginBottom: 24, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, boxShadow: "0 4px 12px rgba(0,0,0,.12)" }}>
+        🧠 Start today's practice
+      </button>
+
+      <div style={{ height: 1, background: "var(--st)", margin: "0 0 20px" }} />
+
+      {/* Topic grid from PhrasesTab */}
+      <div className="pt">Phrases</div>
+      <div className="ps">Pick a topic to practice! Tap any one to start.</div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 24 }}>
+        {sortedUnits.map(u => {
+          const k = u.phrases.filter((_, i) => (progress.phrases || {})[`${u.id}-${i}`]).length;
+          const upct = Math.round(k / u.phrases.length * 100);
+          const isComplete = upct === 100;
+          const isActive = u.id === selUnit;
+          return (
+            <div key={u.id} onClick={() => selectUnit(u.id)} style={{
+              background: isComplete ? "#F0F9E0" : isActive ? "#FAFFF0" : "var(--wh)",
+              borderRadius: 12, padding: "14px 12px 10px",
+              border: isActive ? "2px solid var(--ld)" : isComplete ? "2px solid var(--ld)" : "1px solid var(--st)",
+              cursor: "pointer", transition: "all .15s",
+              opacity: isComplete && !isActive ? 0.75 : 1
+            }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                <span style={{ fontSize: "1.3rem" }}>{isComplete ? "✅" : topicIcons[u.id] || "📖"}</span>
+                <span style={{ fontSize: ".72rem", fontWeight: 800, color: isComplete ? "var(--ld)" : "var(--ink3)" }}>{isComplete ? "Complete!" : ` ${k}/${u.phrases.length}`}</span>
+              </div>
+              <div style={{ fontSize: ".82rem", fontWeight: 800, color: isComplete ? "var(--ld)" : "var(--ink)", lineHeight: 1.2, marginBottom: 5 }}>{u.title}</div>
+              <div style={{ height: 4, background: "var(--st)", borderRadius: 2, overflow: "hidden" }}><div style={{ height: "100%", width: upct + "%", background: isComplete ? "var(--ld)" : "var(--lime)", borderRadius: 2, transition: "width .3s" }} /></div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Selected unit content */}
+      <div ref={phraseListRef} style={{ borderTop: "2px solid var(--st)", paddingTop: 20, marginTop: 4 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+          <div><div className="pt">{topicIcons[unit.id]} {unit.title}</div><div className="ps">{kc}/{unit.phrases.length} known. {kc === 0 ? "let's get started!" : kc === unit.phrases.length ? "you've mastered this unit!" : "keep going, you're doing great!"}</div></div>
+          <button style={{ background: "var(--for)", color: "var(--lime)", border: "none", borderRadius: 999, padding: "10px 16px", fontSize: ".75rem", fontWeight: 800, cursor: "pointer", minHeight: 44 }} onClick={() => setShadow("unit")}>🎙 Shadow all</button>
+        </div>
+        <div className="bt" style={{ marginBottom: 12 }}><div className="bf" style={{ width: Math.round(kc / unit.phrases.length * 100) + "%" }} /></div>
+        {sorted.map((ph) => (
+          <PhraseCard key={ph.origIdx} ph={ph} unit={unit} upd={upd} setShadow={setShadow} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ---- LIBRARY TAB (Phase 2a) ----
+function LibraryTab({ library, setLibrary, progress, upd, settings }) {
+  const [en, setEn] = useState("");
+  const [jy, setJy] = useState("");
+  const [cn, setCn] = useState("");
+  const [tag, setTag] = useState("");
+  const [saved, setSaved] = useState(false);
+
+  const items = progress.unit10 || [];
+
+  const handleSave = () => {
+    if (!en.trim()) return;
+    const ns = { en: en.trim(), jyut: jy.trim() || "(add jyutping)", cn: cn.trim() || "(add characters)", tag: tag.trim() || "Life", date: new Date().toLocaleDateString("en-GB", { weekday: "short" }), known: false };
+    upd("unit10", [ns, ...items]);
+    setEn(""); setJy(""); setCn(""); setTag(""); setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
+  };
+
+  const toggleKnown = (idx) => {
+    const updated = items.map((s, i) => i === idx ? { ...s, known: !s.known } : s);
+    upd("unit10", updated);
+  };
+
+  const stillLearning = items.filter(s => !s.known);
+  const learned = items.filter(s => s.known);
+
+  return (
+    <div className="mc">
+      <div className="pt">📚 My Library</div>
+      <div className="ps">Your personal collection. Unknown words get drilled as top priority in every lesson!</div>
+
+      {/* Add new words — from Unit10Tab */}
+      <div style={{ background: "var(--wh)", borderRadius: 14, padding: 16, border: "1.5px solid var(--st)", marginBottom: 16 }}>
+        <div style={{ fontSize: ".88rem", fontWeight: 800, color: "var(--ink)", marginBottom: 10 }}>What did you need to say today?</div>
+        <input style={{ width: "100%", background: "var(--cream)", border: "1.5px solid var(--st)", borderRadius: 8, padding: "10px 12px", fontSize: ".82rem", color: "var(--ink)", outline: "none", fontFamily: "inherit", marginBottom: 6, minHeight: 44 }} placeholder="English, e.g. Can you wrap that separately?" value={en} onChange={e => setEn(e.target.value)} />
+        <input style={{ width: "100%", background: "var(--cream)", border: "1.5px solid var(--st)", borderRadius: 8, padding: "10px 12px", fontSize: ".82rem", color: "var(--plum)", fontStyle: "italic", outline: "none", fontFamily: "inherit", marginBottom: 6, minHeight: 44 }} placeholder="Jyutping, e.g. ho2 m4 ho2 ji5 fan1 hoi1 baau1" value={jy} onChange={e => setJy(e.target.value)} />
+        <input style={{ width: "100%", background: "var(--cream)", border: "1.5px solid var(--st)", borderRadius: 8, padding: "10px 12px", fontSize: ".82rem", color: "var(--ink)", outline: "none", fontFamily: "inherit", marginBottom: 6, minHeight: 44 }} placeholder="Chinese characters" value={cn} onChange={e => setCn(e.target.value)} />
+        <div style={{ display: "flex", gap: 6, marginBottom: 6 }}>
+          <input style={{ flex: 1, background: "var(--cream)", border: "1.5px solid var(--st)", borderRadius: 8, padding: "10px 12px", fontSize: ".82rem", color: "var(--ink)", outline: "none", fontFamily: "inherit", minHeight: 44 }} placeholder="Where? e.g. Wet market" value={tag} onChange={e => setTag(e.target.value)} />
+          <button style={{ background: "var(--lime)", color: "var(--for)", border: "none", borderRadius: 8, padding: "10px 18px", fontSize: ".82rem", fontWeight: 900, cursor: "pointer", minHeight: 44 }} onClick={handleSave}>Save</button>
+        </div>
+        <div style={{ fontSize: ".72rem", color: "var(--ink3)", lineHeight: 1.5, marginTop: 4 }}>
+          {saved ? <span style={{ color: "var(--ld)", fontWeight: 700 }}>Saved!</span> : <>
+            Look up Jyutping & characters at: <a href="https://cc-canto.org" target="_blank" rel="noopener" style={{ color: "var(--plum)", textDecoration: "none", fontWeight: 700 }}>cc-canto.org</a> or <a href="https://words.hk" target="_blank" rel="noopener" style={{ color: "var(--plum)", textDecoration: "none", fontWeight: 700 }}>words.hk</a>
+          </>}
+        </div>
+      </div>
+
+      {/* Still learning */}
+      {stillLearning.length > 0 && (<>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+          <span style={{ fontSize: ".82rem", fontWeight: 900, color: "var(--ink)" }}>Still learning</span>
+          <span style={{ fontSize: ".72rem", color: "var(--ink3)" }}>{stillLearning.length} phrase{stillLearning.length > 1 ? "s" : ""}</span>
+        </div>
+        {stillLearning.map((s, si) => {
+          const idx = items.indexOf(s);
+          return (
+            <div key={idx} className="card" style={{ borderLeft: "3px solid var(--lime)" }}>
+              <div className="ph-en">{s.en}</div>
+              <div className="ph-jy">{s.jyut}</div>
+              <div className="ph-cn">{s.cn}</div>
+              <div className="ph-ft">
+                {s.cn && s.cn !== "(add characters)" && <button className="pbtn play-btn" onClick={() => speak(s.cn)}>▶</button>}
+                <span className="tg">{s.tag}</span>
+                <button style={{ marginLeft: "auto", background: "var(--lime)", color: "var(--for)", border: "none", borderRadius: 999, padding: "6px 14px", fontSize: ".72rem", fontWeight: 900, cursor: "pointer", minHeight: 36 }} onClick={() => toggleKnown(idx)}>I know this</button>
+              </div>
+            </div>
+          );
+        })}
+      </>)}
+
+      {/* Learned */}
+      {learned.length > 0 && (<>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6, marginTop: stillLearning.length > 0 ? 16 : 0 }}>
+          <span style={{ fontSize: ".82rem", fontWeight: 900, color: "var(--ink3)" }}>Learned</span>
+          <span style={{ fontSize: ".72rem", color: "var(--ink3)" }}>{learned.length} phrase{learned.length > 1 ? "s" : ""}</span>
+        </div>
+        {learned.map((s, si) => {
+          const idx = items.indexOf(s);
+          return (
+            <div key={idx} className="card" style={{ opacity: .6 }}>
+              <div className="ph-en">{s.en}</div>
+              <div className="ph-jy">{s.jyut}</div>
+              <div className="ph-cn">{s.cn}</div>
+              <div className="ph-ft">
+                {s.cn && s.cn !== "(add characters)" && <button className="pbtn play-btn" onClick={() => speak(s.cn)}>▶</button>}
+                <span className="tg">{s.tag}</span>
+                <button style={{ marginLeft: "auto", background: "var(--st)", color: "var(--ink3)", border: "none", borderRadius: 999, padding: "6px 14px", fontSize: ".72rem", fontWeight: 700, cursor: "pointer", minHeight: 36 }} onClick={() => toggleKnown(idx)}>Unlearn</button>
+              </div>
+            </div>
+          );
+        })}
+      </>)}
+
+      {items.length === 0 && (
+        <div style={{ textAlign: "center", padding: "40px 20px", color: "var(--ink3)" }}>
+          <div style={{ fontSize: "2rem", marginBottom: 8 }}>📚</div>
+          <div style={{ fontSize: ".88rem", fontWeight: 700, marginBottom: 4 }}>Your library is empty</div>
+          <div style={{ fontSize: ".75rem", lineHeight: 1.5 }}>Add words and phrases you encounter in daily life. They'll become top priority in your practice sessions.</div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ---- PRACTICE TAB (Phase 2a) ----
+function PracticeTab({ progress, upd, settings, library, practiceCount, setPracticeCount }) {
+  const [showQuiz, setShowQuiz] = useState(false);
+  const stats = useMemo(() => getStats(progress), [progress]);
+  const knownPhrases = Object.keys(progress.phrases || {}).filter(k => (progress.phrases || {})[k]).length;
+
+  if (showQuiz) return <QuizTab progress={progress} upd={upd} />;
+
+  return (
+    <div className="mc">
+      <div className="pt">Practice & Quiz</div>
+      <div className="ps">Sharpen your skills with focused practice or test what you know.</div>
+
+      {/* Daily Practice card */}
+      <div style={{ background: "var(--for)", borderRadius: 16, padding: 20, marginBottom: 12, cursor: "pointer" }} onClick={() => setShowQuiz(true)}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <div style={{ fontSize: "2rem" }}>🧠</div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: ".92rem", fontWeight: 900, color: "#fff", marginBottom: 2 }}>Daily Practice</div>
+            <div style={{ fontSize: ".72rem", color: "rgba(255,255,255,.55)", lineHeight: 1.4 }}>Review phrases you've learned with flashcards, listening, and pronunciation drills.</div>
+          </div>
+          <div style={{ fontSize: "1.2rem", color: "var(--lime)" }}>&#8250;</div>
+        </div>
+        {practiceCount > 0 && (
+          <div style={{ marginTop: 10, fontSize: ".68rem", color: "rgba(255,255,255,.4)" }}>Sessions completed: {practiceCount}</div>
+        )}
+      </div>
+
+      {/* Quick Quiz card */}
+      <div style={{ background: "var(--wh)", borderRadius: 16, padding: 20, marginBottom: 12, border: "1.5px solid var(--st)", cursor: "pointer" }} onClick={() => setShowQuiz(true)}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <div style={{ fontSize: "2rem" }}>📝</div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: ".92rem", fontWeight: 900, color: "var(--ink)", marginBottom: 2 }}>Quick Quiz</div>
+            <div style={{ fontSize: ".72rem", color: "var(--ink3)", lineHeight: 1.4 }}>Test yourself with multiple choice, dictation, and pronunciation scoring.</div>
+          </div>
+          <div style={{ fontSize: "1.2rem", color: "var(--ink3)" }}>&#8250;</div>
+        </div>
+        {knownPhrases > 0 && (
+          <div style={{ marginTop: 10, fontSize: ".68rem", color: "var(--ink3)" }}>{knownPhrases} phrases available for quizzing</div>
+        )}
+      </div>
+
+      {/* Stats summary */}
+      <div style={{ background: "var(--cream)", borderRadius: 14, padding: 16, marginTop: 8 }}>
+        <div style={{ fontSize: ".68rem", fontWeight: 800, textTransform: "uppercase", letterSpacing: 1, color: "var(--ink3)", marginBottom: 10 }}>Your stats</div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
+          <div style={{ textAlign: "center" }}>
+            <div style={{ fontSize: "1.3rem", fontWeight: 900, color: "var(--for)" }}>{stats.streak}</div>
+            <div style={{ fontSize: ".62rem", fontWeight: 700, color: "var(--ink3)" }}>Day streak</div>
+          </div>
+          <div style={{ textAlign: "center" }}>
+            <div style={{ fontSize: "1.3rem", fontWeight: 900, color: "var(--for)" }}>{knownPhrases}</div>
+            <div style={{ fontSize: ".62rem", fontWeight: 700, color: "var(--ink3)" }}>Mastered</div>
+          </div>
+          <div style={{ textAlign: "center" }}>
+            <div style={{ fontSize: "1.3rem", fontWeight: 900, color: "var(--for)" }}>{progress.quizCount || 0}</div>
+            <div style={{ fontSize: ".62rem", fontWeight: 700, color: "var(--ink3)" }}>Quizzes</div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -3692,7 +3975,7 @@ function SettingsTab({ settings, updSettings }) {
       {/* About */}
       <div className="set-card">
         <div className="set-lb">About</div>
-        <div style={{fontSize:".68rem",color:"var(--ink2)",lineHeight:1.5}}>" + "ShadowSpeak " + LANG_CONFIG.name + " v3.0.0. Shadowing method + spaced repetition. {ALL_WORDS.length} vocabulary words across {VOCAB_CATS.length} categories. {UNITS.reduce((s,u)=>s+u.phrases.length,0)} phrases across {UNITS.length} units.</div>
+        <div style={{fontSize:".68rem",color:"var(--ink2)",lineHeight:1.5}}>" + "ShadowSpeak " + LANG_CONFIG.name + " v3.1.0. Shadowing method + spaced repetition. {ALL_WORDS.length} vocabulary words across {VOCAB_CATS.length} categories. {UNITS.reduce((s,u)=>s+u.phrases.length,0)} phrases across {UNITS.length} units.</div>
         <button onClick={()=>window.location.href="index.html"} style={{marginTop:8,background:"none",border:"none",cursor:"pointer",fontSize:".68rem",fontWeight:600,color:"var(--lime)",padding:0}}>← Back to landing page</button>
       </div>
     </div>

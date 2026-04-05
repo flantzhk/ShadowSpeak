@@ -10,7 +10,13 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>ShadowSpeak - Cantonese</title>
+  <title>ShadowSpeak — Learn Cantonese with Shadowing</title>
+  <meta name="description" content="Learn to speak Cantonese using the shadowing method. AI-powered Cantonese voices, jyutping guides, pronunciation scoring, and offline mode. Built in Hong Kong." />
+  <meta name="keywords" content="learn Cantonese, Cantonese app, speak Cantonese, jyutping, shadowing method, Hong Kong language, Cantonese pronunciation, language learning app" />
+  <meta property="og:title" content="ShadowSpeak — Learn Cantonese with Shadowing" />
+  <meta property="og:description" content="Master Cantonese with AI-powered shadowing. Jyutping guides, native voices, and offline support." />
+  <meta property="og:type" content="website" />
+  <link rel="canonical" href="https://flantzhk.github.io/ShadowSpeak/canto.html" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🇭🇰</text></svg>" />
   <link rel="manifest" href="manifest.json" />
   <meta name="theme-color" content="#1F3329" />
@@ -1493,54 +1499,12 @@ function speakAsync(text, lang, rate=0.85) {
   });
 }
 
-// MiniMax TTS — AI-quality voices for both English and Cantonese
-const MINIMAX_KEY = "sk-api-4_y-GoNFnijPJ1oFvpqw5ohNp3upNCtHmUb2UxXau2wNyf3cpLiRYc6y5LsRB2ScHp0iWFtMhhVpBC_A2dLcrCSzZKeAto5r2Xz4LxVIuaAIShCi3wTsaaU";
 let _currentAudio = null;
 
 function stopAudio() {
   unlockAudio();
   if (_currentAudio) { _currentAudio.pause(); _currentAudio.currentTime = 0; _currentAudio = null; }
   if ("speechSynthesis" in window) speechSynthesis.cancel();
-}
-
-async function minimaxTTS(text, lang) {
-  stopAudio();
-  const body = {
-    model: "speech-02-hd",
-    text: text,
-    voice_id: lang === "yue-HK" ? "Calm_Woman" : "sweet_lady_2",
-    speed: lang === "yue-HK" ? 0.9 : 1.0,
-    vol: 1.0,
-    pitch: 0,
-    audio_sample_rate: 32000,
-    bitrate: 128000,
-    format: "mp3"
-  };
-  const res = await fetch("https://api.minimax.io/v1/t2a_v2", {
-    method: "POST",
-    headers: {
-      "Authorization": `Bearer ${MINIMAX_KEY}`,
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify(body)
-  });
-  if (!res.ok) throw new Error("MiniMax TTS failed: " + res.status);
-  const data = await res.json();
-  if (data.base_resp && data.base_resp.status_code !== 0) throw new Error("MiniMax error: " + data.base_resp.status_msg);
-  
-  // audio_file is base64 encoded
-  const audioBytes = Uint8Array.from(atob(data.audio_file), c => c.charCodeAt(0));
-  const blob = new Blob([audioBytes], { type: "audio/mpeg" });
-  const url = URL.createObjectURL(blob);
-  return new Promise((resolve, reject) => {
-    const audio = new Audio(url);
-    _currentAudio = audio;
-    // Ensure AudioContext is active for Safari
-    if (_audioCtx && _audioCtx.state === "suspended") _audioCtx.resume();
-    audio.onended = () => { _currentAudio = null; URL.revokeObjectURL(url); resolve(); };
-    audio.onerror = () => { _currentAudio = null; URL.revokeObjectURL(url); reject(); };
-    audio.play().catch(e => { _currentAudio = null; reject(e); });
-  });
 }
 
 // ---- API PROXY ----
@@ -4996,7 +4960,7 @@ function SettingsTab({ settings, updSettings }) {
       {/* About */}
       <div className="set-card">
         <div className="set-lb">About</div>
-        <div style={{fontSize:".68rem",color:"var(--ink2)",lineHeight:1.5}}>ShadowSpeak Cantonese v2.2.0. Shadowing method + spaced repetition. {ALL_WORDS.length} vocabulary words across {VOCAB_CATS.length} categories. {UNITS.reduce((s,u)=>s+u.phrases.length,0)} phrases across {UNITS.length} units.</div>
+        <div style={{fontSize:".68rem",color:"var(--ink2)",lineHeight:1.5}}>ShadowSpeak Cantonese v2.3.0. Shadowing method + spaced repetition. {ALL_WORDS.length} vocabulary words across {VOCAB_CATS.length} categories. {UNITS.reduce((s,u)=>s+u.phrases.length,0)} phrases across {UNITS.length} units.</div>
         <button onClick={()=>window.location.href="index.html"} style={{marginTop:8,background:"none",border:"none",cursor:"pointer",fontSize:".68rem",fontWeight:600,color:"var(--lime)",padding:0}}>← Back to landing page</button>
       </div>
     </div>

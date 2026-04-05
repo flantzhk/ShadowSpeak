@@ -1066,6 +1066,37 @@ const QUIZ_CSS = `
   .reading-mode .sh-cn{font-size:2.2rem}
   .reading-mode .wc-cn{font-size:1.1rem}
 }
+
+/* Playlist view */
+.playlist-header{background:linear-gradient(160deg, #1F3329 0%, #2a4535 100%);border-radius:20px;padding:20px;margin-bottom:0;position:relative;overflow:hidden}
+.playlist-header::after{content:'';position:absolute;top:-50%;right:-30%;width:200px;height:200px;background:radial-gradient(circle,rgba(196,240,0,.06) 0%,transparent 70%);pointer-events:none}
+.action-bar{position:sticky;top:0;z-index:50;background:var(--wh);padding:12px 0;display:flex;align-items:center;gap:10px;border-bottom:1px solid transparent;transition:border-color .2s}
+.action-bar.scrolled{border-bottom-color:var(--st);box-shadow:0 2px 8px rgba(0,0,0,.04)}
+.action-pill{background:none;border:1.5px solid var(--st);border-radius:999px;padding:8px 16px;font-size:.75rem;font-weight:700;color:var(--ink);cursor:pointer;min-height:40px;display:inline-flex;align-items:center;gap:6px;transition:all .15s}
+.action-pill:active{background:var(--cream)}
+.action-pill.on{background:rgba(196,240,0,.1);border-color:var(--lime);color:var(--for)}
+.track{background:var(--wh);border:1px solid var(--st);border-radius:14px;padding:14px;margin-bottom:8px;transition:all .2s}
+.track.known{background:rgba(196,240,0,.04);border-color:rgba(196,240,0,.2)}
+.track-expand{max-height:0;overflow:hidden;transition:max-height .3s ease}
+.track-expand.open{max-height:600px}
+.track-chevron{transition:transform .2s;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;font-size:.8rem;color:var(--ink3);width:32px;height:32px;border-radius:50%;flex-shrink:0}
+.track-chevron:active{background:var(--cream)}
+.track-chevron.open{transform:rotate(180deg)}
+.bottom-sheet-overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:200;display:flex;align-items:flex-end;justify-content:center;animation:bsOverIn .2s ease}
+@keyframes bsOverIn{from{opacity:0}to{opacity:1}}
+.bottom-sheet{background:var(--wh);border-radius:20px 20px 0 0;padding:20px;width:100%;max-width:500px;max-height:70vh;animation:bsSlideUp .25s ease}
+@keyframes bsSlideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.bottom-sheet-handle{width:40px;height:4px;background:var(--st);border-radius:2px;margin:0 auto 16px}
+.bottom-sheet-opt{width:100%;padding:14px 0;border:none;background:none;font-size:.85rem;font-weight:700;color:var(--ink);cursor:pointer;text-align:left;display:flex;align-items:center;gap:10px;min-height:48px;border-bottom:1px solid var(--st)}
+.bottom-sheet-opt:last-child{border-bottom:none}
+.bottom-sheet-opt:active{background:var(--cream)}
+.track-play-btn{width:40px;height:40px;border-radius:50%;border:none;background:var(--for);color:#fff;font-size:14px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;transition:transform .1s}
+.track-play-btn:active{transform:scale(.92)}
+.track-know-btn{border:1.5px solid var(--lime);border-radius:999px;padding:6px 14px;font-size:.7rem;font-weight:800;cursor:pointer;min-height:32px;display:inline-flex;align-items:center;gap:4px;transition:all .15s;background:none;color:var(--for);white-space:nowrap}
+.track-know-btn.known{background:var(--lime);color:var(--for);border-color:var(--lime)}
+.track-know-btn:active{transform:scale(.95)}
+.gloss-chip{text-align:center;padding:6px 8px;min-width:40px;background:var(--wh);border-radius:8px;border:1px solid var(--st);cursor:pointer;transition:background .15s}
+.gloss-chip:active{background:var(--cream)}
 `;
 
 // ---- QUIZ COMPONENTS ----
@@ -2402,6 +2433,8 @@ function AddNewSection({ progress, upd }) {
 function HomeTab({ profile, progress, upd, settings, setTab, recentTopics, setRecentTopics, practiceCount, library, selUnit, setSelUnit, markReviewed, startPlaylist, openPlBuilder }) {
   const [shadow, setShadow] = useState(null);
   const [searchQ, setSearchQ] = useState("");
+  const [readingMode, setReadingMode] = useState(false);
+  const [actionBarScrolled, setActionBarScrolled] = useState(false);
   const phraseListRef = useRef(null);
   const searchRef = useRef(null);
   const stats = useMemo(() => getStats(progress), [progress]);
@@ -2619,16 +2652,51 @@ function HomeTab({ profile, progress, upd, settings, setTab, recentTopics, setRe
         </div>
       </div>
 
-      {/* Selected unit content */}
-      <div ref={phraseListRef} style={{ borderTop: "2px solid var(--st)", paddingTop: 20, marginTop: 4 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-          <div><div className="pt">{topicIcons[unit.id]} {unit.title}</div><div className="ps">{kc}/{unit.phrases.length} known. {kc === 0 ? "let's get started!" : kc === unit.phrases.length ? "you've mastered this unit!" : "keep going, you're doing great!"}</div></div>
-          <button style={{ background: "var(--for)", color: "var(--lime)", border: "none", borderRadius: 999, padding: "10px 16px", fontSize: ".75rem", fontWeight: 800, cursor: "pointer", minHeight: 44 }} onClick={() => setShadow("unit")}>🎙 Shadow all</button>
+      {/* Playlist view */}
+      <div ref={phraseListRef} style={{ marginTop: 4 }}>
+        {/* Playlist Header */}
+        <div className="playlist-header">
+          <div style={{ display: "flex", alignItems: "flex-start", gap: 14 }}>
+            <button onClick={() => setSelUnit(UNITS[0].id)} style={{ background: "rgba(255,255,255,.1)", border: "1px solid rgba(255,255,255,.15)", borderRadius: 999, width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0, color: "#fff", fontSize: ".9rem" }}>&#8249;</button>
+            <div style={{ flex: 1 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
+                <span style={{ fontSize: "2.6rem", lineHeight: 1 }}>{topicIcons[unit.id] || "📖"}</span>
+                <div>
+                  <div style={{ fontSize: "1.1rem", fontWeight: 900, color: "#fff", lineHeight: 1.2 }}>{unit.title}</div>
+                  <div style={{ fontSize: ".72rem", color: "rgba(255,255,255,.5)", marginTop: 3, lineHeight: 1.3 }}>{unit.scene}</div>
+                </div>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 10 }}>
+                <span style={{ fontSize: ".68rem", fontWeight: 700, color: "rgba(255,255,255,.45)" }}>{unit.phrases.length} phrases</span>
+                <span style={{ color: "rgba(255,255,255,.2)" }}>·</span>
+                <span style={{ fontSize: ".68rem", fontWeight: 700, color: "var(--lime)" }}>{kc} known</span>
+                <span style={{ color: "rgba(255,255,255,.2)" }}>·</span>
+                <span style={{ fontSize: ".68rem", fontWeight: 800, color: "var(--lime)" }}>{Math.round(kc / unit.phrases.length * 100)}%</span>
+              </div>
+              {/* Progress bar */}
+              <div style={{ height: 4, background: "rgba(255,255,255,.1)", borderRadius: 2, overflow: "hidden", marginTop: 8 }}>
+                <div style={{ height: "100%", width: Math.round(kc / unit.phrases.length * 100) + "%", background: "var(--lime)", borderRadius: 2, transition: "width .4s ease" }} />
+              </div>
+            </div>
+          </div>
         </div>
-        <div className="bt" style={{ marginBottom: 12 }}><div className="bf" style={{ width: Math.round(kc / unit.phrases.length * 100) + "%" }} /></div>
-        {sorted.map((ph) => (
-          <PhraseCard key={ph.origIdx} ph={ph} unit={unit} upd={upd} setShadow={setShadow} />
-        ))}
+
+        {/* Sticky Action Bar */}
+        <div className={"action-bar" + (actionBarScrolled ? " scrolled" : "")} style={{ background: "var(--cream)" }}>
+          <button onClick={() => setShadow("unit")} style={{ width: 48, height: 48, borderRadius: "50%", background: "var(--lime)", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.1rem", flexShrink: 0, color: "var(--for)", fontWeight: 900 }}>&#9654;</button>
+          <button className="action-pill" onClick={() => { const shuffled = [...sorted].sort(() => Math.random() - 0.5); setShadow("unit"); }}>🔀 Shuffle</button>
+          <div style={{ width: 1, height: 28, background: "var(--st)", flexShrink: 0 }} />
+          <button className={"action-pill" + (readingMode ? " on" : "")} onClick={() => setReadingMode(m => !m)}>
+            🔤 {readingMode ? "Chinese first" : "English first"}
+          </button>
+        </div>
+
+        {/* Track List */}
+        <div style={{ paddingTop: 8 }}>
+          {sorted.map((ph) => (
+            <PhraseCard key={ph.origIdx} ph={ph} unit={unit} upd={upd} setShadow={setShadow} readingMode={readingMode} />
+          ))}
+        </div>
       </div>
     </div>
   );
@@ -3133,6 +3201,7 @@ function TodayTab({ profile, progress, upd, markReviewed, setTab, setSelUnit, st
 // ---- PHRASES ----
 function PhrasesTab({ progress, upd, selUnit, setSelUnit, settings }) {
   const [shadow, setShadow] = useState(null);
+  const [readingMode, setReadingMode] = useState(false);
   const phraseListRef = useRef(null);
   const unit = UNITS.find(u=>u.id===selUnit)||UNITS[0];
   const kc = unit.phrases.filter((_,i)=>(progress.phrases||{})[`${unit.id}-${i}`]).length;
@@ -3192,52 +3261,147 @@ function PhrasesTab({ progress, upd, selUnit, setSelUnit, settings }) {
         })}
       </div>
 
-      {/* Selected unit content — with clear separation from grid */}
-      <div ref={phraseListRef} style={{borderTop:"2px solid var(--st)",paddingTop:20,marginTop:4}}>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
-        <div><div className="pt">{topicIcons[unit.id]} {unit.title}</div><div className="ps">{kc}/{unit.phrases.length} known. {kc === 0 ? "let's get started!" : kc === unit.phrases.length ? "you've mastered this unit! 🎉" : "keep going, you're doing great!"}</div></div>
-        <button style={{background:"var(--for)",color:"var(--lime)",border:"none",borderRadius:999,padding:"10px 16px",fontSize:".75rem",fontWeight:800,cursor:"pointer",minHeight:44}} onClick={()=>setShadow("unit")}>🎙 Shadow all</button>
-      </div>
-      <div className="bt" style={{marginBottom:12}}><div className="bf" style={{width:Math.round(kc/unit.phrases.length*100)+"%"}} /></div>
-      {sorted.map((ph) => (
-        <PhraseCard key={ph.origIdx} ph={ph} unit={unit} upd={upd} setShadow={setShadow} />
-      ))}
+      {/* Playlist view */}
+      <div ref={phraseListRef} style={{marginTop:4}}>
+        {/* Playlist Header */}
+        <div className="playlist-header">
+          <div style={{display:"flex",alignItems:"flex-start",gap:14}}>
+            <button onClick={()=>setSelUnit(UNITS[0].id)} style={{background:"rgba(255,255,255,.1)",border:"1px solid rgba(255,255,255,.15)",borderRadius:999,width:36,height:36,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",flexShrink:0,color:"#fff",fontSize:".9rem"}}>&#8249;</button>
+            <div style={{flex:1}}>
+              <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:6}}>
+                <span style={{fontSize:"2.6rem",lineHeight:1}}>{topicIcons[unit.id]||"📖"}</span>
+                <div>
+                  <div style={{fontSize:"1.1rem",fontWeight:900,color:"#fff",lineHeight:1.2}}>{unit.title}</div>
+                  <div style={{fontSize:".72rem",color:"rgba(255,255,255,.5)",marginTop:3,lineHeight:1.3}}>{unit.scene}</div>
+                </div>
+              </div>
+              <div style={{display:"flex",alignItems:"center",gap:6,marginTop:10}}>
+                <span style={{fontSize:".68rem",fontWeight:700,color:"rgba(255,255,255,.45)"}}>{unit.phrases.length} phrases</span>
+                <span style={{color:"rgba(255,255,255,.2)"}}>·</span>
+                <span style={{fontSize:".68rem",fontWeight:700,color:"var(--lime)"}}>{kc} known</span>
+                <span style={{color:"rgba(255,255,255,.2)"}}>·</span>
+                <span style={{fontSize:".68rem",fontWeight:800,color:"var(--lime)"}}>{Math.round(kc/unit.phrases.length*100)}%</span>
+              </div>
+              <div style={{height:4,background:"rgba(255,255,255,.1)",borderRadius:2,overflow:"hidden",marginTop:8}}>
+                <div style={{height:"100%",width:Math.round(kc/unit.phrases.length*100)+"%",background:"var(--lime)",borderRadius:2,transition:"width .4s ease"}} />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Sticky Action Bar */}
+        <div className="action-bar" style={{background:"var(--cream)"}}>
+          <button onClick={()=>setShadow("unit")} style={{width:48,height:48,borderRadius:"50%",background:"var(--lime)",border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1.1rem",flexShrink:0,color:"var(--for)",fontWeight:900}}>&#9654;</button>
+          <button className="action-pill" onClick={()=>setShadow("unit")}>🔀 Shuffle</button>
+          <div style={{width:1,height:28,background:"var(--st)",flexShrink:0}} />
+          <button className={"action-pill"+(readingMode?" on":"")} onClick={()=>setReadingMode(m=>!m)}>
+            🔤 {readingMode?"Chinese first":"English first"}
+          </button>
+        </div>
+
+        {/* Track List */}
+        <div style={{paddingTop:8}}>
+          {sorted.map((ph) => (
+            <PhraseCard key={ph.origIdx} ph={ph} unit={unit} upd={upd} setShadow={setShadow} readingMode={readingMode} />
+          ))}
+        </div>
       </div>
     </div>
   );
 }
 
-// ---- PHRASE CARD with word-by-word toggle ----
-function PhraseCard({ ph, unit, upd, setShadow }) {
-  const [showGloss, setShowGloss] = useState(false);
+// ---- PHRASE CARD — Track-style with expand/collapse ----
+function PhraseCard({ ph, unit, upd, setShadow, readingMode }) {
+  const [expanded, setExpanded] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   const gloss = getAutoGloss(ph);
   const hasGloss = gloss.length > 0;
 
   return (
-    <div className={`card ${ph.known?"kn":""}`}>
-      <div className="ph-en">{ph.en}</div>
-      <div className="ph-jy"><JyutpingTone text={ph.jyut} /></div>
-      <div className="ph-cn">{ph.cn}</div>
-      {showGloss && hasGloss && (
-        <div style={{display:"flex",flexWrap:"wrap",gap:3,margin:"6px 0 8px",padding:8,background:"rgba(143,106,232,0.06)",borderRadius:8}}>
-          {gloss.filter(g=>g.cn).map((g,i) => (
-            <div key={i} onClick={()=>speak(g.cn)} style={{textAlign:"center",padding:"5px 6px",minWidth:36,background:"var(--wh)",borderRadius:6,border:"1px solid var(--st)",cursor:"pointer",transition:"background .15s"}} onMouseDown={e=>e.currentTarget.style.background="var(--cream)"} onMouseUp={e=>e.currentTarget.style.background="var(--wh)"}>
-              <div style={{fontFamily:"' + LANG_CONFIG.fontFamily.replace(/'/g, '') + '",fontSize:".78rem",fontWeight:700,color:"var(--ink)",lineHeight:1.1}}>{g.cn}</div>
-              <div style={{fontSize:".68rem",fontStyle:"italic",color:"var(--plum)",lineHeight:1.2}}><JyutpingTone text={g.jy} /></div>
-              {g.en && <div style={{fontSize:".65rem",fontWeight:600,color:"var(--ink2)",lineHeight:1.2,marginTop:1}}>{g.en}</div>}
+    <div className={"track" + (ph.known ? " known" : "")}>
+      {/* Collapsed row */}
+      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+        {/* Play button */}
+        <button className="track-play-btn" onClick={(e) => { e.stopPropagation(); speak(ph.cn); }}>&#9654;</button>
+
+        {/* Text stack */}
+        <div style={{ flex: 1, minWidth: 0, cursor: "pointer" }} onClick={() => setExpanded(v => !v)}>
+          {readingMode ? (
+            <>
+              <div style={{ fontSize: ".88rem", fontWeight: 700, color: "var(--ink)", lineHeight: 1.3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{ph.cn}</div>
+              <div style={{ fontSize: ".75rem", fontStyle: "italic", color: "var(--plum)", lineHeight: 1.3 }}><JyutpingTone text={ph.jyut} /></div>
+              <div style={{ fontSize: ".72rem", color: "var(--ink3)", lineHeight: 1.3 }}>{ph.en}</div>
+            </>
+          ) : (
+            <>
+              <div style={{ fontSize: ".85rem", fontWeight: 700, color: "var(--ink)", lineHeight: 1.3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{ph.en}</div>
+              <div style={{ fontSize: ".75rem", fontStyle: "italic", color: "var(--plum)", lineHeight: 1.3 }}><JyutpingTone text={ph.jyut} /></div>
+              <div style={{ fontSize: ".82rem", color: "var(--ink3)", lineHeight: 1.3 }}>{ph.cn}</div>
+            </>
+          )}
+        </div>
+
+        {/* Know button */}
+        <button className={"track-know-btn" + (ph.known ? " known" : "")} onClick={(e) => { e.stopPropagation(); upd(`phrases.${unit.id}-${ph.origIdx}`, !ph.known); }}>
+          {ph.known ? "Known!" : "I know this!"}
+        </button>
+
+        {/* Expand chevron */}
+        <span className={"track-chevron" + (expanded ? " open" : "")} onClick={() => setExpanded(v => !v)}>&#9662;</span>
+      </div>
+
+      {/* Expanded content */}
+      <div className={"track-expand" + (expanded ? " open" : "")}>
+        <div style={{ paddingTop: 14 }}>
+          {/* Context tag */}
+          {ph.tag && (
+            <div style={{ fontSize: ".72rem", fontStyle: "italic", color: "var(--ink3)", marginBottom: 10 }}>Context: {ph.tag}</div>
+          )}
+
+          {/* Word-by-word breakdown */}
+          {hasGloss && (
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 12 }}>
+              {gloss.filter(g => g.cn).map((g, i) => (
+                <div key={i} className="gloss-chip" onClick={() => speak(g.cn)}>
+                  <div style={{ fontSize: ".82rem", fontWeight: 700, color: "var(--ink)", lineHeight: 1.2 }}>{g.cn}</div>
+                  <div style={{ fontSize: ".68rem", fontStyle: "italic", color: "var(--plum)", lineHeight: 1.2 }}><JyutpingTone text={g.jy} /></div>
+                  {g.en && <div style={{ fontSize: ".62rem", fontWeight: 600, color: "var(--ink2)", lineHeight: 1.2, marginTop: 1 }}>{g.en}</div>}
+                </div>
+              ))}
             </div>
-          ))}
+          )}
+
+          {/* Action buttons row */}
+          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+            <button style={{ background: "var(--st)", border: "none", borderRadius: 999, padding: "8px 14px", fontSize: ".72rem", fontWeight: 700, color: "var(--ink2)", cursor: "pointer", minHeight: 36, display: "inline-flex", alignItems: "center", gap: 4 }} onClick={() => speak(ph.cn)}>&#9654; Play</button>
+            <button style={{ background: "var(--st)", border: "none", borderRadius: 999, padding: "8px 14px", fontSize: ".72rem", fontWeight: 700, color: "var(--ink2)", cursor: "pointer", minHeight: 36, display: "inline-flex", alignItems: "center", gap: 4 }}>📚 Add to Library</button>
+            <button style={{ background: "var(--for)", border: "none", borderRadius: 999, padding: "8px 14px", fontSize: ".72rem", fontWeight: 700, color: "var(--lime)", cursor: "pointer", minHeight: 36, display: "inline-flex", alignItems: "center", gap: 4 }} onClick={() => setShadow(ph.origIdx)}>🎙 Shadow</button>
+            {/* 3-dot menu */}
+            <button onClick={() => setMenuOpen(true)} style={{ marginLeft: "auto", background: "none", border: "none", fontSize: "1.1rem", color: "var(--ink3)", cursor: "pointer", padding: "4px 8px", minHeight: 36, display: "inline-flex", alignItems: "center" }}>&#8943;</button>
+          </div>
+        </div>
+      </div>
+
+      {/* Bottom sheet menu */}
+      {menuOpen && (
+        <div className="bottom-sheet-overlay" onClick={() => setMenuOpen(false)}>
+          <div className="bottom-sheet" onClick={e => e.stopPropagation()}>
+            <div className="bottom-sheet-handle" />
+            {/* Preview */}
+            <div style={{ marginBottom: 12, paddingBottom: 12, borderBottom: "1px solid var(--st)" }}>
+              <div style={{ fontSize: ".85rem", fontWeight: 700, color: "var(--ink)", marginBottom: 2 }}>{ph.en}</div>
+              <div style={{ fontSize: ".75rem", fontStyle: "italic", color: "var(--plum)" }}><JyutpingTone text={ph.jyut} /></div>
+            </div>
+            <button className="bottom-sheet-opt" onClick={() => { setMenuOpen(false); setShadow(ph.origIdx); }}>🎙 Shadow this phrase</button>
+            <button className="bottom-sheet-opt" onClick={() => { setMenuOpen(false); upd(`phrases.${unit.id}-${ph.origIdx}`, !ph.known); }}>
+              {ph.known ? "↩ Unmark as known" : "✓ I know this"}
+            </button>
+            <button className="bottom-sheet-opt">📚 Add to Library</button>
+            <button className="bottom-sheet-opt" onClick={() => setMenuOpen(false)} style={{ color: "var(--ink3)", justifyContent: "center" }}>Cancel</button>
+          </div>
         </div>
       )}
-      <div className="ph-ft">
-        <button className="pbtn play-btn" onClick={()=>speak(ph.cn)}>▶</button>
-        <button style={{background:"var(--st)",border:"none",borderRadius:999,padding:"6px 14px",fontSize:".72rem",fontWeight:700,color:"var(--ink2)",cursor:"pointer",minHeight:36,display:"inline-flex",alignItems:"center",gap:4}} onClick={()=>setShadow(ph.origIdx)}>🔁 Repeat</button>
-        <button style={{background:"var(--st)",border:"none",borderRadius:999,padding:"6px 14px",fontSize:".72rem",fontWeight:700,color:"var(--ink2)",cursor:"pointer",minHeight:36}} onClick={()=>setShowGloss(v=>!v)}>{showGloss?"Hide breakdown":"Word by word"}</button>
-        <button className={`mkb ${ph.known?"kn":"un"}`} onClick={()=>upd(`phrases.${unit.id}-${ph.origIdx}`,!ph.known)}>
-          {ph.known?"✓ Known":"Mark known"}
-        </button>
-      </div>
     </div>
   );
 }
@@ -4112,7 +4276,7 @@ function SettingsTab({ settings, updSettings }) {
       {/* About */}
       <div className="set-card">
         <div className="set-lb">About</div>
-        <div style={{fontSize:".68rem",color:"var(--ink2)",lineHeight:1.5}}>" + "ShadowSpeak " + LANG_CONFIG.name + " v3.2.0. Shadowing method + spaced repetition. {ALL_WORDS.length} vocabulary words across {VOCAB_CATS.length} categories. {UNITS.reduce((s,u)=>s+u.phrases.length,0)} phrases across {UNITS.length} units.</div>
+        <div style={{fontSize:".68rem",color:"var(--ink2)",lineHeight:1.5}}>" + "ShadowSpeak " + LANG_CONFIG.name + " v3.3.0. Shadowing method + spaced repetition. {ALL_WORDS.length} vocabulary words across {VOCAB_CATS.length} categories. {UNITS.reduce((s,u)=>s+u.phrases.length,0)} phrases across {UNITS.length} units.</div>
         <button onClick={()=>window.location.href="index.html"} style={{marginTop:8,background:"none",border:"none",cursor:"pointer",fontSize:".68rem",fontWeight:600,color:"var(--lime)",padding:0}}>← Back to landing page</button>
       </div>
     </div>

@@ -3,7 +3,13 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>ShadowSpeak - Mandarin</title>
+  <title>ShadowSpeak — Learn Mandarin with Shadowing</title>
+  <meta name="description" content="Learn to speak Mandarin using the shadowing method. AI-powered voices, pinyin guides, pronunciation scoring, and offline mode." />
+  <meta name="keywords" content="learn Mandarin, Mandarin app, speak Mandarin, pinyin, shadowing method, Chinese language, Mandarin pronunciation, language learning app" />
+  <meta property="og:title" content="ShadowSpeak — Learn Mandarin with Shadowing" />
+  <meta property="og:description" content="Master Mandarin with AI-powered shadowing. Pinyin guides, native voices, and offline support." />
+  <meta property="og:type" content="website" />
+  <link rel="canonical" href="https://flantzhk.github.io/ShadowSpeak/mandarin.html" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🇨🇳</text></svg>" />
   <link rel="manifest" href="manifest.json" />
   <meta name="theme-color" content="#1F3329" />
@@ -1203,51 +1209,11 @@ function speakAsync(text, lang, rate=0.85) {
   });
 }
 
-// MiniMax TTS — AI-quality voices for both English and Mandarin
-const MINIMAX_KEY = "sk-api-4_y-GoNFnijPJ1oFvpqw5ohNp3upNCtHmUb2UxXau2wNyf3cpLiRYc6y5LsRB2ScHp0iWFtMhhVpBC_A2dLcrCSzZKeAto5r2Xz4LxVIuaAIShCi3wTsaaU";
 let _currentAudio = null;
 
 function stopAudio() {
   if (_currentAudio) { _currentAudio.pause(); _currentAudio.currentTime = 0; _currentAudio = null; }
   if ("speechSynthesis" in window) speechSynthesis.cancel();
-}
-
-async function minimaxTTS(text, lang) {
-  stopAudio();
-  const body = {
-    model: "speech-02-hd",
-    text: text,
-    voice_id: lang === "cmn-CN" ? (_voiceGender === "male" ? "Patient_Man" : "Calm_Woman") : (_voiceGender === "male" ? "Casual_Guy" : "sweet_lady_2"),
-    speed: lang === "cmn-CN" ? 0.9 : 1.0,
-    vol: 1.0,
-    pitch: 0,
-    audio_sample_rate: 32000,
-    bitrate: 128000,
-    format: "mp3"
-  };
-  const res = await fetch("https://api.minimax.io/v1/t2a_v2", {
-    method: "POST",
-    headers: {
-      "Authorization": `Bearer ${MINIMAX_KEY}`,
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify(body)
-  });
-  if (!res.ok) throw new Error("MiniMax TTS failed: " + res.status);
-  const data = await res.json();
-  if (data.base_resp && data.base_resp.status_code !== 0) throw new Error("MiniMax error: " + data.base_resp.status_msg);
-  
-  // audio_file is base64 encoded
-  const audioBytes = Uint8Array.from(atob(data.audio_file), c => c.charCodeAt(0));
-  const blob = new Blob([audioBytes], { type: "audio/mpeg" });
-  const url = URL.createObjectURL(blob);
-  return new Promise((resolve, reject) => {
-    const audio = new Audio(url);
-    _currentAudio = audio;
-    audio.onended = () => { _currentAudio = null; URL.revokeObjectURL(url); resolve(); };
-    audio.onerror = () => { _currentAudio = null; URL.revokeObjectURL(url); reject(); };
-    audio.play().catch(e => { _currentAudio = null; reject(e); });
-  });
 }
 
 // ---- API PROXY ----
@@ -4498,7 +4464,7 @@ function SettingsTab({ settings, updSettings }) {
       {/* About */}
       <div className="set-card">
         <div className="set-lb">About</div>
-        <div style={{fontSize:".68rem",color:"var(--ink2)",lineHeight:1.5}}>ShadowSpeak Mandarin v2.2.0. Shadowing method + spaced repetition. {ALL_WORDS.length} vocabulary words across {VOCAB_CATS.length} categories. {UNITS.reduce((s,u)=>s+u.phrases.length,0)} phrases across {UNITS.length} units.</div>
+        <div style={{fontSize:".68rem",color:"var(--ink2)",lineHeight:1.5}}>ShadowSpeak Mandarin v2.3.0. Shadowing method + spaced repetition. {ALL_WORDS.length} vocabulary words across {VOCAB_CATS.length} categories. {UNITS.reduce((s,u)=>s+u.phrases.length,0)} phrases across {UNITS.length} units.</div>
         <button onClick={()=>window.location.href="index.html"} style={{marginTop:8,background:"none",border:"none",cursor:"pointer",fontSize:".68rem",fontWeight:600,color:"var(--lime)",padding:0}}>← Back to landing page</button>
       </div>
     </div>

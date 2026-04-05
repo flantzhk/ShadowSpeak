@@ -166,7 +166,7 @@
     const G_DARK = G_ICON.replace(/currentColor/g,'#1F3329');
 
     let currentUser = null;
-    let pendingRedirect = null; // stores 'canto.html' or 'mandarin.html' if user clicked a card before signing in
+    let pendingRedirect = null; // stores 'app.html?lang=canto' or 'app.html?lang=mandarin'
 
     function render() {
       const app = document.getElementById('app');
@@ -174,8 +174,8 @@
       const photo = currentUser?.photoURL || '';
       const name = currentUser?.displayName || 'Learner';
       const firstName = name.split(' ')[0];
-      const lastLang = localStorage.getItem('shadowspeak-last-lang'); // 'canto.html' or 'mandarin.html'
-      const lastLangName = lastLang === 'canto.html' ? 'Cantonese' : lastLang === 'mandarin.html' ? 'Mandarin' : null;
+      const lastLang = localStorage.getItem('shadowspeak-last-lang');
+      const lastLangName = lastLang && lastLang.includes('canto') ? 'Cantonese' : lastLang && lastLang.includes('mandarin') ? 'Mandarin' : null;
 
       app.innerHTML = `
         <div class="nav">
@@ -269,14 +269,14 @@
             </div>
 
             <div class="lang-cards">
-              <div class="lang-card" onclick="pickLang('canto.html')">
+              <div class="lang-card" onclick="pickLang('app.html?lang=canto')">
                 <div class="lang-flag">🇭🇰</div>
                 <div class="lang-name">Cantonese</div>
                 <div class="lang-native" style="font-family:'Noto Sans HK',sans-serif">廣東話</div>
                 <div class="lang-stats">85 million speakers.<br/>11 units. 374 phrases.</div>
                 ${signedIn ? '<div class="lang-badge">Start speaking</div>' : '<div class="signin-badge">Sign in to start →</div>'}
               </div>
-              <div class="lang-card" onclick="pickLang('mandarin.html')">
+              <div class="lang-card" onclick="pickLang('app.html?lang=mandarin')">
                 <div class="lang-flag">🇨🇳</div>
                 <div class="lang-name">Mandarin</div>
                 <div class="lang-native" style="font-family:'Noto Sans SC',sans-serif">普通话</div>

@@ -1257,14 +1257,14 @@ const PROXY_URL = "https://shadowspeak-proxy.faith-lantz-ee8.workers.dev";
 
 // Voice options
 const EN_VOICES = [
-  { id: "DXFkLCBUTmvXpp2QwZjA", label: "Female", gender: "female" },
-  { id: "wWWn96OtTHu1sn8SRGEr", label: "American man", accent: "American", gender: "male" },
-  { id: "oW8bn5YtBB89X2nJ0DT9", label: "British woman", accent: "British", gender: "female" },
-  { id: "HF0hjxElqeS2vwmlzj6g", label: "British man", accent: "British", gender: "male" },
+  { id: "DXFkLCBUTmvXpp2QwZjA", label: "Female 1", gender: "female" },
+  { id: "wWWn96OtTHu1sn8SRGEr", label: "Male 1", gender: "male" },
+  { id: "oW8bn5YtBB89X2nJ0DT9", label: "Female 2", gender: "female" },
+  { id: "HF0hjxElqeS2vwmlzj6g", label: "Male 2", gender: "male" },
 ];
 const ZH_VOICES = [
-  { id: "bhJUNIXWQQ94l8eI2VUf", label: "Mandarin woman", gender: "female" },
-  { id: "BWN0mOtkGHghA3CYFzFK", label: "Mandarin man", gender: "male" },
+  { id: "bhJUNIXWQQ94l8eI2VUf", label: "Female 1", gender: "female" },
+  { id: "BWN0mOtkGHghA3CYFzFK", label: "Male 1", gender: "male" },
 ];
 const DEFAULT_EN_VOICE = "DXFkLCBUTmvXpp2QwZjA";
 const DEFAULT_ZH_VOICE = "bhJUNIXWQQ94l8eI2VUf";
@@ -1723,7 +1723,7 @@ const CSS = `
 .lt-btn.pri{width:64px;height:64px;background:var(--lime);color:var(--navy);font-size:24px;font-weight:900;box-shadow:0 4px 16px rgba(196,240,0,.2)}
 .lt-lbl{font-size:.6rem;font-weight:700;color:rgba(255,255,255,.3)}
 .l-know-row{display:flex;justify-content:center;margin-bottom:14px}
-.l-know-btn{display:flex;align-items:center;gap:8px;padding:10px 24px;border-radius:999px;background:rgba(196,240,0,.06);border:1.5px solid rgba(196,240,0,.15);color:var(--lime);font-family:'DM Sans',sans-serif;font-size:.78rem;font-weight:800;cursor:pointer;min-height:44px}
+.l-know-btn{display:flex;align-items:center;gap:8px;padding:12px 28px;border-radius:999px;background:rgba(196,240,0,.15);border:2px solid var(--lime);color:var(--lime);font-family:'DM Sans',sans-serif;font-size:.85rem;font-weight:900;cursor:pointer;min-height:48px;transition:all .15s;box-shadow:0 2px 8px rgba(196,240,0,.2)}.l-know-btn:active{transform:scale(.96);background:rgba(196,240,0,.25)}
 .l-divider{height:1px;background:rgba(255,255,255,.06);margin-bottom:12px}
 .l-row-label{font-size:.58rem;font-weight:800;color:rgba(255,255,255,.2);text-transform:uppercase;letter-spacing:1.2px;text-align:center;margin-bottom:6px}
 .l-pill-row{display:flex;align-items:center;justify-content:center;gap:6px}
@@ -3847,7 +3847,7 @@ function ShadowMode({ unit, progress, upd, settings, onClose, startIdx=0, single
         <div className="l-know-row">
           <button className="l-know-btn" style={isKn?{opacity:.4}:{}} onClick={markKn}>
             <span style={{fontSize:"1rem"}}>💪</span>
-            <span>{isKn?"Known":"I know this now"}</span>
+            <span>{isKn?"Known!":"I know this now!"}</span>
           </button>
         </div>
         <div className="l-divider" />
@@ -4498,7 +4498,7 @@ function SettingsTab({ settings, updSettings }) {
       {/* About */}
       <div className="set-card">
         <div className="set-lb">About</div>
-        <div style={{fontSize:".68rem",color:"var(--ink2)",lineHeight:1.5}}>ShadowSpeak Mandarin v2.1.0. Shadowing method + spaced repetition. {ALL_WORDS.length} vocabulary words across {VOCAB_CATS.length} categories. {UNITS.reduce((s,u)=>s+u.phrases.length,0)} phrases across {UNITS.length} units.</div>
+        <div style={{fontSize:".68rem",color:"var(--ink2)",lineHeight:1.5}}>ShadowSpeak Mandarin v2.2.0. Shadowing method + spaced repetition. {ALL_WORDS.length} vocabulary words across {VOCAB_CATS.length} categories. {UNITS.reduce((s,u)=>s+u.phrases.length,0)} phrases across {UNITS.length} units.</div>
         <button onClick={()=>window.location.href="index.html"} style={{marginTop:8,background:"none",border:"none",cursor:"pointer",fontSize:".68rem",fontWeight:600,color:"var(--lime)",padding:0}}>← Back to landing page</button>
       </div>
     </div>

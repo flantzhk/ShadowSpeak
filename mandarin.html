@@ -2411,9 +2411,12 @@ function App() {
       updSettings("onboardingDone", true);
     } else {
       return <VoiceOnboarding onComplete={(enVoice, zhVoice) => {
-        updSettings("enVoice", enVoice);
-        updSettings("zhVoice", zhVoice);
-        updSettings("onboardingDone", true);
+        const newSettings = { ...settings, enVoice, zhVoice, onboardingDone: true };
+        setSettings(newSettings);
+        _activeEnVoiceId = enVoice;
+        _activeZhVoiceId = zhVoice;
+        localStorage.setItem("mandarin-settings", JSON.stringify(newSettings));
+        if (user) saveSettingsToFirestore(user.uid, newSettings);
       }} />;
     }
   } else if (settings.onboardingDone === false && isReturningUser) {
@@ -4495,7 +4498,7 @@ function SettingsTab({ settings, updSettings }) {
       {/* About */}
       <div className="set-card">
         <div className="set-lb">About</div>
-        <div style={{fontSize:".68rem",color:"var(--ink2)",lineHeight:1.5}}>ShadowSpeak Mandarin v2.0.0. Shadowing method + spaced repetition. {ALL_WORDS.length} vocabulary words across {VOCAB_CATS.length} categories. {UNITS.reduce((s,u)=>s+u.phrases.length,0)} phrases across {UNITS.length} units.</div>
+        <div style={{fontSize:".68rem",color:"var(--ink2)",lineHeight:1.5}}>ShadowSpeak Mandarin v2.1.0. Shadowing method + spaced repetition. {ALL_WORDS.length} vocabulary words across {VOCAB_CATS.length} categories. {UNITS.reduce((s,u)=>s+u.phrases.length,0)} phrases across {UNITS.length} units.</div>
         <button onClick={()=>window.location.href="index.html"} style={{marginTop:8,background:"none",border:"none",cursor:"pointer",fontSize:".68rem",fontWeight:600,color:"var(--lime)",padding:0}}>← Back to landing page</button>
       </div>
     </div>

@@ -1667,11 +1667,11 @@ function cantoneseAiTTS(text) {
 }
 
 function elevenLabsTTS(text, lang) {
-  const cacheKey = `el:${_activeEnVoiceId}:${text}`;
+  const voiceId = (lang && lang !== "en") ? _activeCantoVoiceId : _activeEnVoiceId;
+  const cacheKey = `el:${voiceId}:${text}`;
   if (_ttsCache.has(cacheKey)) return _playCachedBlob(_ttsCache.get(cacheKey));
   return new Promise((resolve, reject) => {
     stopAudio();
-    const voiceId = _activeEnVoiceId;
     fetch(`${PROXY_URL}/elevenlabs/tts`, {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ text, voice_id: voiceId, model_id: "eleven_multilingual_v2", voice_settings: { stability: 0.5, similarity_boost: 0.75, style: 0.0 } })
@@ -2803,9 +2803,12 @@ function App() {
       updSettings("onboardingDone", true);
     } else {
       return <VoiceOnboarding onComplete={(enVoice, cantoVoice) => {
-        updSettings("enVoice", enVoice);
-        updSettings("cantoVoice", cantoVoice);
-        updSettings("onboardingDone", true);
+        const newSettings = { ...settings, enVoice, cantoVoice, onboardingDone: true };
+        setSettings(newSettings);
+        _activeEnVoiceId = enVoice;
+        _activeCantoVoiceId = cantoVoice;
+        localStorage.setItem("canto-settings", JSON.stringify(newSettings));
+        if (user) saveSettingsToFirestore(user.uid, newSettings);
       }} />;
     }
   } else if (settings.onboardingDone === false && isReturningUser) {
@@ -4993,7 +4996,7 @@ function SettingsTab({ settings, updSettings }) {
       {/* About */}
       <div className="set-card">
         <div className="set-lb">About</div>
-        <div style={{fontSize:".68rem",color:"var(--ink2)",lineHeight:1.5}}>ShadowSpeak Cantonese v2.0.0. Shadowing method + spaced repetition. {ALL_WORDS.length} vocabulary words across {VOCAB_CATS.length} categories. {UNITS.reduce((s,u)=>s+u.phrases.length,0)} phrases across {UNITS.length} units.</div>
+        <div style={{fontSize:".68rem",color:"var(--ink2)",lineHeight:1.5}}>ShadowSpeak Cantonese v2.1.0. Shadowing method + spaced repetition. {ALL_WORDS.length} vocabulary words across {VOCAB_CATS.length} categories. {UNITS.reduce((s,u)=>s+u.phrases.length,0)} phrases across {UNITS.length} units.</div>
         <button onClick={()=>window.location.href="index.html"} style={{marginTop:8,background:"none",border:"none",cursor:"pointer",fontSize:".68rem",fontWeight:600,color:"var(--lime)",padding:0}}>← Back to landing page</button>
       </div>
     </div>

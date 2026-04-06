@@ -2846,30 +2846,34 @@ function HomeTab({ profile, progress, upd, settings, setTab, recentTopics, setRe
         </div>
         {/* Search results dropdown */}
         {searchResults.length > 0 && <div className="search-results" style={{margin:"0 16px 12px"}}>
-          {searchResults.map((r, ri) => (
-            <div key={ri} className="search-result" onClick={() => {
-              if (r.type === "word") {
-                speak(r.cn);
-              } else if (r.unitId) {
-                setSelUnit(r.unitId);
-                updateRecent(r.unitId);
-                setExpandedIdx(r.idx);
-                setSearchQ("");
-              }
-            }}>
-              <span className="search-badge" style={{ background: r.type === "phrase" ? "rgba(122,170,0,.15)" : "rgba(143,106,232,.15)", color: r.type === "phrase" ? "var(--ld)" : "var(--plum)" }}>
-                {r.type === "phrase" ? "PHRASE" : "WORD"}
-              </span>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: ".82rem", fontWeight: 700, color: "var(--ink)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.en || r.cn}</div>
-                <div style={{ fontSize: ".72rem", color: "var(--plum)", fontStyle: "italic" }}>{r.jyut}</div>
+          {searchResults.map((r, ri) => {
+            const inLib = (progress.unit10||[]).find(s=>s.cn===r.cn);
+            return (
+            <div key={ri} className="search-result" style={{display:"flex",alignItems:"center",gap:8}}>
+              <div style={{flex:1,display:"flex",alignItems:"center",gap:8,minWidth:0,cursor:"pointer"}} onClick={() => {
+                if (r.type === "word") {
+                  speak(r.cn);
+                } else if (r.unitId) {
+                  setSelUnit(r.unitId);
+                  updateRecent(r.unitId);
+                  setExpandedIdx(r.idx);
+                  setSearchQ("");
+                }
+              }}>
+                <span className="search-badge" style={{ background: r.type === "phrase" ? "rgba(122,170,0,.15)" : "rgba(143,106,232,.15)", color: r.type === "phrase" ? "var(--ld)" : "var(--plum)" }}>
+                  {r.type === "phrase" ? "PHRASE" : "WORD"}
+                </span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: ".82rem", fontWeight: 700, color: "var(--ink)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.en || r.cn}</div>
+                  <div style={{ fontSize: ".72rem", color: "var(--plum)", fontStyle: "italic" }}>{r.jyut}</div>
+                </div>
+                <span style={{ fontSize: ".82rem", color: "var(--ink3)", flexShrink: 0 }}>{r.cn}</span>
+                {r.type === "word" && <span style={{ fontSize: ".7rem", color: "var(--plum)", flexShrink: 0 }}>&#9654;</span>}
               </div>
-              <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
-                <span style={{ fontSize: ".82rem", color: "var(--ink3)" }}>{r.cn}</span>
-                {r.type === "word" && <span style={{ fontSize: ".7rem", color: "var(--plum)" }}>&#9654;</span>}
-              </div>
+              <button onClick={(e)=>{e.stopPropagation();if(!inLib){const items=progress.unit10||[];upd("unit10",[{en:r.en||"",jyut:r.jyut||"",cn:r.cn,tag:r.unitTitle||"Search",known:false,date:new Date().toLocaleDateString("en-GB",{day:"numeric",month:"short"})},...items]);}}} style={{width:32,height:32,borderRadius:8,border:inLib?"1.5px solid var(--lime)":"1.5px solid var(--st)",background:inLib?"rgba(196,240,0,.1)":"var(--wh)",cursor:inLib?"default":"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,color:inLib?"var(--for)":"var(--ink3)",fontWeight:700,flexShrink:0}}>{inLib?"\u2713":"+"}</button>
             </div>
-          ))}
+          );}
+          )}
         </div>}
 
         {/* My Library card */}

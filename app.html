@@ -1368,12 +1368,12 @@ function QuizTab({ progress, upd, startMode }) {
         </div>
       </div>
 
-      {/* Sticky bottom bar */}
-      {unitCount > 0 && (<div style={{position:"fixed",bottom:0,left:0,right:0,zIndex:100,background:"var(--wh)",borderTop:"1px solid var(--st)",padding:"12px 16px",boxShadow:"0 -4px 16px rgba(0,0,0,.08)"}}>
-        <div style={{fontSize:".75rem",color:"var(--ink2)",marginBottom:8,fontWeight:600,textAlign:"center"}}>{unitCount} unit{unitCount>1?"s":""} selected · {phraseCount} phrases</div>
-        <button onClick={()=>startQuiz("pronunciation","units")} style={{padding:"14px 32px",borderRadius:14,border:"none",background:"var(--lime)",color:"var(--for)",fontSize:".88rem",fontWeight:900,cursor:"pointer",width:"100%",minHeight:48}}>🎙 Start with {Math.min(phraseCount,20)} phrases</button>
-      </div>)}
-      <button onClick={()=>setPicking(false)} style={{display:"block",margin:"8px auto 0",background:"none",border:"none",cursor:"pointer",fontSize:".78rem",fontWeight:600,color:"var(--ink2)",padding:"12px"}}>← Back</button>
+        {unitCount > 0 && (<div style={{textAlign:"center",margin:"16px 0"}}>
+          <div style={{fontSize:".78rem",color:"var(--ink2)",marginBottom:10,fontWeight:600}}>{unitCount} unit{unitCount>1?"s":""} selected · {phraseCount} phrases</div>
+          <button onClick={()=>startQuiz("pronunciation","units")} style={{padding:"16px 32px",borderRadius:14,border:"none",background:"var(--lime)",color:"var(--for)",fontSize:".88rem",fontWeight:900,cursor:"pointer",width:"100%",minHeight:52}}>🎙 Start with {Math.min(phraseCount,20)} phrases</button>
+        </div>)}
+        <button onClick={()=>setPicking(false)} style={{display:"block",margin:"8px auto 20px",background:"none",border:"none",cursor:"pointer",fontSize:".78rem",fontWeight:600,color:"var(--ink2)",padding:"12px"}}>← Back</button>
+      </div>
     </div>);
   }
 

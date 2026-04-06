@@ -1077,7 +1077,7 @@ const CSS = `
 .lesson-hdr::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,#1F3329 0%,#2a5a3a 50%,#1A3D3D 100%)}
 .lesson-hdr::after{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 75% 25%,rgba(196,240,0,.1) 0%,transparent 50%)}
 .lesson-hdr-top{display:flex;align-items:center;justify-content:space-between;position:relative;z-index:1;margin-bottom:16px}
-.lesson-back{font-size:14px;color:rgba(255,255,255,.7);background:none;border:none;font-family:inherit;cursor:pointer;min-height:44px;display:flex;align-items:center}
+.lesson-back{font-size:14px;color:#fff;background:rgba(255,255,255,.12);border:none;font-family:inherit;cursor:pointer;min-height:44px;display:flex;align-items:center;padding:0 14px;border-radius:10px;font-weight:700;gap:4px}
 .lesson-stats-badge{font-size:11px;color:var(--lime);font-weight:600}
 .lesson-hero{position:relative;z-index:1;display:flex;align-items:center;gap:16px}
 .lesson-art{width:80px;height:80px;border-radius:12px;overflow:hidden;flex-shrink:0;position:relative}
@@ -2980,7 +2980,7 @@ function HomeTab({ profile, progress, upd, settings, setTab, recentTopics, setRe
               <div className="t-card" key={u.id} onClick={()=>{setSelUnit(u.id);updateRecent(u.id);}}>
                 <div className="t-art">
                   <img src={TOPIC_IMAGES[u.id] || TOPIC_IMAGES[1]} alt="" />
-                  <span className="t-num">#{i+1}</span>
+                  <span className="t-num">#{u.id}</span>
                 </div>
                 <div className="t-info">
                   <div className="t-name">{u.title}</div>

@@ -1632,8 +1632,22 @@ function App() {
     (async () => {
       // Try Firestore first, fall back to localStorage
       const cloud = await loadFromFirestore(user.uid);
-      if (cloud) {
-        setProgress({ phrases:cloud.phrases||{}, vocab:cloud.vocab||{}, unit10:cloud.unit10||[], phraseTs:cloud.phraseTs||{}, lastReview:cloud.lastReview||{}, lessonLog:cloud.lessonLog||[], quizCount:cloud.quizCount||0 });
+      // Also load from localStorage (current key format)
+      const localRaw = localStorage.getItem(`${LANG_CONFIG.localStoragePrefix}${user.uid}`);
+      const local = localRaw ? JSON.parse(localRaw) : null;
+      // Merge: pick the version with more library items and known phrases
+      const cloudUnit10 = (cloud?.unit10 || []);
+      const localUnit10 = (local?.unit10 || []);
+      const cloudPhraseCount = Object.keys(cloud?.phrases || {}).filter(k => cloud.phrases[k]).length;
+      const localPhraseCount = Object.keys(local?.phrases || {}).filter(k => local.phrases[k]).length;
+      const useLocal = local && (localUnit10.length > cloudUnit10.length || localPhraseCount > cloudPhraseCount);
+      const best = useLocal ? local : (cloud || local);
+      if (best) {
+        const merged = { phrases:best.phrases||{}, vocab:best.vocab||{}, unit10:best.unit10||[], phraseTs:best.phraseTs||{}, lastReview:best.lastReview||{}, lessonLog:best.lessonLog||[], quizCount:best.quizCount||0 };
+        setProgress(merged);
+        // Sync back to both stores
+        localStorage.setItem(`${LANG_CONFIG.localStoragePrefix}${user.uid}`, JSON.stringify(merged));
+        saveToFirestore(user.uid, merged);
       } else {
         // Migrate from old localStorage if exists
         const oldProfile = localStorage.getItem(`${LANG_CONFIG.id}-profile`);
@@ -1641,7 +1655,7 @@ function App() {
           const d = JSON.parse(localStorage.getItem(`${LANG_CONFIG.localStoragePrefix}${oldProfile}`)||"{}");
           const migrated = { phrases:d.phrases||{}, vocab:d.vocab||{}, unit10:d.unit10||[], phraseTs:d.phraseTs||{}, lastReview:d.lastReview||{}, lessonLog:d.lessonLog||[], quizCount:d.quizCount||0 };
           setProgress(migrated);
-          saveToFirestore(user.uid, migrated); // migrate up to cloud
+          saveToFirestore(user.uid, migrated);
         }
       }
       const cloudSettings = await loadSettingsFromFirestore(user.uid);
@@ -3143,229 +3157,164 @@ function LibraryTab({ library, setLibrary, progress, upd, settings }) {
   };
 
   const canSpeak = (s) => s.cn && s.cn !== "(add characters)" && s.cn.trim() !== "";
+  const [masteredOpen, setMasteredOpen] = useState(false);
+  const [libShadow, setLibShadow] = useState(null);
+
+  // Separate phrases (3+ words) from vocab (1-2 words)
+  const isVocab = (s) => !s.en || s.en.split(/\s+/).length <= 2;
+  const slPhrases = stillLearning.filter(s => !isVocab(s));
+  const slVocab = stillLearning.filter(s => isVocab(s));
+
+  // Library shadow mode
+  if (libShadow !== null) {
+    const shadowItems = stillLearning.length > 0 ? stillLearning : items;
+    return <ShadowMode unit={{title:"My Library",phrases:shadowItems.map(s=>({en:s.en||s.cn,cn:s.cn,jyut:s[romKey]||s.jyut||""}))}} progress={progress} upd={upd} settings={settings} onClose={()=>{releaseMicStream();setLibShadow(null);}} startIdx={0} single={false} />;
+  }
+
+  // Render a library item row
+  const renderItem = (s) => {
+    const idx = items.indexOf(s);
+    const isExp = expandedIdx === idx;
+    const gloss = canSpeak(s) ? getAutoGloss(s) : [];
+    return (
+      <div key={idx} className={"ph-item" + (isExp ? " expanded" : "")} onClick={() => setExpandedIdx(isExp ? null : idx)}>
+        <div className="ph-row">
+          <button className="ph-play" onClick={e => { e.stopPropagation(); if (canSpeak(s)) speak(s.cn); }}>
+            <svg width="10" height="12" viewBox="0 0 10 12" fill="none"><path d="M0 0L10 6L0 12V0Z" fill="#fff"/></svg>
+          </button>
+          <div className="ph-text">
+            <div className="ph-eng">{s.en || s.cn}<div className="ph-chev">&#9662;</div></div>
+            {s[romKey] && s[romKey] !== `(add ${romLabel.toLowerCase()})` && (
+              <div className="ph-jyut">{s[romKey]}</div>
+            )}
+            {s.cn && s.cn.trim() !== "" && s.en && (
+              <div className="ph-chi">{s.cn}</div>
+            )}
+          </div>
+        </div>
+        <div className="ph-detail">
+          {s.tag && <div className="ph-context">From: {s.tag}</div>}
+          {gloss.length > 0 && <div className="gloss-row">
+            {gloss.filter(g => g.cn).map((g, gi) => (
+              <div className="gloss-chip" key={gi} onClick={e => { e.stopPropagation(); speak(g.cn); }}>
+                <span className="gloss-chi">{g.cn}</span>
+                <span className="gloss-jyut">{g.jy}</span>
+                {g.en && <span className="gloss-eng">{g.en}</span>}
+              </div>
+            ))}
+          </div>}
+          <div className="ph-actions">
+            <button className="ph-action-btn know-btn" onClick={e => { e.stopPropagation(); toggleKnown(idx); }}>I know this!</button>
+            <button className="ph-action-btn shadow-btn" style={{gap:4}} onClick={e => { e.stopPropagation(); setLibShadow(idx); }}><svg width="10" height="10" viewBox="0 0 10 12" fill="none"><path d="M0 0L10 6L0 12V0Z" fill="#fff"/></svg> Repeat</button>
+            <button className="ph-action-btn" onClick={e => { e.stopPropagation(); removeItem(idx); }} style={{color:"#e74c3c",borderColor:"rgba(231,76,60,.2)"}}>Remove</button>
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   return (
-    <div className="mc">
-      {/* 1. Header */}
-      <div style={{ marginBottom: 4 }}>
-        <div className="pt" style={{ marginBottom: 2 }}>My Library</div>
-        <div style={{ fontSize: ".78rem", color: "var(--ink3)", fontWeight: 600 }}>
-          {mastered.length} mastered · {stillLearning.length} to learn
+    <div style={{paddingBottom:80}}>
+      {/* Header with gradient */}
+      <div style={{position:"relative",overflow:"hidden",padding:"40px 20px 20px"}}>
+        <div style={{position:"absolute",inset:0,background:"linear-gradient(135deg,#1F3329 0%,#2a5a3a 40%,#1A1F3D 100%)",opacity:.9}} />
+        <div style={{position:"absolute",inset:0,background:"radial-gradient(ellipse at 80% 20%,rgba(196,240,0,.12) 0%,transparent 50%)"}} />
+        <div style={{position:"relative",zIndex:1}}>
+          <div style={{fontSize:"1.2rem",fontWeight:900,color:"#fff",marginBottom:4}}>My Library</div>
+          <div style={{fontSize:".82rem",color:"rgba(255,255,255,.75)"}}>
+            {mastered.length} mastered · {stillLearning.length} to learn
+          </div>
         </div>
       </div>
 
-      {/* 2. Add your own button / form */}
-      {!showAddForm && !saved ? (
-        <button onClick={() => setShowAddForm(true)} style={{
-          width: "100%", padding: "14px 16px", background: "transparent",
-          border: "2px dashed var(--st)", borderRadius: 12, cursor: "pointer",
-          fontSize: ".84rem", fontWeight: 700, color: "var(--plum)",
-          marginBottom: 16, minHeight: 48, textAlign: "center"
-        }}>+ Add your own word or phrase</button>
-      ) : saved ? (
-        <div style={{
-          width: "100%", padding: "14px 16px", background: "rgba(196,240,0,.1)",
-          border: "2px solid var(--lime)", borderRadius: 12,
-          fontSize: ".84rem", fontWeight: 800, color: "var(--for)",
-          marginBottom: 16, textAlign: "center", minHeight: 48,
-          display: "flex", alignItems: "center", justifyContent: "center"
-        }}>Saved to your library!</div>
-      ) : (
-        <div style={{
-          background: "var(--wh)", borderRadius: 14, padding: 16,
-          border: "1.5px solid var(--st)", marginBottom: 16
-        }}>
-          <input style={{
-            width: "100%", background: "var(--cream)", border: "1.5px solid var(--st)",
-            borderRadius: 8, padding: "10px 12px", fontSize: ".82rem", color: "var(--ink)",
-            outline: "none", fontFamily: "inherit", marginBottom: 8, minHeight: 44,
-            boxSizing: "border-box"
-          }} placeholder="What do you want to say?" value={en} onChange={e => setEn(e.target.value)} />
-          <input style={{
-            width: "100%", background: "var(--cream)", border: "1.5px solid var(--st)",
-            borderRadius: 8, padding: "10px 12px", fontSize: ".82rem", color: "var(--ink)",
-            outline: "none", fontFamily: LANG_CONFIG.fontFamily, marginBottom: 8, minHeight: 44,
-            boxSizing: "border-box"
-          }} placeholder="Chinese characters" value={cn} onChange={e => setCn(e.target.value)} />
-          <input style={{
-            width: "100%", background: "var(--cream)", border: "1.5px solid var(--st)",
-            borderRadius: 8, padding: "10px 12px", fontSize: ".82rem", color: "var(--plum)",
-            fontStyle: "italic", outline: "none", fontFamily: "inherit", marginBottom: 12,
-            minHeight: 44, boxSizing: "border-box"
-          }} placeholder={romLabel} value={rom} onChange={e => setRom(e.target.value)} />
-          <div style={{ display: "flex", gap: 8 }}>
-            <button onClick={() => { setShowAddForm(false); setEn(""); setRom(""); setCn(""); }} style={{
-              flex: 1, background: "var(--cream)", color: "var(--ink3)", border: "1.5px solid var(--st)",
-              borderRadius: 10, padding: "10px 0", fontSize: ".82rem", fontWeight: 700,
-              cursor: "pointer", minHeight: 44
-            }}>Cancel</button>
-            <button onClick={handleSave} style={{
-              flex: 1, background: en.trim() ? "var(--lime)" : "var(--st)",
-              color: en.trim() ? "var(--for)" : "var(--ink3)", border: "none",
-              borderRadius: 10, padding: "10px 0", fontSize: ".82rem", fontWeight: 900,
-              cursor: en.trim() ? "pointer" : "default", minHeight: 44
-            }}>Save</button>
-          </div>
-        </div>
-      )}
-
-      {/* 3. Trophy Section — Mastered */}
-      {mastered.length > 0 && (
-        <div style={{
-          background: "linear-gradient(135deg, #1F3329 0%, #2a4a36 50%, #1F3329 100%)",
-          borderRadius: 16, padding: 16, marginBottom: 16
-        }}>
-          <div style={{
-            display: "flex", alignItems: "center", justifyContent: "space-between",
-            marginBottom: 12
-          }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <span style={{ fontSize: "1.2rem" }}>🏆</span>
-              <span style={{ color: "#fff", fontWeight: 800, fontSize: ".88rem" }}>Mastered</span>
-            </div>
-            <span style={{ color: "var(--lime)", fontSize: ".75rem", fontWeight: 700 }}>
-              {mastered.length} conquered
-            </span>
-          </div>
-          <div style={{
-            display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8
-          }}>
-            {mastered.map((s) => {
-              const idx = items.indexOf(s);
-              return (
-                <div key={idx} style={{
-                  background: "linear-gradient(135deg, #FAFFF0, #fff)",
-                  border: "2px solid rgba(122,170,0,.25)", borderRadius: 12,
-                  padding: 12, display: "flex", flexDirection: "column", gap: 4
-                }}>
-                  <div style={{
-                    display: "flex", alignItems: "center", justifyContent: "space-between"
-                  }}>
-                    <span style={{
-                      fontFamily: LANG_CONFIG.fontFamily, fontSize: "1rem",
-                      fontWeight: 700, color: "var(--ink)", lineHeight: 1.2
-                    }}>{s.cn || s.en}</span>
-                    {canSpeak(s) && (
-                      <button onClick={() => speak(s.cn)} style={{
-                        width: 36, height: 36, borderRadius: "50%", border: "none",
-                        background: "rgba(122,170,0,.15)", cursor: "pointer",
-                        display: "flex", alignItems: "center", justifyContent: "center",
-                        fontSize: ".7rem", color: "var(--for)", flexShrink: 0
-                      }}>&#9654;</button>
-                    )}
-                  </div>
-                  {s[romKey] && s[romKey] !== `(add ${romLabel.toLowerCase()})` && (
-                    <div style={{
-                      fontSize: ".72rem", color: "var(--plum)", fontStyle: "italic", fontWeight: 600
-                    }}>{s[romKey]}</div>
-                  )}
-                  <div style={{
-                    fontSize: ".68rem", color: "var(--ink3)", lineHeight: 1.3
-                  }}>{s.cn ? s.en : ""}</div>
-                  <button onClick={() => toggleKnown(idx)} style={{
-                    background: "none", border: "none", color: "var(--plum)",
-                    fontSize: ".72rem", fontWeight: 700, cursor: "pointer",
-                    padding: "8px 0", textAlign: "left", marginTop: 2, minHeight: 36
-                  }}>Relearn</button>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* 4. Shadow all bar — only when Still Learning items exist */}
-      {stillLearning.length > 0 && (
-        <div style={{
-          display: "flex", alignItems: "center", gap: 10, marginBottom: 12,
-          background: "var(--for)", borderRadius: 12, padding: "10px 14px"
-        }}>
-          <button onClick={() => {/* shadow all — future hook */}} style={{
-            width: 40, height: 40, borderRadius: "50%", background: "var(--lime)",
-            border: "none", cursor: "pointer", display: "flex", alignItems: "center",
-            justifyContent: "center", fontSize: ".9rem", color: "var(--for)",
-            fontWeight: 900, flexShrink: 0
-          }}>&#9654;</button>
-          <div style={{ flex: 1 }}>
-            <div style={{ color: "#fff", fontSize: ".78rem", fontWeight: 800 }}>Shadow all</div>
-            <div style={{ color: "rgba(255,255,255,.5)", fontSize: ".65rem" }}>
-              {stillLearning.length} phrase{stillLearning.length !== 1 ? "s" : ""}
-            </div>
-          </div>
-          <button onClick={() => {/* shuffle shadow — future hook */}} style={{
-            background: "rgba(255,255,255,.1)", border: "none", borderRadius: 999,
-            padding: "10px 14px", color: "rgba(255,255,255,.7)", fontSize: ".72rem",
-            fontWeight: 700, cursor: "pointer", minHeight: 44
-          }}>🔀 Shuffle</button>
-        </div>
-      )}
-
-      {/* 5. Still Learning section header */}
-      {stillLearning.length > 0 && (
-        <div style={{
-          fontSize: ".7rem", fontWeight: 800, color: "var(--ink3)",
-          letterSpacing: "1.5px", textTransform: "uppercase", marginBottom: 8
-        }}>STILL LEARNING ({stillLearning.length})</div>
-      )}
-
-      {/* 6. Still Learning track list — expandable like lesson view */}
-      {stillLearning.map((s) => {
-        const idx = items.indexOf(s);
-        const isExp = expandedIdx === idx;
-        const gloss = canSpeak(s) ? getAutoGloss(s) : [];
-        return (
-          <div key={idx} className={"ph-item" + (isExp ? " expanded" : "")} onClick={() => setExpandedIdx(isExp ? null : idx)}>
-            <div className="ph-row">
-              <button className="ph-play" onClick={e => { e.stopPropagation(); if (canSpeak(s)) speak(s.cn); }}>
-                <svg width="10" height="12" viewBox="0 0 10 12" fill="none"><path d="M0 0L10 6L0 12V0Z" fill="#fff"/></svg>
-              </button>
-              <div className="ph-text">
-                <div className="ph-eng">{s.en || s.cn}<div className="ph-chev">&#9662;</div></div>
-                {s[romKey] && s[romKey] !== `(add ${romLabel.toLowerCase()})` && (
-                  <div className="ph-jyut">{s[romKey]}</div>
-                )}
-                {s.cn && s.cn.trim() !== "" && s.en && (
-                  <div className="ph-chi">{s.cn}</div>
-                )}
-              </div>
-            </div>
-            <div className="ph-detail">
-              {s.tag && <div className="ph-context">From: {s.tag}</div>}
-              {gloss.length > 0 && <div className="gloss-row">
-                {gloss.filter(g => g.cn).map((g, gi) => (
-                  <div className="gloss-chip" key={gi} onClick={e => { e.stopPropagation(); speak(g.cn); }}>
-                    <span className="gloss-chi">{g.cn}</span>
-                    <span className="gloss-jyut">{g.jy}</span>
-                    {g.en && <span className="gloss-eng">{g.en}</span>}
-                  </div>
-                ))}
-              </div>}
-              <div className="ph-actions">
-                <button className="ph-action-btn" onClick={e => { e.stopPropagation(); toggleKnown(idx); }}>
-                  {s.known ? "Move to Still Learning" : "I know this!"}
-                </button>
-                <button className="ph-action-btn shadow-btn" onClick={e => { e.stopPropagation(); removeItem(idx); }}>Remove</button>
-              </div>
-            </div>
-          </div>
-        );
-      })}
-
-      {/* 7. Empty state */}
-      {items.length === 0 && (
-        <div style={{ textAlign: "center", padding: "48px 24px", color: "var(--ink3)" }}>
-          <div style={{ fontSize: "2.5rem", marginBottom: 12 }}>📚</div>
-          <div style={{ fontSize: ".92rem", fontWeight: 800, color: "var(--ink)", marginBottom: 6 }}>Your library is empty</div>
-          <div style={{ fontSize: ".78rem", lineHeight: 1.6, marginBottom: 20, maxWidth: 260, margin: "0 auto 20px" }}>
-            Add words and phrases you hear in daily life. They'll become your top priority in practice.
-          </div>
+      <div style={{padding:"0 16px"}}>
+        {/* Add your own */}
+        {!showAddForm && !saved ? (
           <button onClick={() => setShowAddForm(true)} style={{
-            background: "var(--lime)", color: "var(--for)", border: "none",
-            borderRadius: 12, padding: "12px 24px", fontSize: ".84rem",
-            fontWeight: 900, cursor: "pointer", minHeight: 48
-          }}>+ Add your first phrase</button>
-        </div>
-      )}
+            width:"100%",padding:"14px 16px",background:"transparent",
+            border:"2px dashed var(--st)",borderRadius:12,cursor:"pointer",
+            fontSize:".84rem",fontWeight:700,color:"var(--plum)",
+            marginTop:16,marginBottom:12,minHeight:48,textAlign:"center"
+          }}>+ Add your own word or phrase</button>
+        ) : saved ? (
+          <div style={{width:"100%",padding:"14px",background:"rgba(196,240,0,.1)",border:"2px solid var(--lime)",borderRadius:12,fontSize:".84rem",fontWeight:800,color:"var(--for)",marginTop:16,marginBottom:12,textAlign:"center",minHeight:48,display:"flex",alignItems:"center",justifyContent:"center"}}>Saved to your library!</div>
+        ) : (
+          <div style={{background:"var(--wh)",borderRadius:14,padding:16,border:"1.5px solid var(--st)",marginTop:16,marginBottom:12}}>
+            <input style={{width:"100%",background:"var(--cream)",border:"1.5px solid var(--st)",borderRadius:8,padding:"10px 12px",fontSize:".82rem",color:"var(--ink)",outline:"none",fontFamily:"inherit",marginBottom:8,minHeight:44,boxSizing:"border-box"}} placeholder="What do you want to say?" value={en} onChange={e => setEn(e.target.value)} />
+            <input style={{width:"100%",background:"var(--cream)",border:"1.5px solid var(--st)",borderRadius:8,padding:"10px 12px",fontSize:".82rem",color:"var(--ink)",outline:"none",fontFamily:LANG_CONFIG.fontFamily,marginBottom:8,minHeight:44,boxSizing:"border-box"}} placeholder="Chinese characters" value={cn} onChange={e => setCn(e.target.value)} />
+            <input style={{width:"100%",background:"var(--cream)",border:"1.5px solid var(--st)",borderRadius:8,padding:"10px 12px",fontSize:".82rem",color:"var(--plum)",fontStyle:"italic",outline:"none",fontFamily:"inherit",marginBottom:12,minHeight:44,boxSizing:"border-box"}} placeholder={romLabel} value={rom} onChange={e => setRom(e.target.value)} />
+            <div style={{display:"flex",gap:8}}>
+              <button onClick={()=>{setShowAddForm(false);setEn("");setRom("");setCn("");}} style={{flex:1,background:"var(--cream)",color:"var(--ink3)",border:"1.5px solid var(--st)",borderRadius:10,padding:"10px 0",fontSize:".82rem",fontWeight:700,cursor:"pointer",minHeight:44}}>Cancel</button>
+              <button onClick={handleSave} style={{flex:1,background:en.trim()?"var(--lime)":"var(--st)",color:en.trim()?"var(--for)":"var(--ink3)",border:"none",borderRadius:10,padding:"10px 0",fontSize:".82rem",fontWeight:900,cursor:en.trim()?"pointer":"default",minHeight:44}}>Save</button>
+            </div>
+          </div>
+        )}
+
+        {/* Mastered — collapsed toggle with trophy */}
+        {mastered.length > 0 && (
+          <div style={{background:"linear-gradient(135deg, #1F3329 0%, #2a4a36 50%, #1F3329 100%)",borderRadius:16,padding:"14px 16px",marginBottom:12,cursor:"pointer"}} onClick={()=>setMasteredOpen(o=>!o)}>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+              <div style={{display:"flex",alignItems:"center",gap:10}}>
+                <span style={{fontSize:"1.4rem"}}>🏆</span>
+                <div>
+                  <div style={{color:"#fff",fontWeight:800,fontSize:".88rem"}}>{mastered.length} Mastered!</div>
+                  <div style={{color:"var(--lime)",fontSize:".7rem",fontWeight:600,marginTop:1}}>You're crushing it — keep going!</div>
+                </div>
+              </div>
+              <span style={{color:"rgba(255,255,255,.5)",fontSize:"1.1rem",transition:"transform .2s",transform:masteredOpen?"rotate(180deg)":"rotate(0)"}}>&#9662;</span>
+            </div>
+            {masteredOpen && (
+              <div style={{marginTop:12}} onClick={e=>e.stopPropagation()}>
+                {mastered.map((s) => {
+                  const idx = items.indexOf(s);
+                  return (
+                    <div key={idx} style={{background:"rgba(255,255,255,.08)",borderRadius:10,padding:"10px 12px",marginBottom:6,display:"flex",alignItems:"center",gap:10}}>
+                      {canSpeak(s) && <button onClick={()=>speak(s.cn)} style={{width:32,height:32,borderRadius:"50%",border:"none",background:"rgba(196,240,0,.2)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontSize:".65rem",color:"var(--lime)",flexShrink:0}}>&#9654;</button>}
+                      <div style={{flex:1,minWidth:0}}>
+                        <div style={{fontSize:".78rem",fontWeight:700,color:"#fff",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{s.en||s.cn}</div>
+                        {s[romKey] && <div style={{fontSize:".65rem",color:"var(--lime)",fontStyle:"italic"}}>{s[romKey]}</div>}
+                        {s.cn && s.en && <div style={{fontSize:".72rem",color:"rgba(255,255,255,.5)"}}>{s.cn}</div>}
+                      </div>
+                      <button onClick={()=>toggleKnown(idx)} style={{background:"none",border:"1px solid rgba(255,255,255,.15)",color:"rgba(255,255,255,.5)",fontSize:".65rem",fontWeight:700,cursor:"pointer",padding:"6px 10px",borderRadius:8,flexShrink:0}}>Relearn</button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Repeat all bar */}
+        {stillLearning.length > 0 && (
+          <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:12,background:"var(--ink)",borderRadius:12,padding:"10px 14px"}}>
+            <button onClick={()=>setLibShadow("all")} style={{width:40,height:40,borderRadius:"50%",background:"var(--lime)",border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontSize:".9rem",color:"var(--for)",fontWeight:900,flexShrink:0}}>&#9654;</button>
+            <div style={{flex:1}}>
+              <div style={{color:"#fff",fontSize:".78rem",fontWeight:800}}>Repeat all</div>
+              <div style={{color:"rgba(255,255,255,.5)",fontSize:".65rem"}}>{stillLearning.length} item{stillLearning.length!==1?"s":""}</div>
+            </div>
+          </div>
+        )}
+
+        {/* Phrases section */}
+        {slPhrases.length > 0 && <div style={{fontSize:".7rem",fontWeight:800,color:"var(--ink3)",letterSpacing:"1.5px",textTransform:"uppercase",marginBottom:8}}>PHRASES ({slPhrases.length})</div>}
+        {slPhrases.map(renderItem)}
+
+        {/* Vocabulary section */}
+        {slVocab.length > 0 && <div style={{fontSize:".7rem",fontWeight:800,color:"var(--ink3)",letterSpacing:"1.5px",textTransform:"uppercase",marginBottom:8,marginTop:slPhrases.length>0?16:0}}>VOCABULARY ({slVocab.length})</div>}
+        {slVocab.map(renderItem)}
+
+        {/* Empty state */}
+        {items.length === 0 && (
+          <div style={{textAlign:"center",padding:"48px 24px",color:"var(--ink3)"}}>
+            <div style={{fontSize:"2.5rem",marginBottom:12}}>📚</div>
+            <div style={{fontSize:".92rem",fontWeight:800,color:"var(--ink)",marginBottom:6}}>Your library is empty</div>
+            <div style={{fontSize:".78rem",lineHeight:1.6,marginBottom:20,maxWidth:260,margin:"0 auto 20px"}}>
+              Add words and phrases you hear in daily life. They'll become your top priority in practice.
+            </div>
+            <button onClick={()=>setShowAddForm(true)} style={{background:"var(--lime)",color:"var(--for)",border:"none",borderRadius:12,padding:"12px 24px",fontSize:".84rem",fontWeight:900,cursor:"pointer",minHeight:48}}>+ Add your first phrase</button>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

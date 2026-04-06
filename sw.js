@@ -203,10 +203,12 @@ self.addEventListener("message", (event) => {
       caches.open(CACHE_AUDIO).then(async (cache) => {
         for (const url of event.data.urls) {
           try {
-            const existing = await cache.match(url);
+            // Resolve to absolute URL so cache key matches fetch requests
+            const absoluteUrl = new URL(url, self.location.origin + self.location.pathname.replace(/[^/]*$/, '')).href;
+            const existing = await cache.match(absoluteUrl);
             if (!existing) {
-              const res = await fetch(url);
-              if (res.ok) await cache.put(url, res);
+              const res = await fetch(absoluteUrl);
+              if (res.ok) await cache.put(absoluteUrl, res);
             }
           } catch (e) {
             // Skip failures silently

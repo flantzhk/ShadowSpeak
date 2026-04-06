@@ -3229,8 +3229,22 @@ function LibraryTab({ library, setLibrary, progress, upd, settings }) {
         <div style={{position:"absolute",inset:0,background:"radial-gradient(ellipse at 80% 20%,rgba(196,240,0,.12) 0%,transparent 50%)"}} />
         <div style={{position:"relative",zIndex:1}}>
           <div style={{fontSize:"1.2rem",fontWeight:900,color:"#fff",marginBottom:4}}>My Library</div>
-          <div style={{fontSize:".82rem",color:"rgba(255,255,255,.75)"}}>
-            {mastered.length} mastered · {stillLearning.length} to learn
+          <div style={{fontSize:".78rem",color:"rgba(255,255,255,.7)",lineHeight:1.5,marginBottom:12}}>
+            Your personal collection of words and phrases. Save anything you want to remember and practise.
+          </div>
+          <div style={{display:"flex",gap:12}}>
+            <div style={{flex:1,background:"rgba(255,255,255,.1)",borderRadius:12,padding:"10px 0",textAlign:"center"}}>
+              <div style={{fontSize:"1.1rem",fontWeight:900,color:"var(--lime)"}}>{stillLearning.length}</div>
+              <div style={{fontSize:".6rem",fontWeight:700,color:"rgba(255,255,255,.65)",textTransform:"uppercase",letterSpacing:".5px"}}>Learning</div>
+            </div>
+            <div style={{flex:1,background:"rgba(255,255,255,.1)",borderRadius:12,padding:"10px 0",textAlign:"center"}}>
+              <div style={{fontSize:"1.1rem",fontWeight:900,color:"var(--lime)"}}>{mastered.length}</div>
+              <div style={{fontSize:".6rem",fontWeight:700,color:"rgba(255,255,255,.65)",textTransform:"uppercase",letterSpacing:".5px"}}>Mastered</div>
+            </div>
+            <div style={{flex:1,background:"rgba(255,255,255,.1)",borderRadius:12,padding:"10px 0",textAlign:"center"}}>
+              <div style={{fontSize:"1.1rem",fontWeight:900,color:"var(--lime)"}}>{items.length}</div>
+              <div style={{fontSize:".6rem",fontWeight:700,color:"rgba(255,255,255,.65)",textTransform:"uppercase",letterSpacing:".5px"}}>Total</div>
+            </div>
           </div>
         </div>
       </div>

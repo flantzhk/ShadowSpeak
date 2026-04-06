@@ -1133,6 +1133,13 @@ const CSS = `
 .ph-action-btn{flex:1;padding:10px 0;border-radius:10px;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;border:1px solid rgba(0,0,0,.1);background:var(--wh);color:var(--ink);transition:all .15s;min-height:44px}
 .ph-action-btn:active{border-color:var(--for);color:var(--for)}
 .ph-action-btn.shadow-btn{background:var(--for);color:#fff;border-color:var(--for)}
+.ph-action-btn.know-btn{background:rgba(196,240,0,.12);color:var(--for);border-color:rgba(122,170,0,.3)}
+.ph-action-btn.know-btn:active{background:var(--lime);color:var(--for)}
+.mastery-overlay{position:fixed;inset:0;z-index:1200;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center}
+.mastery-card{background:#fff;border-radius:20px;padding:28px 24px;max-width:320px;width:90%;text-align:center;box-shadow:0 16px 48px rgba(0,0,0,.25)}
+.mastery-toast{position:fixed;top:60px;left:50%;transform:translateX(-50%);z-index:1300;background:var(--for);color:var(--lime);padding:12px 24px;border-radius:999px;font-size:.82rem;font-weight:800;box-shadow:0 8px 24px rgba(0,0,0,.3)}
+.confetti-container{position:fixed;inset:0;z-index:1250;pointer-events:none;overflow:hidden}
+.confetti-piece{position:absolute;width:8px;height:8px;border-radius:2px}
 `;
 
 // ============================================================
@@ -2561,6 +2568,31 @@ function AddNewSection({ progress, upd }) {
   );
 }
 
+// ---- MASTERY CONFIRMATION HELPERS ----
+function ConfettiBurst() {
+  const colors = ["#C4F000","#7AAA00","#8F6AE8","#E8A040","#FF6B9D","#00C9DB"];
+  const [pieces] = useState(() => Array.from({length:30}, (_,i) => ({
+    id:i, left: Math.random()*100, delay: Math.random()*0.4, color: colors[i%colors.length],
+    size: 6+Math.random()*6, dur: 1+Math.random()*0.8
+  })));
+  return <div className="confetti-container">{pieces.map(p =>
+    <div key={p.id} className="confetti-piece" style={{left:p.left+"%",top:-10,width:p.size,height:p.size,background:p.color,animation:`confettiFall ${p.dur}s ease-out ${p.delay}s forwards`}} />
+  )}</div>;
+}
+
+function MasteryConfirmSheet({ phrase, onQuiz, onSkip, onCancel }) {
+  return <div className="mastery-overlay" onClick={onCancel}>
+    <div className="mastery-card" onClick={e=>e.stopPropagation()}>
+      <div style={{fontSize:"2.5rem",marginBottom:8}}>💪</div>
+      <div style={{fontSize:"1rem",fontWeight:900,color:"var(--ink)",marginBottom:4}}>You know this?</div>
+      <div style={{fontSize:".78rem",color:"var(--ink3)",marginBottom:6,lineHeight:1.5}}><strong>{phrase.en}</strong></div>
+      <div style={{fontSize:".82rem",fontWeight:700,color:"var(--plum)",marginBottom:20}}>{phrase.cn}</div>
+      <button onClick={onQuiz} style={{width:"100%",padding:"14px",borderRadius:12,border:"none",background:"var(--for)",color:"#fff",fontSize:".84rem",fontWeight:800,cursor:"pointer",marginBottom:8,minHeight:48}}>🧠 Quiz me first</button>
+      <button onClick={onSkip} style={{width:"100%",padding:"14px",borderRadius:12,border:"1.5px solid var(--st)",background:"var(--wh)",color:"var(--ink)",fontSize:".84rem",fontWeight:700,cursor:"pointer",minHeight:48}}>No need, I already know it</button>
+    </div>
+  </div>;
+}
+
 // ---- HOME TAB (Phase 2a) ----
 function HomeTab({ profile, progress, upd, settings, setTab, recentTopics, setRecentTopics, practiceCount, library, selUnit, setSelUnit, markReviewed, startPlaylist, openPlBuilder }) {
   const [shadow, setShadow] = useState(null);
@@ -2569,7 +2601,28 @@ function HomeTab({ profile, progress, upd, settings, setTab, recentTopics, setRe
   const [expandedIdx, setExpandedIdx] = useState(null);
   const [actionBarScrolled, setActionBarScrolled] = useState(false);
   const [miniPlayer, setMiniPlayer] = useState(null);
+  const [masteryConfirm, setMasteryConfirm] = useState(null);
+  const [showConfetti, setShowConfetti] = useState(false);
+  const [toastMsg, setToastMsg] = useState(null);
   const miniTimer = useRef(null);
+
+  const showMasteryToast = (msg) => {
+    setShowConfetti(true); setToastMsg(msg);
+    setTimeout(() => setShowConfetti(false), 2000);
+    setTimeout(() => setToastMsg(null), 2200);
+  };
+
+  const handleMarkKnown = useCallback((ph) => {
+    const items = progress.unit10 || [];
+    if (!items.find(s => s.cn === ph.cn)) {
+      upd("unit10", [{ en: ph.en, jyut: ph.jyut, cn: ph.cn, tag: (UNITS.find(u => u.id === selUnit) || UNITS[0]).title, known: true, date: new Date().toLocaleDateString("en-GB", { day: "numeric", month: "short" }) }, ...items]);
+    } else {
+      upd("unit10", items.map(s => s.cn === ph.cn ? { ...s, known: true } : s));
+    }
+    upd("phrases", { ...(progress.phrases || {}), [`${selUnit}-${ph.origIdx}`]: true });
+    setMasteryConfirm(null);
+    showMasteryToast("Added to Mastered!");
+  }, [progress, upd, selUnit]);
 
   const playPhraseMini = (ph) => {
     clearTimeout(miniTimer.current);
@@ -2795,6 +2848,7 @@ function HomeTab({ profile, progress, upd, settings, setTab, recentTopics, setRe
                   </div>}
                   <div className="ph-actions">
                     <button className="ph-action-btn" onClick={e=>{e.stopPropagation();const items=progress.unit10||[];if(!items.find(s=>s.cn===ph.cn)){upd("unit10",[{en:ph.en,jyut:ph.jyut,cn:ph.cn,tag:unit.title,known:false,date:new Date().toLocaleDateString("en-GB",{day:"numeric",month:"short"})},...items]);}}}>{(progress.unit10||[]).find(s=>s.cn===ph.cn)?"Saved":"Save to My Library"}</button>
+                    {!ph.known && <button className="ph-action-btn know-btn" onClick={e=>{e.stopPropagation();setMasteryConfirm(ph);}}>I know this!</button>}
                     <button className="ph-action-btn shadow-btn" onClick={e=>{e.stopPropagation();setShadow(ph.origIdx);}}>Shadow</button>
                   </div>
                 </div>
@@ -2817,6 +2871,11 @@ function HomeTab({ profile, progress, upd, settings, setTab, recentTopics, setRe
             <button onClick={()=>{stopAudio();clearTimeout(miniTimer.current);setMiniPlayer(null);}} style={{background:"rgba(255,255,255,.08)",border:"1px solid rgba(255,255,255,.1)",borderRadius:"50%",width:36,height:36,display:"flex",alignItems:"center",justifyContent:"center",color:"rgba(255,255,255,.5)",fontSize:14,cursor:"pointer",flexShrink:0}}>x</button>
           </div>
         </div>}
+
+        {/* Mastery confirmation overlay */}
+        {masteryConfirm && <MasteryConfirmSheet phrase={masteryConfirm} onCancel={()=>setMasteryConfirm(null)} onQuiz={()=>handleMarkKnown(masteryConfirm)} onSkip={()=>handleMarkKnown(masteryConfirm)} />}
+        {showConfetti && <ConfettiBurst />}
+        {toastMsg && <div className="mastery-toast">🎉 {toastMsg}</div>}
       </div>
     );
   }

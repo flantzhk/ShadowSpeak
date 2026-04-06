@@ -3505,18 +3505,18 @@ function PracticeTab({ progress, upd, settings, library, practiceCount, setPract
         </div>
 
         {/* Quick Quiz card — gradient purple/blue */}
-        <div style={{ background:"linear-gradient(135deg, #2D2545 0%, #1A1F3D 100%)", borderRadius:16, padding:20, marginBottom:12, cursor:"pointer" }} onClick={() => setShowQuiz(true)}>
+        <div style={{ background:"linear-gradient(135deg, #2D2545 0%, #1A1F3D 100%)", borderRadius:16, padding:20, marginBottom:12, cursor:quizAvailable>=3?"pointer":"default", opacity:quizAvailable>=3?1:.6 }} onClick={() => { if(quizAvailable>=3) setShowQuiz(true); }}>
           <div style={{ display:"flex", alignItems:"center", gap:12 }}>
             <div style={{width:48,height:48,borderRadius:12,background:"rgba(143,106,232,.2)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1.5rem",flexShrink:0}}>🧠</div>
             <div style={{ flex:1 }}>
               <div style={{ fontSize:".92rem", fontWeight:900, color:"#fff", marginBottom:2 }}>Quick Quiz</div>
-              <div style={{ fontSize:".76rem", color:"rgba(255,255,255,.75)", lineHeight:1.4 }}>Test your recall on 10 items from your library.</div>
+              <div style={{ fontSize:".76rem", color:"rgba(255,255,255,.75)", lineHeight:1.4 }}>{quizAvailable>=3?"Test your recall on 10 items from your library.":"Mark at least 3 phrases as known to unlock."}</div>
             </div>
-            <div style={{ fontSize:"1.2rem", color:"rgba(179,153,255,.8)" }}>&#8250;</div>
+            {quizAvailable>=3 && <div style={{ fontSize:"1.2rem", color:"rgba(179,153,255,.8)" }}>&#8250;</div>}
           </div>
           <div style={{ display:"flex", gap:6, marginTop:10 }}>
             <span style={{ fontSize:".65rem", fontWeight:700, background:"rgba(255,255,255,.1)", color:"rgba(255,255,255,.8)", padding:"4px 10px", borderRadius:999 }}>5 min</span>
-            <span style={{ fontSize:".65rem", fontWeight:700, background:"rgba(143,106,232,.2)", color:"rgba(179,153,255,.9)", padding:"4px 10px", borderRadius:999 }}>{quizAvailable} items available</span>
+            <span style={{ fontSize:".65rem", fontWeight:700, background:"rgba(143,106,232,.2)", color:"rgba(179,153,255,.9)", padding:"4px 10px", borderRadius:999 }}>{quizAvailable>=3?quizAvailable+" items available":"🔒 "+quizAvailable+"/3 needed"}</span>
           </div>
         </div>
 

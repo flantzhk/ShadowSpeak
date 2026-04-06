@@ -1366,7 +1366,6 @@ function QuizTab({ progress, upd, startMode }) {
           <button onClick={()=>setSelectedUnits(new Set(UNITS.map(u=>u.id)))} style={{flex:1,padding:"12px",borderRadius:10,border:"1.5px solid var(--st)",background:"var(--wh)",fontSize:".78rem",fontWeight:700,color:"var(--ink)",cursor:"pointer"}}>Select all</button>
           <button onClick={()=>setSelectedUnits(new Set())} style={{flex:1,padding:"12px",borderRadius:10,border:"1.5px solid var(--st)",background:"var(--wh)",fontSize:".78rem",fontWeight:700,color:"var(--ink)",cursor:"pointer"}}>Clear</button>
         </div>
-      </div>
 
         {unitCount > 0 && (<div style={{textAlign:"center",margin:"16px 0"}}>
           <div style={{fontSize:".78rem",color:"var(--ink2)",marginBottom:10,fontWeight:600}}>{unitCount} unit{unitCount>1?"s":""} selected · {phraseCount} phrases</div>

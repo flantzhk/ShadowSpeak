@@ -1244,7 +1244,7 @@ const QUIZ_CSS = `
 `;
 
 // ---- QUIZ COMPONENTS ----
-function QuizTab({ progress, upd }) {
+function QuizTab({ progress, upd, startMode }) {
   const [mode, setMode] = useState(null);
   const [quizItems, setQuizItems] = useState([]);
   const [idx, setIdx] = useState(0);
@@ -1255,7 +1255,7 @@ function QuizTab({ progress, upd }) {
   const [isRecording, setIsRecording] = useState(false);
   const [scoring, setScoring] = useState(false);
   const [scoreResult, setScoreResult] = useState(null);
-  const [picking, setPicking] = useState(false);
+  const [picking, setPicking] = useState(startMode === "pronunciation");
   const [selectedUnits, setSelectedUnits] = useState(new Set());
   const [source, setSource] = useState("known");
   const [pronScores, setPronScores] = useState([]);
@@ -3341,6 +3341,7 @@ function LibraryTab({ library, setLibrary, progress, upd, settings }) {
 // ---- PRACTICE TAB (Phase 2f) ----
 function PracticeTab({ progress, upd, settings, library, practiceCount, setPracticeCount, autoLaunch }) {
   const [showQuiz, setShowQuiz] = useState(false);
+  const [showPronun, setShowPronun] = useState(false);
   const [showLaunch, setShowLaunch] = useState(false);
   const [showLesson, setShowLesson] = useState(false);
 
@@ -3384,6 +3385,8 @@ function PracticeTab({ progress, upd, settings, library, practiceCount, setPract
     localStorage.setItem(LANG_CONFIG.id + '-practice-count', next);
     setShowLesson(false);
   }} onQuit={() => setShowLesson(false)} />;
+
+  if (showPronun) return <QuizTab progress={progress} upd={upd} startMode="pronunciation" />;
 
   if (showQuiz) return <QuizTab progress={progress} upd={upd} />;
 
@@ -3499,7 +3502,7 @@ function PracticeTab({ progress, upd, settings, library, practiceCount, setPract
         </div>
 
         {/* Pronunciation Quiz card */}
-        <div style={{ background:"linear-gradient(135deg, #3D2A1A 0%, #2A1F15 100%)", borderRadius:16, padding:20, cursor:"pointer" }} onClick={() => setShowQuiz(true)}>
+        <div style={{ background:"linear-gradient(135deg, #3D2A1A 0%, #2A1F15 100%)", borderRadius:16, padding:20, cursor:"pointer" }} onClick={() => setShowPronun(true)}>
           <div style={{ display:"flex", alignItems:"center", gap:12 }}>
             <div style={{width:48,height:48,borderRadius:12,background:"rgba(232,160,64,.15)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1.5rem",flexShrink:0}}>🎙</div>
             <div style={{ flex:1 }}>

@@ -3159,6 +3159,7 @@ function LibraryTab({ library, setLibrary, progress, upd, settings }) {
   const canSpeak = (s) => s.cn && s.cn !== "(add characters)" && s.cn.trim() !== "";
   const [masteredOpen, setMasteredOpen] = useState(false);
   const [libShadow, setLibShadow] = useState(null);
+  const [readingMode, setReadingMode] = useState(false);
 
   // Separate phrases (3+ words) from vocab (1-2 words)
   const isVocab = (s) => !s.en || s.en.split(/\s+/).length <= 2;
@@ -3183,13 +3184,15 @@ function LibraryTab({ library, setLibrary, progress, upd, settings }) {
             <svg width="10" height="12" viewBox="0 0 10 12" fill="none"><path d="M0 0L10 6L0 12V0Z" fill="#fff"/></svg>
           </button>
           <div className="ph-text">
-            <div className="ph-eng">{s.en || s.cn}<div className="ph-chev">&#9662;</div></div>
-            {s[romKey] && s[romKey] !== `(add ${romLabel.toLowerCase()})` && (
-              <div className="ph-jyut">{s[romKey]}</div>
-            )}
-            {s.cn && s.cn.trim() !== "" && s.en && (
-              <div className="ph-chi">{s.cn}</div>
-            )}
+            {readingMode ? (<>
+              <div className="ph-chi" style={{fontSize:15,fontWeight:600,color:"var(--ink)",marginBottom:3,display:"flex",justifyContent:"space-between",alignItems:"center"}}>{s.cn || s.en}<div className="ph-chev">&#9662;</div></div>
+              {s[romKey] && s[romKey] !== `(add ${romLabel.toLowerCase()})` && <div className="ph-jyut">{s[romKey]}</div>}
+              {s.en && <div style={{fontSize:13,color:"var(--ink2)"}}>{s.en}</div>}
+            </>) : (<>
+              <div className="ph-eng">{s.en || s.cn}<div className="ph-chev">&#9662;</div></div>
+              {s[romKey] && s[romKey] !== `(add ${romLabel.toLowerCase()})` && <div className="ph-jyut">{s[romKey]}</div>}
+              {s.cn && s.cn.trim() !== "" && s.en && <div className="ph-chi">{s.cn}</div>}
+            </>)}
           </div>
         </div>
         <div className="ph-detail">
@@ -3231,11 +3234,13 @@ function LibraryTab({ library, setLibrary, progress, upd, settings }) {
         {/* Add your own */}
         {!showAddForm && !saved ? (
           <button onClick={() => setShowAddForm(true)} style={{
-            width:"100%",padding:"14px 16px",background:"transparent",
-            border:"2px dashed var(--st)",borderRadius:12,cursor:"pointer",
-            fontSize:".84rem",fontWeight:700,color:"var(--plum)",
-            marginTop:16,marginBottom:12,minHeight:48,textAlign:"center"
-          }}>+ Add your own word or phrase</button>
+            width:"100%",padding:"14px 16px",background:"var(--lime)",
+            border:"none",borderRadius:12,cursor:"pointer",
+            fontSize:".84rem",fontWeight:800,color:"var(--for)",
+            marginTop:16,marginBottom:12,minHeight:48,textAlign:"center",
+            display:"flex",alignItems:"center",justifyContent:"center",gap:8,
+            boxShadow:"0 2px 8px rgba(196,240,0,.3)"
+          }}>✏️ Add your own word or phrase</button>
         ) : saved ? (
           <div style={{width:"100%",padding:"14px",background:"rgba(196,240,0,.1)",border:"2px solid var(--lime)",borderRadius:12,fontSize:".84rem",fontWeight:800,color:"var(--for)",marginTop:16,marginBottom:12,textAlign:"center",minHeight:48,display:"flex",alignItems:"center",justifyContent:"center"}}>Saved to your library!</div>
         ) : (
@@ -3295,6 +3300,10 @@ function LibraryTab({ library, setLibrary, progress, upd, settings }) {
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/><line x1="4" y1="4" x2="9" y2="9"/></svg>
               Shuffle
             </button>
+            <span className="filter-chip" onClick={()=>setReadingMode(r=>!r)}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" style={{marginRight:4}}><path d="M4 6h16M4 12h16M4 18h10"/></svg>
+              {readingMode?"Chinese first":"English first"}
+            </span>
           </div>
         )}
 

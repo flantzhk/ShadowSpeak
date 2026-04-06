@@ -2758,7 +2758,7 @@ function HomeTab({ profile, progress, upd, settings, setTab, recentTopics, setRe
                     ))}
                   </div>}
                   <div className="ph-actions">
-                    <button className="ph-action-btn" onClick={e=>{e.stopPropagation();}}>Save to My Library</button>
+                    <button className="ph-action-btn" onClick={e=>{e.stopPropagation();const items=progress.unit10||[];if(!items.find(s=>s.cn===ph.cn)){upd("unit10",[{en:ph.en,jyut:ph.jyut,cn:ph.cn,tag:unit.title,known:false,date:new Date().toLocaleDateString("en-GB",{day:"numeric",month:"short"})},...items]);}}}>{(progress.unit10||[]).find(s=>s.cn===ph.cn)?"Saved":"Save to My Library"}</button>
                     <button className="ph-action-btn shadow-btn" onClick={e=>{e.stopPropagation();setShadow(ph.origIdx);}}>Shadow</button>
                   </div>
                 </div>
@@ -2775,13 +2775,6 @@ function HomeTab({ profile, progress, upd, settings, setTab, recentTopics, setRe
     <div style={{paddingBottom:80}}>
       {/* Header with gradient */}
       <div className="home-hdr">
-        <div className="home-hdr-top">
-          <div className="home-hdr-left">
-            <div className="home-hdr-title">Shadow<span>Speak</span></div>
-            <div className="home-hdr-lang">{LANG_CONFIG.name}</div>
-          </div>
-          <div className="home-hdr-avatar"></div>
-        </div>
         <div className="home-greeting">
           <div className="greeting-text">{greeting}, {userName.split(" ")[0]}</div>
           <div className="greeting-sub">Keep going, you're building real fluency.</div>

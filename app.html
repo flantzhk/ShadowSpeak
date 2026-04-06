@@ -3439,56 +3439,77 @@ function PracticeTab({ progress, upd, settings, library, practiceCount, setPract
   }
 
   return (
-    <div className="mc">
-      <div className="pt">Practice & Quiz</div>
-      <div className="ps">Build your skills with structured practice or test what you know.</div>
-
-      {/* Daily Practice card — dark green, recommended */}
-      <div style={{ background: "var(--for)", borderRadius: 16, padding: 20, marginBottom: 12, cursor: "pointer" }} onClick={() => setShowLaunch(true)}>
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <div style={{ fontSize: "2rem" }}>🎧</div>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontSize: ".92rem", fontWeight: 900, color: "#fff", marginBottom: 2 }}>Daily Practice</div>
-            <div style={{ fontSize: ".72rem", color: "rgba(255,255,255,.55)", lineHeight: 1.4 }}>A full 30-minute session with warm-up, new phrases, shadowing, review, and quiz.</div>
+    <div style={{paddingBottom:80}}>
+      {/* Header with gradient — matches Home */}
+      <div style={{position:"relative",overflow:"hidden",padding:"40px 20px 24px"}}>
+        <div style={{position:"absolute",inset:0,background:"linear-gradient(135deg,#1F3329 0%,#2a5a3a 40%,#1A1F3D 100%)",opacity:.9}} />
+        <div style={{position:"absolute",inset:0,background:"radial-gradient(ellipse at 80% 20%,rgba(196,240,0,.12) 0%,transparent 50%)"}} />
+        <div style={{position:"relative",zIndex:1}}>
+          <div style={{fontSize:"1.2rem",fontWeight:900,color:"#fff",marginBottom:4}}>Practice & Quiz</div>
+          <div style={{fontSize:".78rem",color:"rgba(255,255,255,.55)",lineHeight:1.4}}>Build your skills with structured practice.</div>
+          {/* Stats row */}
+          <div style={{display:"flex",gap:12,marginTop:16}}>
+            <div style={{flex:1,background:"rgba(255,255,255,.08)",borderRadius:12,padding:"12px 0",textAlign:"center"}}>
+              <div style={{fontSize:"1.2rem",fontWeight:900,color:"var(--lime)"}}>{mastered}</div>
+              <div style={{fontSize:".6rem",fontWeight:700,color:"rgba(255,255,255,.45)",textTransform:"uppercase",letterSpacing:".5px"}}>Mastered</div>
+            </div>
+            <div style={{flex:1,background:"rgba(255,255,255,.08)",borderRadius:12,padding:"12px 0",textAlign:"center"}}>
+              <div style={{fontSize:"1.2rem",fontWeight:900,color:"var(--lime)"}}>{practicing}</div>
+              <div style={{fontSize:".6rem",fontWeight:700,color:"rgba(255,255,255,.45)",textTransform:"uppercase",letterSpacing:".5px"}}>Practicing</div>
+            </div>
+            <div style={{flex:1,background:"rgba(255,255,255,.08)",borderRadius:12,padding:"12px 0",textAlign:"center"}}>
+              <div style={{fontSize:"1.2rem",fontWeight:900,color:"var(--lime)"}}>{practiceCount}</div>
+              <div style={{fontSize:".6rem",fontWeight:700,color:"rgba(255,255,255,.45)",textTransform:"uppercase",letterSpacing:".5px"}}>Sessions</div>
+            </div>
           </div>
-          <div style={{ fontSize: "1.2rem", color: "var(--lime)" }}>&#8250;</div>
-        </div>
-        <div style={{ display: "flex", gap: 6, marginTop: 10 }}>
-          <span style={{ fontSize: ".62rem", fontWeight: 700, background: "rgba(255,255,255,.12)", color: "rgba(255,255,255,.6)", padding: "3px 8px", borderRadius: 999 }}>30 min</span>
-          <span style={{ fontSize: ".62rem", fontWeight: 700, background: "rgba(196,240,0,.15)", color: "var(--lime)", padding: "3px 8px", borderRadius: 999 }}>Recommended</span>
-        </div>
-      </div>
-
-      {/* Quick Quiz card — white */}
-      <div style={{ background: "var(--wh)", borderRadius: 16, padding: 20, marginBottom: 12, border: "1.5px solid var(--st)", cursor: "pointer" }} onClick={() => setShowQuiz(true)}>
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <div style={{ fontSize: "2rem" }}>🧠</div>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontSize: ".92rem", fontWeight: 900, color: "var(--ink)", marginBottom: 2 }}>Quick Quiz</div>
-            <div style={{ fontSize: ".72rem", color: "var(--ink3)", lineHeight: 1.4 }}>Test your recall on 10 items from your library and learned phrases.</div>
-          </div>
-          <div style={{ fontSize: "1.2rem", color: "var(--ink3)" }}>&#8250;</div>
-        </div>
-        <div style={{ display: "flex", gap: 6, marginTop: 10 }}>
-          <span style={{ fontSize: ".62rem", fontWeight: 700, background: "var(--cream)", color: "var(--ink3)", padding: "3px 8px", borderRadius: 999 }}>5 min</span>
-          <span style={{ fontSize: ".62rem", fontWeight: 700, background: "var(--cream)", color: "var(--ink3)", padding: "3px 8px", borderRadius: 999 }}>{quizAvailable} items available</span>
         </div>
       </div>
 
-      {/* Stats bar — Mastered | Practicing | Sessions */}
-      <div style={{ background: "var(--cream)", borderRadius: 14, padding: 16, marginTop: 8 }}>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
-          <div style={{ textAlign: "center" }}>
-            <div style={{ fontSize: "1.3rem", fontWeight: 900, color: "var(--for)" }}>{mastered}</div>
-            <div style={{ fontSize: ".62rem", fontWeight: 700, color: "var(--ink3)" }}>Mastered</div>
+      <div style={{padding:"0 16px"}}>
+        {/* Daily Practice card */}
+        <div style={{ background:"var(--for)", borderRadius:16, padding:20, marginBottom:12, cursor:"pointer", marginTop:16 }} onClick={() => setShowLaunch(true)}>
+          <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+            <div style={{width:48,height:48,borderRadius:12,background:"rgba(196,240,0,.15)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1.5rem",flexShrink:0}}>🎧</div>
+            <div style={{ flex:1 }}>
+              <div style={{ fontSize:".92rem", fontWeight:900, color:"#fff", marginBottom:2 }}>Daily Practice</div>
+              <div style={{ fontSize:".72rem", color:"rgba(255,255,255,.55)", lineHeight:1.4 }}>Warm-up, new phrases, shadowing, review & quiz.</div>
+            </div>
+            <div style={{ fontSize:"1.2rem", color:"var(--lime)" }}>&#8250;</div>
           </div>
-          <div style={{ textAlign: "center" }}>
-            <div style={{ fontSize: "1.3rem", fontWeight: 900, color: "var(--for)" }}>{practicing}</div>
-            <div style={{ fontSize: ".62rem", fontWeight: 700, color: "var(--ink3)" }}>Practicing</div>
+          <div style={{ display:"flex", gap:6, marginTop:10 }}>
+            <span style={{ fontSize:".62rem", fontWeight:700, background:"rgba(255,255,255,.12)", color:"rgba(255,255,255,.6)", padding:"3px 8px", borderRadius:999 }}>30 min</span>
+            <span style={{ fontSize:".62rem", fontWeight:700, background:"rgba(196,240,0,.15)", color:"var(--lime)", padding:"3px 8px", borderRadius:999 }}>Recommended</span>
           </div>
-          <div style={{ textAlign: "center" }}>
-            <div style={{ fontSize: "1.3rem", fontWeight: 900, color: "var(--for)" }}>{practiceCount}</div>
-            <div style={{ fontSize: ".62rem", fontWeight: 700, color: "var(--ink3)" }}>Sessions</div>
+        </div>
+
+        {/* Quick Quiz card — gradient purple/blue */}
+        <div style={{ background:"linear-gradient(135deg, #2D2545 0%, #1A1F3D 100%)", borderRadius:16, padding:20, marginBottom:12, cursor:"pointer" }} onClick={() => setShowQuiz(true)}>
+          <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+            <div style={{width:48,height:48,borderRadius:12,background:"rgba(143,106,232,.2)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1.5rem",flexShrink:0}}>🧠</div>
+            <div style={{ flex:1 }}>
+              <div style={{ fontSize:".92rem", fontWeight:900, color:"#fff", marginBottom:2 }}>Quick Quiz</div>
+              <div style={{ fontSize:".72rem", color:"rgba(255,255,255,.55)", lineHeight:1.4 }}>Test your recall on 10 items from your library.</div>
+            </div>
+            <div style={{ fontSize:"1.2rem", color:"rgba(143,106,232,.7)" }}>&#8250;</div>
+          </div>
+          <div style={{ display:"flex", gap:6, marginTop:10 }}>
+            <span style={{ fontSize:".62rem", fontWeight:700, background:"rgba(255,255,255,.08)", color:"rgba(255,255,255,.5)", padding:"3px 8px", borderRadius:999 }}>5 min</span>
+            <span style={{ fontSize:".62rem", fontWeight:700, background:"rgba(143,106,232,.15)", color:"rgba(143,106,232,.7)", padding:"3px 8px", borderRadius:999 }}>{quizAvailable} items available</span>
+          </div>
+        </div>
+
+        {/* Pronunciation Quiz card */}
+        <div style={{ background:"linear-gradient(135deg, #3D2A1A 0%, #2A1F15 100%)", borderRadius:16, padding:20, cursor:"pointer" }} onClick={() => setShowQuiz(true)}>
+          <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+            <div style={{width:48,height:48,borderRadius:12,background:"rgba(232,160,64,.15)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1.5rem",flexShrink:0}}>🎙</div>
+            <div style={{ flex:1 }}>
+              <div style={{ fontSize:".92rem", fontWeight:900, color:"#fff", marginBottom:2 }}>Pronunciation Quiz</div>
+              <div style={{ fontSize:".72rem", color:"rgba(255,255,255,.55)", lineHeight:1.4 }}>Record yourself and get AI pronunciation scores.</div>
+            </div>
+            <div style={{ fontSize:"1.2rem", color:"rgba(232,160,64,.6)" }}>&#8250;</div>
+          </div>
+          <div style={{ display:"flex", gap:6, marginTop:10 }}>
+            <span style={{ fontSize:".62rem", fontWeight:700, background:"rgba(255,255,255,.08)", color:"rgba(255,255,255,.5)", padding:"3px 8px", borderRadius:999 }}>Pick any units</span>
           </div>
         </div>
       </div>

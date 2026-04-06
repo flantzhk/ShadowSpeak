@@ -16,7 +16,7 @@
  * and the SW caches them as users browse.
  */
 
-const CACHE_VERSION = "ss-v7";
+const CACHE_VERSION = "ss-v8";
 const CACHE_STATIC = `${CACHE_VERSION}-static`;
 const CACHE_AUDIO = `${CACHE_VERSION}-audio`;
 const CACHE_FONTS = `${CACHE_VERSION}-fonts`;
@@ -33,6 +33,16 @@ const PRECACHE_URLS = [
   "./mandarin.html",
   "./manifest.json",
   "./audio/manifest.json",
+];
+
+// CDN scripts to pre-cache for offline use
+const CDN_PRECACHE = [
+  "https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js",
+  "https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js",
+  "https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js",
+  "https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js",
+  "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js",
+  "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js",
 ];
 
 // ============================================================
@@ -57,6 +67,14 @@ self.addEventListener("install", (event) => {
         ]);
       });
     })
+  );
+  // Also pre-cache CDN scripts
+  event.waitUntil(
+    caches.open(CACHE_CDN).then(cache =>
+      Promise.all(CDN_PRECACHE.map(url =>
+        cache.match(url).then(r => r || fetch(url).then(resp => { if (resp.ok) cache.put(url, resp); }).catch(() => {}))
+      ))
+    )
   );
   // Take control immediately
   self.skipWaiting();
@@ -106,13 +124,13 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // ---- CDN SCRIPTS (React, Babel, Firebase): stale-while-revalidate ----
+  // ---- CDN SCRIPTS (React, Babel, Firebase): cache-first for offline ----
   if (
     url.hostname === "cdnjs.cloudflare.com" ||
     url.hostname === "www.gstatic.com" ||
     url.hostname.endsWith("firebaseio.com")
   ) {
-    event.respondWith(staleWhileRevalidate(event.request, CACHE_CDN));
+    event.respondWith(cacheFirst(event.request, CACHE_CDN));
     return;
   }
 

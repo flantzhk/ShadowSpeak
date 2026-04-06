@@ -1750,7 +1750,7 @@ function App() {
                   <div style={{fontSize:".78rem",fontWeight:800,color:"var(--ink)"}}>{displayName}</div>
                   <div style={{fontSize:".62rem",color:"var(--ink2)"}}>{user.email}</div>
                 </div>
-                <button onClick={()=>{setProfileMenu(false);window.location.href="app.html?lang=" + LANG_CONFIG.switchTo.lang;}} style={{width:"100%",padding:"10px 16px",background:"none",border:"none",cursor:"pointer",fontSize:".75rem",fontWeight:700,color:"var(--ink)",textAlign:"left",display:"flex",alignItems:"center",gap:8}}>" + LANG_CONFIG.switchTo.flag + " " + LANG_CONFIG.switchTo.label + "</button>
+                <button onClick={()=>{setProfileMenu(false);window.location.href="app.html?lang=" + LANG_CONFIG.switchTo.lang;}} style={{width:"100%",padding:"10px 16px",background:"none",border:"none",cursor:"pointer",fontSize:".75rem",fontWeight:700,color:"var(--ink)",textAlign:"left",display:"flex",alignItems:"center",gap:8}}>{LANG_CONFIG.switchTo.flag} {LANG_CONFIG.switchTo.label}</button>
                 <button onClick={()=>{setProfileMenu(false);setTab("settings");}} style={{width:"100%",padding:"10px 16px",background:"none",border:"none",cursor:"pointer",fontSize:".75rem",fontWeight:700,color:"var(--ink)",textAlign:"left",display:"flex",alignItems:"center",gap:8}}>⚙️ Settings</button>
                 <button onClick={()=>{setProfileMenu(false);window.location.href="index.html";}} style={{width:"100%",padding:"10px 16px",background:"none",border:"none",cursor:"pointer",fontSize:".75rem",fontWeight:700,color:"var(--ink)",textAlign:"left",display:"flex",alignItems:"center",gap:8}}>🏠 Back to home</button>
                 <div style={{borderTop:"1px solid var(--st)",margin:"2px 0"}} />
@@ -4854,7 +4854,7 @@ function SettingsTab({ settings, updSettings }) {
       {/* Switch language */}
       <div className="set-card">
         <div className="set-lb">Switch language</div>
-        <button onClick={()=>window.location.href="app.html?lang=" + LANG_CONFIG.switchTo.lang} style={{width:"100%",padding:"12px",borderRadius:12,border:"1.5px solid var(--st)",background:"var(--wh)",cursor:"pointer",fontSize:".78rem",fontWeight:700,color:"var(--ink)",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>" + LANG_CONFIG.switchTo.flag + " " + LANG_CONFIG.switchTo.label + "</button>
+        <button onClick={()=>window.location.href="app.html?lang=" + LANG_CONFIG.switchTo.lang} style={{width:"100%",padding:"12px",borderRadius:12,border:"1.5px solid var(--st)",background:"var(--wh)",cursor:"pointer",fontSize:".78rem",fontWeight:700,color:"var(--ink)",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>{LANG_CONFIG.switchTo.flag} {LANG_CONFIG.switchTo.label}</button>
       </div>
 
       {/* Reset progress */}
@@ -4883,7 +4883,7 @@ function SettingsTab({ settings, updSettings }) {
       {/* About */}
       <div className="set-card">
         <div className="set-lb">About</div>
-        <div style={{fontSize:".68rem",color:"var(--ink2)",lineHeight:1.5}}>" + "ShadowSpeak " + LANG_CONFIG.name + " v3.9.0. Shadowing method + spaced repetition. {ALL_WORDS.length} vocabulary words across {VOCAB_CATS.length} categories. {UNITS.reduce((s,u)=>s+u.phrases.length,0)} phrases across {UNITS.length} units.</div>
+        <div style={{fontSize:".68rem",color:"var(--ink2)",lineHeight:1.5}}>ShadowSpeak {LANG_CONFIG.name} v3.9.2. Shadowing method + spaced repetition. {ALL_WORDS.length} vocabulary words across {VOCAB_CATS.length} categories. {UNITS.reduce((s,u)=>s+u.phrases.length,0)} phrases across {UNITS.length} units.</div>
         <button onClick={()=>window.location.href="index.html"} style={{marginTop:8,background:"none",border:"none",cursor:"pointer",fontSize:".68rem",fontWeight:600,color:"var(--lime)",padding:0}}>← Back to landing page</button>
       </div>
     </div>

@@ -134,25 +134,6 @@
   </div>
 
   <script>
-    // One-time SW cache nuke — remove after v3.9.6 is stable
-    (function() {
-      var nukeKey = 'ss-cache-nuke-v6';
-      if (!localStorage.getItem(nukeKey) && 'serviceWorker' in navigator) {
-        localStorage.setItem(nukeKey, '1');
-        navigator.serviceWorker.getRegistrations().then(function(regs) {
-          regs.forEach(function(r) { r.unregister(); });
-        });
-        caches.keys().then(function(keys) {
-          keys.forEach(function(k) { caches.delete(k); });
-        }).then(function() {
-          setTimeout(function() { location.reload(true); }, 500);
-        });
-        return;
-      }
-    })();
-  </script>
-
-  <script>
     const firebaseConfig = {
       apiKey: "AIzaSyBl8PRFr84XLNZNxfSg7LpVekjh5lvBWRI",
       authDomain: "shadowspeak-22f04.firebaseapp.com",
@@ -358,19 +339,14 @@
     auth.onAuthStateChanged(user => {
       const wasSignedOut = !currentUser;
       currentUser = user;
-
-      // If user is logged in, always redirect to app (skip landing page)
-      if (user) {
-        const lastLang = localStorage.getItem('shadowspeak-last-lang');
-        if (lastLang) {
-          window.location.href = lastLang;
-        } else {
-          window.location.href = 'app.html?lang=canto';
-        }
-        return;
-      }
-
       render();
+
+      // If user just signed in and had clicked a language card, redirect automatically
+      if (user && wasSignedOut && pendingRedirect) {
+        const dest = pendingRedirect;
+        pendingRedirect = null;
+        goTo(dest);
+      }
     });
   </script>
 </body>

@@ -1360,9 +1360,9 @@ function QuizTab({ progress, upd, startMode, onBack }) {
                 <span style={{position:"absolute",top:5,right:6,fontSize:".75rem"}}>{topicIcons[u.id]||"📖"}</span>
               </div>
               {/* Info */}
-              <div style={{padding:"6px 8px 8px"}}>
-                <div style={{fontSize:".72rem",fontWeight:700,color:"var(--ink)",marginBottom:1,lineHeight:1.2}}>{u.title}</div>
-                <div style={{fontSize:".58rem",color:"var(--ink3)",fontWeight:600}}>{u.phrases.length} phrases</div>
+              <div style={{padding:"6px 8px 7px",display:"flex",alignItems:"baseline",justifyContent:"space-between",gap:4}}>
+                <div style={{fontSize:".82rem",fontWeight:700,color:"var(--ink)",lineHeight:1.2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{u.title}</div>
+                <div style={{fontSize:".6rem",color:"var(--ink3)",fontWeight:600,flexShrink:0}}>{u.phrases.length}</div>
               </div>
             </div>
           );

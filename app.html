@@ -2875,7 +2875,7 @@ function HomeTab({ profile, progress, upd, settings, setTab, recentTopics, setRe
 
         {/* Mastery confirmation overlay */}
         {masteryConfirm && <MasteryConfirmSheet phrase={masteryConfirm} onCancel={()=>setMasteryConfirm(null)} onQuiz={()=>{const ph=masteryConfirm;setMasteryConfirm(null);setQuickCheckPhrase(ph);}} onSkip={()=>handleMarkKnown(masteryConfirm)} />}
-        {quickCheckPhrase && <QuickCheckSheet phrase={quickCheckPhrase} phraseKey={`${selUnit}-${quickCheckPhrase.origIdx}`} progress={progress} upd={upd} onClose={()=>{setQuickCheckPhrase(null);}} />}
+        {quickCheckPhrase && <QuickCheckSheet phrase={quickCheckPhrase} phraseKey={`${selUnit}-${quickCheckPhrase.origIdx}`} progress={progress} upd={upd} onClose={()=>{setQuickCheckPhrase(null);}} skipPrompt />}
         {showConfetti && <ConfettiBurst />}
         {toastMsg && <div className="mastery-toast">🎉 {toastMsg}</div>}
       </div>
@@ -3902,8 +3902,8 @@ function Confetti({ count = 20 }) {
 }
 
 // ---- QUICK CHECK SHEET ----
-function QuickCheckSheet({ phrase, phraseKey, progress, upd, onClose }) {
-  const [step, setStep] = useState("prompt");
+function QuickCheckSheet({ phrase, phraseKey, progress, upd, onClose, skipPrompt }) {
+  const [step, setStep] = useState(skipPrompt ? "quiz" : "prompt");
   const [revealed, setRevealed] = useState(false);
   const closeTimer = useRef(null);
 

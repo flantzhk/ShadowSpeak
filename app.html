@@ -2583,12 +2583,12 @@ function ConfettiBurst() {
 function MasteryConfirmSheet({ phrase, onQuiz, onSkip, onCancel }) {
   return <div className="mastery-overlay" onClick={onCancel}>
     <div className="mastery-card" onClick={e=>e.stopPropagation()}>
-      <div style={{fontSize:"2.5rem",marginBottom:8}}>💪</div>
-      <div style={{fontSize:"1rem",fontWeight:900,color:"var(--ink)",marginBottom:4}}>You know this?</div>
+      <div style={{fontSize:"2.5rem",marginBottom:8}}>🔥</div>
+      <div style={{fontSize:"1rem",fontWeight:900,color:"var(--ink)",marginBottom:4}}>Nice — let's lock it in!</div>
       <div style={{fontSize:".78rem",color:"var(--ink3)",marginBottom:6,lineHeight:1.5}}><strong>{phrase.en}</strong></div>
       <div style={{fontSize:".82rem",fontWeight:700,color:"var(--plum)",marginBottom:20}}>{phrase.cn}</div>
-      <button onClick={onQuiz} style={{width:"100%",padding:"14px",borderRadius:12,border:"none",background:"var(--for)",color:"#fff",fontSize:".84rem",fontWeight:800,cursor:"pointer",marginBottom:8,minHeight:48}}>🧠 Quiz me first</button>
-      <button onClick={onSkip} style={{width:"100%",padding:"14px",borderRadius:12,border:"1.5px solid var(--st)",background:"var(--wh)",color:"var(--ink)",fontSize:".84rem",fontWeight:700,cursor:"pointer",minHeight:48}}>No need, I already know it</button>
+      <button onClick={onQuiz} style={{width:"100%",padding:"14px",borderRadius:12,border:"none",background:"var(--for)",color:"#fff",fontSize:".84rem",fontWeight:800,cursor:"pointer",marginBottom:8,minHeight:48}}>🧠 Quick test to make it stick</button>
+      <button onClick={onSkip} style={{width:"100%",padding:"14px",borderRadius:12,border:"1.5px solid var(--st)",background:"var(--wh)",color:"var(--ink)",fontSize:".84rem",fontWeight:700,cursor:"pointer",minHeight:48}}>I've got this one — mark as mastered</button>
     </div>
   </div>;
 }

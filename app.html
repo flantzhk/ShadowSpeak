@@ -1994,7 +1994,12 @@ function LessonMode({ progress, upd, profile, settings, onComplete, onQuit }) {
     {emoji:"🧩", text:"Put it all together. Say the whole phrase out loud."},
   ];
 
-  const speedGaps = { slow:[4000,4500], normal:[2800,3200], fast:[1500,1800] };
+  // speedGaps computed dynamically per phrase — see usage below
+  const getSpeedGaps = (item) => {
+    const len = item ? (item.cn || "").length : 4;
+    const bonus = Math.max(0, (len - 4) * 400);
+    return { slow:[4000+bonus,5000+bonus], normal:[2800+bonus,3500+bonus], fast:[1500+bonus,2000+bonus] };
+  };
 
   useEffect(() => {
     const due = getDueItems(progress).slice(0, 10);
@@ -2032,7 +2037,7 @@ function LessonMode({ progress, upd, profile, settings, onComplete, onQuit }) {
     const items = getPhaseItems();
     if (!items || items.length===0) return;
     const safeIdx = innerIdx % items.length;
-    const [playGap, shadowGap] = speedGaps[speed];
+    const [playGap, shadowGap] = getSpeedGaps(items[safeIdx])[speed];
 
     if (phase === 1) {
       if (shadowPhase === "play") {
@@ -4212,7 +4217,10 @@ function ShadowMode({ unit, progress, upd, settings, onClose, startIdx=0, single
   const realIdx = single ? startIdx : idx;
   const total = phrases.length;
   const isKn = (progress.phrases||{})[`${unit.id}-${realIdx}`];
-  const gaps = { slow: [4000,4500], normal: [2800,3200], fast: [1500,1800] };
+  // Scale gaps by phrase length — longer phrases get more time
+  const phraseLen = ph ? (ph.cn || "").length : 4;
+  const lenBonus = Math.max(0, (phraseLen - 4) * 400); // +400ms per char beyond 4
+  const gaps = { slow: [4000+lenBonus,5000+lenBonus], normal: [2800+lenBonus,3500+lenBonus], fast: [1500+lenBonus,2000+lenBonus] };
 
   const clear = () => { if(timer.current)clearTimeout(timer.current); };
   const playingRef = useRef(playing);

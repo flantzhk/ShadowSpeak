@@ -1132,7 +1132,7 @@ const CSS = `
 .ph-actions{display:flex;gap:6px;max-width:480px}
 .ph-action-btn{flex:1;padding:10px 0;border-radius:10px;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;border:1.5px solid var(--st);background:var(--wh);color:var(--ink2);transition:all .15s;min-height:44px}
 .ph-action-btn:active{border-color:var(--for);color:var(--for)}
-.ph-action-btn.shadow-btn{background:var(--for);color:#fff;border-color:var(--for)}
+.ph-action-btn.shadow-btn{background:var(--ink);color:#fff;border-color:var(--ink)}
 .ph-action-btn.know-btn{background:var(--lime);color:var(--for);border-color:var(--lime);font-weight:800}
 .ph-action-btn.know-btn:active{opacity:.85}
 .mastery-overlay{position:fixed;inset:0;z-index:1200;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center}
@@ -2881,34 +2881,37 @@ function HomeTab({ profile, progress, upd, settings, setTab, recentTopics, setRe
                   </div>}
                   <div className="ph-actions">
                     <button className="ph-action-btn" onClick={e=>{e.stopPropagation();const items=progress.unit10||[];if(!items.find(s=>s.cn===ph.cn)){upd("unit10",[{en:ph.en,jyut:ph.jyut,cn:ph.cn,tag:unit.title,known:false,date:new Date().toLocaleDateString("en-GB",{day:"numeric",month:"short"})},...items]);}}}>{(progress.unit10||[]).find(s=>s.cn===ph.cn)?"Saved":"Save"}</button>
-                    <button className="ph-action-btn shadow-btn" onClick={e=>{e.stopPropagation();setShadow(ph.origIdx);}}>Shadow</button>
+                    <button className="ph-action-btn shadow-btn" onClick={e=>{e.stopPropagation();setShadow(ph.origIdx);}} style={{gap:4}}><svg width="10" height="10" viewBox="0 0 10 12" fill="none"><path d="M0 0L10 6L0 12V0Z" fill="#fff"/></svg> Repeat</button>
                     {!ph.known && <button className="ph-action-btn know-btn" onClick={e=>{e.stopPropagation();setMasteryConfirm(ph);}}>I know this!</button>}
                   </div>
                 </div>
               </div>
             );
           })}
-          {known.length > 0 && <div style={{padding:"12px 16px 6px",display:"flex",alignItems:"center",gap:8}}>
-            <div style={{flex:1,height:1,background:"var(--st)"}} />
-            <span style={{fontSize:".68rem",fontWeight:800,color:"var(--ink3)",letterSpacing:"1px",textTransform:"uppercase"}}>Mastered ({known.length})</span>
-            <div style={{flex:1,height:1,background:"var(--st)"}} />
-          </div>}
-          {known.map((ph,i) => (
-            <div className="ph-item" key={ph.origIdx} style={{opacity:.55}} onClick={()=>{setExpandedIdx(expandedIdx===ph.origIdx?null:ph.origIdx);}}>
-              <div className="ph-row" style={{alignItems:"center"}}>
-                <button className="ph-play" onClick={e=>{e.stopPropagation();playPhraseMini(ph);}} style={{opacity:.7}}>
-                  <svg width="10" height="12" viewBox="0 0 10 12" fill="none"><path d="M0 0L10 6L0 12V0Z" fill="#fff"/></svg>
-                </button>
-                <div className="ph-text" style={{flex:1}}>
-                  <div className="ph-eng" style={{display:"flex",alignItems:"center",gap:6}}>{ph.en}
-                    <span style={{fontSize:".6rem",fontWeight:700,background:"rgba(122,170,0,.15)",color:"var(--ld)",padding:"2px 6px",borderRadius:4,flexShrink:0}}>Mastered</span>
-                  </div>
-                  <div className="ph-jyut">{ph.jyut}</div>
-                  <div className="ph-chi">{ph.cn}</div>
+          {known.length > 0 && <div style={{margin:"20px 0 0",background:"linear-gradient(135deg, #1F3329 0%, #2a4a36 50%, #1F3329 100%)",borderRadius:16,overflow:"hidden"}}>
+            <div style={{padding:"16px 16px 12px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+              <div style={{display:"flex",alignItems:"center",gap:10}}>
+                <span style={{fontSize:"1.4rem"}}>🏆</span>
+                <div>
+                  <div style={{fontSize:".88rem",fontWeight:900,color:"#fff"}}>Trophy Cabinet</div>
+                  <div style={{fontSize:".68rem",color:"var(--lime)",fontWeight:600,marginTop:1}}>{known.length} phrase{known.length!==1?"s":""} conquered</div>
                 </div>
               </div>
+              <div style={{fontSize:".68rem",color:"rgba(255,255,255,.4)",fontWeight:600}}>{Math.round(known.length/items.length*100)}% of unit</div>
             </div>
-          ))}
+            {known.map((ph,i) => (
+              <div key={ph.origIdx} style={{padding:"10px 16px",borderTop:"1px solid rgba(255,255,255,.06)",display:"flex",alignItems:"center",gap:10,cursor:"pointer"}} onClick={()=>playPhraseMini(ph)}>
+                <button onClick={e=>{e.stopPropagation();playPhraseMini(ph);}} style={{width:32,height:32,borderRadius:"50%",border:"none",background:"rgba(196,240,0,.15)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                  <svg width="8" height="10" viewBox="0 0 10 12" fill="none"><path d="M0 0L10 6L0 12V0Z" fill="#C4F000"/></svg>
+                </button>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontSize:".78rem",fontWeight:600,color:"rgba(255,255,255,.85)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{ph.en}</div>
+                  <div style={{fontSize:".65rem",color:"var(--lime)",fontStyle:"italic"}}>{ph.jyut}</div>
+                </div>
+                <div style={{fontSize:".85rem",color:"rgba(255,255,255,.5)",flexShrink:0,fontWeight:600}}>{ph.cn}</div>
+              </div>
+            ))}
+          </div>}
           </>; })()}
         </div>
 

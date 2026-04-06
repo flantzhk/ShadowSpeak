@@ -3446,20 +3446,20 @@ function PracticeTab({ progress, upd, settings, library, practiceCount, setPract
         <div style={{position:"absolute",inset:0,background:"radial-gradient(ellipse at 80% 20%,rgba(196,240,0,.12) 0%,transparent 50%)"}} />
         <div style={{position:"relative",zIndex:1}}>
           <div style={{fontSize:"1.2rem",fontWeight:900,color:"#fff",marginBottom:4}}>Practice & Quiz</div>
-          <div style={{fontSize:".78rem",color:"rgba(255,255,255,.55)",lineHeight:1.4}}>Build your skills with structured practice.</div>
+          <div style={{fontSize:".82rem",color:"rgba(255,255,255,.75)",lineHeight:1.4}}>Build your skills with structured practice.</div>
           {/* Stats row */}
           <div style={{display:"flex",gap:12,marginTop:16}}>
-            <div style={{flex:1,background:"rgba(255,255,255,.08)",borderRadius:12,padding:"12px 0",textAlign:"center"}}>
+            <div style={{flex:1,background:"rgba(255,255,255,.1)",borderRadius:12,padding:"12px 0",textAlign:"center"}}>
               <div style={{fontSize:"1.2rem",fontWeight:900,color:"var(--lime)"}}>{mastered}</div>
-              <div style={{fontSize:".6rem",fontWeight:700,color:"rgba(255,255,255,.45)",textTransform:"uppercase",letterSpacing:".5px"}}>Mastered</div>
+              <div style={{fontSize:".65rem",fontWeight:700,color:"rgba(255,255,255,.7)",textTransform:"uppercase",letterSpacing:".5px"}}>Mastered</div>
             </div>
-            <div style={{flex:1,background:"rgba(255,255,255,.08)",borderRadius:12,padding:"12px 0",textAlign:"center"}}>
+            <div style={{flex:1,background:"rgba(255,255,255,.1)",borderRadius:12,padding:"12px 0",textAlign:"center"}}>
               <div style={{fontSize:"1.2rem",fontWeight:900,color:"var(--lime)"}}>{practicing}</div>
-              <div style={{fontSize:".6rem",fontWeight:700,color:"rgba(255,255,255,.45)",textTransform:"uppercase",letterSpacing:".5px"}}>Practicing</div>
+              <div style={{fontSize:".65rem",fontWeight:700,color:"rgba(255,255,255,.7)",textTransform:"uppercase",letterSpacing:".5px"}}>Practicing</div>
             </div>
-            <div style={{flex:1,background:"rgba(255,255,255,.08)",borderRadius:12,padding:"12px 0",textAlign:"center"}}>
+            <div style={{flex:1,background:"rgba(255,255,255,.1)",borderRadius:12,padding:"12px 0",textAlign:"center"}}>
               <div style={{fontSize:"1.2rem",fontWeight:900,color:"var(--lime)"}}>{practiceCount}</div>
-              <div style={{fontSize:".6rem",fontWeight:700,color:"rgba(255,255,255,.45)",textTransform:"uppercase",letterSpacing:".5px"}}>Sessions</div>
+              <div style={{fontSize:".65rem",fontWeight:700,color:"rgba(255,255,255,.7)",textTransform:"uppercase",letterSpacing:".5px"}}>Sessions</div>
             </div>
           </div>
         </div>
@@ -3472,13 +3472,13 @@ function PracticeTab({ progress, upd, settings, library, practiceCount, setPract
             <div style={{width:48,height:48,borderRadius:12,background:"rgba(196,240,0,.15)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1.5rem",flexShrink:0}}>🎧</div>
             <div style={{ flex:1 }}>
               <div style={{ fontSize:".92rem", fontWeight:900, color:"#fff", marginBottom:2 }}>Daily Practice</div>
-              <div style={{ fontSize:".72rem", color:"rgba(255,255,255,.55)", lineHeight:1.4 }}>Warm-up, new phrases, shadowing, review & quiz.</div>
+              <div style={{ fontSize:".76rem", color:"rgba(255,255,255,.75)", lineHeight:1.4 }}>Warm-up, new phrases, shadowing, review & quiz.</div>
             </div>
             <div style={{ fontSize:"1.2rem", color:"var(--lime)" }}>&#8250;</div>
           </div>
           <div style={{ display:"flex", gap:6, marginTop:10 }}>
-            <span style={{ fontSize:".62rem", fontWeight:700, background:"rgba(255,255,255,.12)", color:"rgba(255,255,255,.6)", padding:"3px 8px", borderRadius:999 }}>30 min</span>
-            <span style={{ fontSize:".62rem", fontWeight:700, background:"rgba(196,240,0,.15)", color:"var(--lime)", padding:"3px 8px", borderRadius:999 }}>Recommended</span>
+            <span style={{ fontSize:".65rem", fontWeight:700, background:"rgba(255,255,255,.12)", color:"rgba(255,255,255,.8)", padding:"4px 10px", borderRadius:999 }}>30 min</span>
+            <span style={{ fontSize:".65rem", fontWeight:700, background:"rgba(196,240,0,.15)", color:"var(--lime)", padding:"4px 10px", borderRadius:999 }}>Recommended</span>
           </div>
         </div>
 
@@ -3488,13 +3488,13 @@ function PracticeTab({ progress, upd, settings, library, practiceCount, setPract
             <div style={{width:48,height:48,borderRadius:12,background:"rgba(143,106,232,.2)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1.5rem",flexShrink:0}}>🧠</div>
             <div style={{ flex:1 }}>
               <div style={{ fontSize:".92rem", fontWeight:900, color:"#fff", marginBottom:2 }}>Quick Quiz</div>
-              <div style={{ fontSize:".72rem", color:"rgba(255,255,255,.55)", lineHeight:1.4 }}>Test your recall on 10 items from your library.</div>
+              <div style={{ fontSize:".76rem", color:"rgba(255,255,255,.75)", lineHeight:1.4 }}>Test your recall on 10 items from your library.</div>
             </div>
-            <div style={{ fontSize:"1.2rem", color:"rgba(143,106,232,.7)" }}>&#8250;</div>
+            <div style={{ fontSize:"1.2rem", color:"rgba(179,153,255,.8)" }}>&#8250;</div>
           </div>
           <div style={{ display:"flex", gap:6, marginTop:10 }}>
-            <span style={{ fontSize:".62rem", fontWeight:700, background:"rgba(255,255,255,.08)", color:"rgba(255,255,255,.5)", padding:"3px 8px", borderRadius:999 }}>5 min</span>
-            <span style={{ fontSize:".62rem", fontWeight:700, background:"rgba(143,106,232,.15)", color:"rgba(143,106,232,.7)", padding:"3px 8px", borderRadius:999 }}>{quizAvailable} items available</span>
+            <span style={{ fontSize:".65rem", fontWeight:700, background:"rgba(255,255,255,.1)", color:"rgba(255,255,255,.8)", padding:"4px 10px", borderRadius:999 }}>5 min</span>
+            <span style={{ fontSize:".65rem", fontWeight:700, background:"rgba(143,106,232,.2)", color:"rgba(179,153,255,.9)", padding:"4px 10px", borderRadius:999 }}>{quizAvailable} items available</span>
           </div>
         </div>
 
@@ -3504,12 +3504,12 @@ function PracticeTab({ progress, upd, settings, library, practiceCount, setPract
             <div style={{width:48,height:48,borderRadius:12,background:"rgba(232,160,64,.15)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1.5rem",flexShrink:0}}>🎙</div>
             <div style={{ flex:1 }}>
               <div style={{ fontSize:".92rem", fontWeight:900, color:"#fff", marginBottom:2 }}>Pronunciation Quiz</div>
-              <div style={{ fontSize:".72rem", color:"rgba(255,255,255,.55)", lineHeight:1.4 }}>Record yourself and get AI pronunciation scores.</div>
+              <div style={{ fontSize:".76rem", color:"rgba(255,255,255,.75)", lineHeight:1.4 }}>Record yourself and get AI pronunciation scores.</div>
             </div>
-            <div style={{ fontSize:"1.2rem", color:"rgba(232,160,64,.6)" }}>&#8250;</div>
+            <div style={{ fontSize:"1.2rem", color:"rgba(255,200,120,.8)" }}>&#8250;</div>
           </div>
           <div style={{ display:"flex", gap:6, marginTop:10 }}>
-            <span style={{ fontSize:".62rem", fontWeight:700, background:"rgba(255,255,255,.08)", color:"rgba(255,255,255,.5)", padding:"3px 8px", borderRadius:999 }}>Pick any units</span>
+            <span style={{ fontSize:".65rem", fontWeight:700, background:"rgba(255,255,255,.1)", color:"rgba(255,255,255,.8)", padding:"4px 10px", borderRadius:999 }}>Pick any units</span>
           </div>
         </div>
       </div>

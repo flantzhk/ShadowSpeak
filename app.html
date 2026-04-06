@@ -3291,6 +3291,9 @@ function LibraryTab({ library, setLibrary, progress, upd, settings, startPlaylis
                 <span className="gloss-chi">{g.cn}</span>
                 <span className="gloss-jyut">{g.jy}</span>
                 {g.en && <span className="gloss-eng">{g.en}</span>}
+                <div className="gloss-actions">
+                  <span className="gloss-action" onClick={e=>{e.stopPropagation();const lib=progress.unit10||[];if(!lib.find(x=>x.cn===g.cn)){upd("unit10",[{en:g.en||"",jyut:g.jy||"",cn:g.cn,tag:s.tag||"Library",known:false,date:new Date().toLocaleDateString("en-GB",{day:"numeric",month:"short"})},...lib]);}}}>{(progress.unit10||[]).find(x=>x.cn===g.cn)?"\u2713":"+"}</span>
+                </div>
               </div>
             ))}
           </div>}

@@ -339,14 +339,19 @@
     auth.onAuthStateChanged(user => {
       const wasSignedOut = !currentUser;
       currentUser = user;
-      render();
 
-      // If user just signed in and had clicked a language card, redirect automatically
-      if (user && wasSignedOut && pendingRedirect) {
-        const dest = pendingRedirect;
-        pendingRedirect = null;
-        goTo(dest);
+      // If user is logged in, always redirect to app (skip landing page)
+      if (user) {
+        const lastLang = localStorage.getItem('shadowspeak-last-lang');
+        if (lastLang) {
+          window.location.href = lastLang;
+        } else {
+          window.location.href = 'app.html?lang=canto';
+        }
+        return;
       }
+
+      render();
     });
   </script>
 </body>

@@ -1117,10 +1117,21 @@ const CSS = `
 .gloss-actions{display:flex;gap:4px}
 .gloss-action{width:24px;height:24px;border-radius:6px;border:1px solid rgba(0,0,0,.08);background:rgba(0,0,0,.02);display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--ink2);cursor:pointer;transition:all .15s}
 .gloss-action:active{background:var(--for);color:#fff;border-color:var(--for)}
-.ph-actions{display:flex;gap:6px}
+.ph-actions{display:flex;gap:6px;max-width:480px}
 .ph-action-btn{flex:1;padding:10px 0;border-radius:10px;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;border:1px solid rgba(0,0,0,.1);background:var(--wh);color:var(--ink);transition:all .15s;min-height:44px}
 .ph-action-btn:active{border-color:var(--for);color:var(--for)}
 .ph-action-btn.shadow-btn{background:var(--for);color:#fff;border-color:var(--for)}
+.ph-action-btn.know-btn{background:rgba(196,240,0,.12);color:var(--for);border-color:rgba(122,170,0,.3)}
+.ph-action-btn.know-btn:active{background:var(--lime);color:var(--for)}
+.mastery-overlay{position:fixed;inset:0;z-index:1200;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;animation:fadeIn .2s ease}
+.mastery-card{background:#fff;border-radius:20px;padding:28px 24px;max-width:320px;width:90%;text-align:center;box-shadow:0 16px 48px rgba(0,0,0,.25);animation:scaleIn .25s ease}
+@keyframes scaleIn{from{transform:scale(.9);opacity:0}to{transform:scale(1);opacity:1}}
+.mastery-toast{position:fixed;top:60px;left:50%;transform:translateX(-50%);z-index:1300;background:var(--for);color:var(--lime);padding:12px 24px;border-radius:999px;font-size:.82rem;font-weight:800;box-shadow:0 8px 24px rgba(0,0,0,.3);animation:toastIn .3s ease,toastOut .3s ease 1.7s forwards}
+@keyframes toastIn{from{opacity:0;transform:translateX(-50%) translateY(-20px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
+@keyframes toastOut{from{opacity:1}to{opacity:0}}
+.confetti-container{position:fixed;inset:0;z-index:1250;pointer-events:none;overflow:hidden}
+.confetti-piece{position:absolute;width:8px;height:8px;border-radius:2px;animation:confettiFall 1.5s ease-out forwards}
+@keyframes confettiFall{0%{opacity:1;transform:translateY(0) rotate(0deg)}100%{opacity:0;transform:translateY(100vh) rotate(720deg)}}
 `;
 
 // ============================================================
@@ -1556,6 +1567,7 @@ function App() {
   const [practiceMode, setPracticeMode] = useState(null);
   const [practiceCount, setPracticeCount] = useState(parseInt(localStorage.getItem(LANG_CONFIG.id + '-practice-count') || '0'));
   const [recentTopics, setRecentTopics] = useState(JSON.parse(localStorage.getItem(LANG_CONFIG.id + '-recent-topics') || '[]'));
+  const [autoLaunch, setAutoLaunch] = useState(null);
   const saveTimer = useRef(null);
 
   // Inject CSS
@@ -1761,9 +1773,9 @@ function App() {
         </div>
       </div>
 
-      {tab==="home"&&<HomeTab profile={displayName} progress={progress} upd={upd} settings={settings} setTab={setTab} recentTopics={recentTopics} setRecentTopics={setRecentTopics} practiceCount={practiceCount} library={library} selUnit={selUnit} setSelUnit={setSelUnit} markReviewed={markReviewed} startPlaylist={startPlaylist} openPlBuilder={()=>setShowPlBuilder(true)} />}
+      {tab==="home"&&<HomeTab profile={displayName} progress={progress} upd={upd} settings={settings} setTab={setTab} recentTopics={recentTopics} setRecentTopics={setRecentTopics} practiceCount={practiceCount} library={library} selUnit={selUnit} setSelUnit={setSelUnit} markReviewed={markReviewed} startPlaylist={startPlaylist} openPlBuilder={()=>setShowPlBuilder(true)} setAutoLaunch={setAutoLaunch} />}
       {tab==="library"&&<LibraryTab library={library} setLibrary={setLibrary} progress={progress} upd={upd} settings={settings} />}
-      {tab==="practice"&&<PracticeTab progress={progress} upd={upd} settings={settings} library={library} practiceCount={practiceCount} setPracticeCount={setPracticeCount} />}
+      {tab==="practice"&&<PracticeTab progress={progress} upd={upd} settings={settings} library={library} practiceCount={practiceCount} setPracticeCount={setPracticeCount} autoLaunch={autoLaunch} />}
       {tab==="settings"&&<SettingsTab settings={settings} updSettings={updSettings} />}
 
       {/* Playlist builder overlay */}
@@ -2549,15 +2561,69 @@ function AddNewSection({ progress, upd }) {
   );
 }
 
+// ---- CONFETTI + MASTERY CONFIRMATION ----
+function Confetti() {
+  const colors = ["#C4F000","#7AAA00","#8F6AE8","#E8A040","#FF6B9D","#00C9DB"];
+  const pieces = Array.from({length:30}, (_,i) => ({
+    id:i, left: Math.random()*100, delay: Math.random()*0.5, color: colors[i%colors.length],
+    size: 6+Math.random()*6, duration: 1+Math.random()*1
+  }));
+  return <div className="confetti-container">{pieces.map(p =>
+    <div key={p.id} className="confetti-piece" style={{left:p.left+"%",top:-10,width:p.size,height:p.size,background:p.color,animationDelay:p.delay+"s",animationDuration:p.duration+"s"}} />
+  )}</div>;
+}
+
+function MasteryToast({message}) {
+  return <div className="mastery-toast">🎉 {message}</div>;
+}
+
+function MasteryConfirm({ phrase, onQuiz, onSkip, onCancel }) {
+  return <div className="mastery-overlay" onClick={onCancel}>
+    <div className="mastery-card" onClick={e=>e.stopPropagation()}>
+      <div style={{fontSize:"2.5rem",marginBottom:8}}>💪</div>
+      <div style={{fontSize:"1rem",fontWeight:900,color:"var(--ink)",marginBottom:4}}>You know this?</div>
+      <div style={{fontSize:".78rem",color:"var(--ink3)",marginBottom:6,lineHeight:1.5}}>
+        <strong>{phrase.en}</strong>
+      </div>
+      <div style={{fontSize:".82rem",fontWeight:700,color:"var(--plum)",marginBottom:20}}>{phrase.cn}</div>
+      <button onClick={onQuiz} style={{width:"100%",padding:"14px",borderRadius:12,border:"none",background:"var(--for)",color:"#fff",fontSize:".84rem",fontWeight:800,cursor:"pointer",marginBottom:8,minHeight:48}}>🧠 Quiz me first</button>
+      <button onClick={onSkip} style={{width:"100%",padding:"14px",borderRadius:12,border:"1.5px solid var(--st)",background:"var(--wh)",color:"var(--ink)",fontSize:".84rem",fontWeight:700,cursor:"pointer",minHeight:48}}>No need, I already know it</button>
+    </div>
+  </div>;
+}
+
 // ---- HOME TAB (Phase 2a) ----
-function HomeTab({ profile, progress, upd, settings, setTab, recentTopics, setRecentTopics, practiceCount, library, selUnit, setSelUnit, markReviewed, startPlaylist, openPlBuilder }) {
+function HomeTab({ profile, progress, upd, settings, setTab, recentTopics, setRecentTopics, practiceCount, library, selUnit, setSelUnit, markReviewed, startPlaylist, openPlBuilder, setAutoLaunch }) {
   const [shadow, setShadow] = useState(null);
   const [searchQ, setSearchQ] = useState("");
   const [readingMode, setReadingMode] = useState(false);
   const [expandedIdx, setExpandedIdx] = useState(null);
   const [actionBarScrolled, setActionBarScrolled] = useState(false);
   const [miniPlayer, setMiniPlayer] = useState(null);
+  const [masteryConfirm, setMasteryConfirm] = useState(null);
+  const [showConfetti, setShowConfetti] = useState(false);
+  const [toastMsg, setToastMsg] = useState(null);
   const miniTimer = useRef(null);
+
+  const showMasteryToast = (msg) => {
+    setShowConfetti(true); setToastMsg(msg);
+    setTimeout(() => setShowConfetti(false), 2000);
+    setTimeout(() => setToastMsg(null), 2200);
+  };
+
+  const handleMarkKnown = (ph) => {
+    // Add to library as known
+    const items = progress.unit10 || [];
+    if (!items.find(s => s.cn === ph.cn)) {
+      upd("unit10", [{ en: ph.en, jyut: ph.jyut, cn: ph.cn, tag: unit.title, known: true, date: new Date().toLocaleDateString("en-GB", { day: "numeric", month: "short" }) }, ...items]);
+    } else {
+      upd("unit10", items.map(s => s.cn === ph.cn ? { ...s, known: true } : s));
+    }
+    // Mark in phrases progress
+    upd("phrases", { ...(progress.phrases || {}), [`${unit.id}-${ph.origIdx}`]: true });
+    setMasteryConfirm(null);
+    showMasteryToast("Added to Mastered!");
+  };
 
   const playPhraseMini = (ph) => {
     clearTimeout(miniTimer.current);
@@ -2642,18 +2708,26 @@ function HomeTab({ profile, progress, upd, settings, setTab, recentTopics, setRe
         }
       });
     });
-    // Search GLOSS_DATA keys
+    // Search GLOSS_DATA — match by key (jyutping), English, or Chinese
+    const seenWords = new Set();
     Object.keys(GLOSS_DATA || {}).forEach(key => {
-      if (key.toLowerCase().includes(q)) {
-        const g = GLOSS_DATA[key];
-        if (Array.isArray(g)) {
-          g.forEach(w => {
-            results.push({ type: "word", en: w.en || "", cn: w.cn || key, jyut: w.jy || "", unitId: null, unitTitle: null });
-          });
+      const g = GLOSS_DATA[key];
+      if (!Array.isArray(g)) return;
+      g.forEach(w => {
+        const matchKey = key.toLowerCase().includes(q);
+        const matchEn = (w.en || "").toLowerCase().includes(q);
+        const matchCn = (w.cn || "").toLowerCase().includes(q);
+        const matchJy = (w.jy || "").toLowerCase().includes(q);
+        if (matchKey || matchEn || matchCn || matchJy) {
+          const wordId = w.cn || key;
+          if (!seenWords.has(wordId)) {
+            seenWords.add(wordId);
+            results.push({ type: "word", en: w.en || "", cn: w.cn || key, jyut: w.jy || key, unitId: null, unitTitle: null });
+          }
         }
-      }
+      });
     });
-    return results.slice(0, 8);
+    return results.slice(0, 12);
   }, [searchQ]);
 
   // Continue practicing: in-progress topics (at least 1 known but not all)
@@ -2768,6 +2842,7 @@ function HomeTab({ profile, progress, upd, settings, setTab, recentTopics, setRe
                   </div>}
                   <div className="ph-actions">
                     <button className="ph-action-btn" onClick={e=>{e.stopPropagation();const items=progress.unit10||[];if(!items.find(s=>s.cn===ph.cn)){upd("unit10",[{en:ph.en,jyut:ph.jyut,cn:ph.cn,tag:unit.title,known:false,date:new Date().toLocaleDateString("en-GB",{day:"numeric",month:"short"})},...items]);}}}>{(progress.unit10||[]).find(s=>s.cn===ph.cn)?"Saved":"Save to My Library"}</button>
+                    {!ph.known && <button className="ph-action-btn know-btn" onClick={e=>{e.stopPropagation();setMasteryConfirm(ph);}}>I know this!</button>}
                     <button className="ph-action-btn shadow-btn" onClick={e=>{e.stopPropagation();setShadow(ph.origIdx);}}>Shadow</button>
                   </div>
                 </div>
@@ -2790,6 +2865,11 @@ function HomeTab({ profile, progress, upd, settings, setTab, recentTopics, setRe
             <button onClick={()=>{stopAudio();clearTimeout(miniTimer.current);setMiniPlayer(null);}} style={{background:"rgba(255,255,255,.08)",border:"1px solid rgba(255,255,255,.1)",borderRadius:"50%",width:36,height:36,display:"flex",alignItems:"center",justifyContent:"center",color:"rgba(255,255,255,.5)",fontSize:14,cursor:"pointer",flexShrink:0}}>x</button>
           </div>
         </div>}
+
+        {/* Mastery confirmation overlay */}
+        {masteryConfirm && <MasteryConfirm phrase={masteryConfirm} onCancel={()=>setMasteryConfirm(null)} onQuiz={()=>{handleMarkKnown(masteryConfirm);/* TODO: could launch quiz for this phrase */}} onSkip={()=>handleMarkKnown(masteryConfirm)} />}
+        {showConfetti && <Confetti />}
+        {toastMsg && <MasteryToast message={toastMsg} />}
       </div>
     );
   }
@@ -2812,7 +2892,7 @@ function HomeTab({ profile, progress, upd, settings, setTab, recentTopics, setRe
               <div className="stat-label">Lessons Done</div>
             </div>
           </div>
-          <button className="start-btn" onClick={()=>setTab("practice")}>
+          <button className="start-btn" onClick={()=>{setAutoLaunch("daily");setTab("practice");}}>
             <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M4 2.5L15 9L4 15.5V2.5Z" fill="#111"/></svg>
             Start Today's Lesson
           </button>
@@ -2923,10 +3003,17 @@ function LibraryTab({ library, setLibrary, progress, upd, settings }) {
   const [cn, setCn] = useState("");
   const [saved, setSaved] = useState(false);
   const [expandedIdx, setExpandedIdx] = useState(null);
+  const [masteredOpen, setMasteredOpen] = useState(false);
+  const [libShadow, setLibShadow] = useState(null);
 
   const items = progress.unit10 || [];
   const stillLearning = items.filter(s => !s.known);
   const mastered = items.filter(s => s.known);
+
+  // Separate phrases (longer text / has spaces) from vocab (single words)
+  const isVocab = (s) => !s.en || s.en.split(/\s+/).length <= 2;
+  const slPhrases = stillLearning.filter(s => !isVocab(s));
+  const slVocab = stillLearning.filter(s => isVocab(s));
 
   const romKey = LANG_CONFIG.romanizationKey;
   const romLabel = LANG_CONFIG.romanizationLabel;
@@ -2950,6 +3037,57 @@ function LibraryTab({ library, setLibrary, progress, upd, settings }) {
   };
 
   const canSpeak = (s) => s.cn && s.cn !== "(add characters)" && s.cn.trim() !== "";
+
+  // Library shadow mode
+  if (libShadow !== null) {
+    const shadowItems = stillLearning.length > 0 ? stillLearning : items;
+    const startIdx = typeof libShadow === "number" ? shadowItems.findIndex((s,i) => items.indexOf(s) === libShadow) : 0;
+    return <ShadowMode unit={{title:"My Library",phrases:shadowItems.map(s=>({en:s.en||s.cn,cn:s.cn,jyut:s[romKey]||s.jyut||""}))}} progress={progress} upd={upd} settings={settings} onClose={()=>{releaseMicStream();setLibShadow(null);}} startIdx={Math.max(0,startIdx)} single={typeof libShadow === "number"} />;
+  }
+
+  // Render a library item row (used for both phrases and vocab)
+  const renderItem = (s) => {
+    const idx = items.indexOf(s);
+    const isExp = expandedIdx === idx;
+    const gloss = canSpeak(s) ? getAutoGloss(s) : [];
+    return (
+      <div key={idx} className={"ph-item" + (isExp ? " expanded" : "")} onClick={() => setExpandedIdx(isExp ? null : idx)}>
+        <div className="ph-row">
+          <button className="ph-play" onClick={e => { e.stopPropagation(); if (canSpeak(s)) speak(s.cn); }}>
+            <svg width="10" height="12" viewBox="0 0 10 12" fill="none"><path d="M0 0L10 6L0 12V0Z" fill="#fff"/></svg>
+          </button>
+          <div className="ph-text">
+            <div className="ph-eng">{s.en || s.cn}<div className="ph-chev">&#9662;</div></div>
+            {s[romKey] && s[romKey] !== `(add ${romLabel.toLowerCase()})` && (
+              <div className="ph-jyut">{s[romKey]}</div>
+            )}
+            {s.cn && s.cn.trim() !== "" && s.en && (
+              <div className="ph-chi">{s.cn}</div>
+            )}
+          </div>
+        </div>
+        <div className="ph-detail">
+          {s.tag && <div className="ph-context">From: {s.tag}</div>}
+          {gloss.length > 0 && <div className="gloss-row">
+            {gloss.filter(g => g.cn).map((g, gi) => (
+              <div className="gloss-chip" key={gi} onClick={e => { e.stopPropagation(); speak(g.cn); }}>
+                <span className="gloss-chi">{g.cn}</span>
+                <span className="gloss-jyut">{g.jy}</span>
+                {g.en && <span className="gloss-eng">{g.en}</span>}
+              </div>
+            ))}
+          </div>}
+          <div className="ph-actions">
+            <button className="ph-action-btn know-btn" onClick={e => { e.stopPropagation(); toggleKnown(idx); }}>
+              I know this!
+            </button>
+            <button className="ph-action-btn shadow-btn" onClick={e => { e.stopPropagation(); setLibShadow(idx); }}>Shadow</button>
+            <button className="ph-action-btn" onClick={e => { e.stopPropagation(); removeItem(idx); }} style={{color:"#e74c3c",borderColor:"rgba(231,76,60,.2)"}}>Remove</button>
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div className="mc">
@@ -3016,78 +3154,70 @@ function LibraryTab({ library, setLibrary, progress, upd, settings }) {
         </div>
       )}
 
-      {/* 3. Trophy Section — Mastered */}
+      {/* 3. Mastered Section — Collapsed toggle with celebration */}
       {mastered.length > 0 && (
         <div style={{
           background: "linear-gradient(135deg, #1F3329 0%, #2a4a36 50%, #1F3329 100%)",
-          borderRadius: 16, padding: 16, marginBottom: 16
-        }}>
+          borderRadius: 16, padding: "14px 16px", marginBottom: 16, cursor: "pointer"
+        }} onClick={() => setMasteredOpen(o => !o)}>
           <div style={{
-            display: "flex", alignItems: "center", justifyContent: "space-between",
-            marginBottom: 12
+            display: "flex", alignItems: "center", justifyContent: "space-between"
           }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <span style={{ fontSize: "1.2rem" }}>🏆</span>
-              <span style={{ color: "#fff", fontWeight: 800, fontSize: ".88rem" }}>Mastered</span>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <span style={{ fontSize: "1.4rem" }}>🏆</span>
+              <div>
+                <div style={{ color: "#fff", fontWeight: 800, fontSize: ".88rem" }}>
+                  {mastered.length} Mastered!
+                </div>
+                <div style={{ color: "var(--lime)", fontSize: ".7rem", fontWeight: 600, marginTop: 1 }}>
+                  You're crushing it — keep going!
+                </div>
+              </div>
             </div>
-            <span style={{ color: "var(--lime)", fontSize: ".75rem", fontWeight: 700 }}>
-              {mastered.length} conquered
-            </span>
+            <span style={{ color: "rgba(255,255,255,.5)", fontSize: "1.1rem", transition: "transform .2s", transform: masteredOpen ? "rotate(180deg)" : "rotate(0)" }}>&#9662;</span>
           </div>
-          <div style={{
-            display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8
-          }}>
-            {mastered.map((s) => {
-              const idx = items.indexOf(s);
-              return (
-                <div key={idx} style={{
-                  background: "linear-gradient(135deg, #FAFFF0, #fff)",
-                  border: "2px solid rgba(122,170,0,.25)", borderRadius: 12,
-                  padding: 12, display: "flex", flexDirection: "column", gap: 4
-                }}>
-                  <div style={{
-                    display: "flex", alignItems: "center", justifyContent: "space-between"
+          {masteredOpen && (
+            <div style={{ marginTop: 12 }} onClick={e => e.stopPropagation()}>
+              {mastered.map((s) => {
+                const idx = items.indexOf(s);
+                return (
+                  <div key={idx} style={{
+                    background: "rgba(255,255,255,.08)", borderRadius: 10,
+                    padding: "10px 12px", marginBottom: 6, display: "flex", alignItems: "center", gap: 10
                   }}>
-                    <span style={{
-                      fontFamily: LANG_CONFIG.fontFamily, fontSize: "1rem",
-                      fontWeight: 700, color: "var(--ink)", lineHeight: 1.2
-                    }}>{s.cn || s.en}</span>
                     {canSpeak(s) && (
                       <button onClick={() => speak(s.cn)} style={{
-                        width: 36, height: 36, borderRadius: "50%", border: "none",
-                        background: "rgba(122,170,0,.15)", cursor: "pointer",
+                        width: 32, height: 32, borderRadius: "50%", border: "none",
+                        background: "rgba(196,240,0,.2)", cursor: "pointer",
                         display: "flex", alignItems: "center", justifyContent: "center",
-                        fontSize: ".7rem", color: "var(--for)", flexShrink: 0
+                        fontSize: ".65rem", color: "var(--lime)", flexShrink: 0
                       }}>&#9654;</button>
                     )}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: ".78rem", fontWeight: 700, color: "#fff", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.en || s.cn}</div>
+                      {s[romKey] && <div style={{ fontSize: ".65rem", color: "var(--lime)", fontStyle: "italic" }}>{s[romKey]}</div>}
+                      {s.cn && s.en && <div style={{ fontSize: ".72rem", color: "rgba(255,255,255,.5)" }}>{s.cn}</div>}
+                    </div>
+                    <button onClick={() => toggleKnown(idx)} style={{
+                      background: "none", border: "1px solid rgba(255,255,255,.15)", color: "rgba(255,255,255,.5)",
+                      fontSize: ".65rem", fontWeight: 700, cursor: "pointer",
+                      padding: "6px 10px", borderRadius: 8, flexShrink: 0
+                    }}>Relearn</button>
                   </div>
-                  {s[romKey] && s[romKey] !== `(add ${romLabel.toLowerCase()})` && (
-                    <div style={{
-                      fontSize: ".72rem", color: "var(--plum)", fontStyle: "italic", fontWeight: 600
-                    }}>{s[romKey]}</div>
-                  )}
-                  <div style={{
-                    fontSize: ".68rem", color: "var(--ink3)", lineHeight: 1.3
-                  }}>{s.cn ? s.en : ""}</div>
-                  <button onClick={() => toggleKnown(idx)} style={{
-                    background: "none", border: "none", color: "var(--plum)",
-                    fontSize: ".72rem", fontWeight: 700, cursor: "pointer",
-                    padding: "8px 0", textAlign: "left", marginTop: 2, minHeight: 36
-                  }}>Relearn</button>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
 
-      {/* 4. Shadow all bar — only when Still Learning items exist */}
+      {/* 4. Shadow all bar */}
       {stillLearning.length > 0 && (
         <div style={{
           display: "flex", alignItems: "center", gap: 10, marginBottom: 12,
           background: "var(--for)", borderRadius: 12, padding: "10px 14px"
         }}>
-          <button onClick={() => {/* shadow all — future hook */}} style={{
+          <button onClick={() => setLibShadow("all")} style={{
             width: 40, height: 40, borderRadius: "50%", background: "var(--lime)",
             border: "none", cursor: "pointer", display: "flex", alignItems: "center",
             justifyContent: "center", fontSize: ".9rem", color: "var(--for)",
@@ -3096,10 +3226,10 @@ function LibraryTab({ library, setLibrary, progress, upd, settings }) {
           <div style={{ flex: 1 }}>
             <div style={{ color: "#fff", fontSize: ".78rem", fontWeight: 800 }}>Shadow all</div>
             <div style={{ color: "rgba(255,255,255,.5)", fontSize: ".65rem" }}>
-              {stillLearning.length} phrase{stillLearning.length !== 1 ? "s" : ""}
+              {stillLearning.length} item{stillLearning.length !== 1 ? "s" : ""}
             </div>
           </div>
-          <button onClick={() => {/* shuffle shadow — future hook */}} style={{
+          <button onClick={() => setLibShadow("all")} style={{
             background: "rgba(255,255,255,.1)", border: "none", borderRadius: 999,
             padding: "10px 14px", color: "rgba(255,255,255,.7)", fontSize: ".72rem",
             fontWeight: 700, cursor: "pointer", minHeight: 44
@@ -3107,56 +3237,24 @@ function LibraryTab({ library, setLibrary, progress, upd, settings }) {
         </div>
       )}
 
-      {/* 5. Still Learning section header */}
-      {stillLearning.length > 0 && (
+      {/* 5. Phrases section */}
+      {slPhrases.length > 0 && (
         <div style={{
           fontSize: ".7rem", fontWeight: 800, color: "var(--ink3)",
           letterSpacing: "1.5px", textTransform: "uppercase", marginBottom: 8
-        }}>STILL LEARNING ({stillLearning.length})</div>
+        }}>PHRASES ({slPhrases.length})</div>
       )}
+      {slPhrases.map(renderItem)}
 
-      {/* 6. Still Learning track list — expandable like lesson view */}
-      {stillLearning.map((s) => {
-        const idx = items.indexOf(s);
-        const isExp = expandedIdx === idx;
-        const gloss = canSpeak(s) ? getAutoGloss(s) : [];
-        return (
-          <div key={idx} className={"ph-item" + (isExp ? " expanded" : "")} onClick={() => setExpandedIdx(isExp ? null : idx)}>
-            <div className="ph-row">
-              <button className="ph-play" onClick={e => { e.stopPropagation(); if (canSpeak(s)) speak(s.cn); }}>
-                <svg width="10" height="12" viewBox="0 0 10 12" fill="none"><path d="M0 0L10 6L0 12V0Z" fill="#fff"/></svg>
-              </button>
-              <div className="ph-text">
-                <div className="ph-eng">{s.en}<div className="ph-chev">&#9662;</div></div>
-                {s[romKey] && s[romKey] !== `(add ${romLabel.toLowerCase()})` && (
-                  <div className="ph-jyut">{s[romKey]}</div>
-                )}
-                {s.cn && s.cn.trim() !== "" && (
-                  <div className="ph-chi">{s.cn}</div>
-                )}
-              </div>
-            </div>
-            <div className="ph-detail">
-              {s.tag && <div className="ph-context">From: {s.tag}</div>}
-              {gloss.length > 0 && <div className="gloss-row">
-                {gloss.filter(g => g.cn).map((g, gi) => (
-                  <div className="gloss-chip" key={gi} onClick={e => { e.stopPropagation(); speak(g.cn); }}>
-                    <span className="gloss-chi">{g.cn}</span>
-                    <span className="gloss-jyut">{g.jy}</span>
-                    {g.en && <span className="gloss-eng">{g.en}</span>}
-                  </div>
-                ))}
-              </div>}
-              <div className="ph-actions">
-                <button className="ph-action-btn" onClick={e => { e.stopPropagation(); toggleKnown(idx); }}>
-                  {s.known ? "Move to Still Learning" : "I know this!"}
-                </button>
-                <button className="ph-action-btn shadow-btn" onClick={e => { e.stopPropagation(); removeItem(idx); }}>Remove</button>
-              </div>
-            </div>
-          </div>
-        );
-      })}
+      {/* 6. Vocabulary section */}
+      {slVocab.length > 0 && (
+        <div style={{
+          fontSize: ".7rem", fontWeight: 800, color: "var(--ink3)",
+          letterSpacing: "1.5px", textTransform: "uppercase", marginBottom: 8,
+          marginTop: slPhrases.length > 0 ? 16 : 0
+        }}>VOCABULARY ({slVocab.length})</div>
+      )}
+      {slVocab.map(renderItem)}
 
       {/* 7. Empty state */}
       {items.length === 0 && (
@@ -3178,9 +3276,15 @@ function LibraryTab({ library, setLibrary, progress, upd, settings }) {
 }
 
 // ---- PRACTICE TAB (Phase 2f) ----
-function PracticeTab({ progress, upd, settings, library, practiceCount, setPracticeCount }) {
+function PracticeTab({ progress, upd, settings, library, practiceCount, setPracticeCount, autoLaunch }) {
   const [showQuiz, setShowQuiz] = useState(false);
   const [showLaunch, setShowLaunch] = useState(false);
+  const [showLesson, setShowLesson] = useState(false);
+
+  // Auto-launch Daily Practice when triggered from "Start Today's Lesson"
+  useEffect(() => {
+    if (autoLaunch === "daily") setShowLaunch(true);
+  }, [autoLaunch]);
   const stats = useMemo(() => getStats(progress), [progress]);
   const mastered = Object.keys(progress.phrases || {}).filter(k => (progress.phrases || {})[k]).length;
   const totalPhrases = UNITS.reduce((s, u) => s + u.phrases.length, 0);
@@ -3210,6 +3314,13 @@ function PracticeTab({ progress, upd, settings, library, practiceCount, setPract
     UNITS.forEach(u => { u.phrases.forEach((_, i) => { if (!(progress.phrases || {})[`${u.id}-${i}`]) count++; }); });
     return count;
   }, [progress]);
+
+  if (showLesson) return <LessonMode progress={progress} upd={upd} profile="" settings={settings} onComplete={() => {
+    const next = practiceCount + 1;
+    setPracticeCount(next);
+    localStorage.setItem(LANG_CONFIG.id + '-practice-count', next);
+    setShowLesson(false);
+  }} onQuit={() => setShowLesson(false)} />;
 
   if (showQuiz) return <QuizTab progress={progress} upd={upd} />;
 
@@ -3255,11 +3366,8 @@ function PracticeTab({ progress, upd, settings, library, practiceCount, setPract
 
         {/* Begin button */}
         <button onClick={() => {
-          const next = practiceCount + 1;
-          setPracticeCount(next);
-          localStorage.setItem(LANG_CONFIG.id + '-practice-count', next);
           setShowLaunch(false);
-          setShowQuiz(true);
+          setShowLesson(true);
         }} style={{ marginTop: 24, marginBottom: 40, background: "var(--lime)", color: "var(--for)", border: "none", borderRadius: 999, padding: "16px 48px", fontSize: ".92rem", fontWeight: 900, cursor: "pointer", minHeight: 56, boxShadow: "0 4px 20px rgba(196,240,0,.3)" }}>
           ▶ Begin practice
         </button>
@@ -4896,7 +5004,7 @@ function SettingsTab({ settings, updSettings }) {
       {/* About */}
       <div className="set-card">
         <div className="set-lb">About</div>
-        <div style={{fontSize:".68rem",color:"var(--ink2)",lineHeight:1.5}}>ShadowSpeak {LANG_CONFIG.name} v3.9.2. Shadowing method + spaced repetition. {ALL_WORDS.length} vocabulary words across {VOCAB_CATS.length} categories. {UNITS.reduce((s,u)=>s+u.phrases.length,0)} phrases across {UNITS.length} units.</div>
+        <div style={{fontSize:".68rem",color:"var(--ink2)",lineHeight:1.5}}>ShadowSpeak {LANG_CONFIG.name} v3.9.6. Shadowing method + spaced repetition. {ALL_WORDS.length} vocabulary words across {VOCAB_CATS.length} categories. {UNITS.reduce((s,u)=>s+u.phrases.length,0)} phrases across {UNITS.length} units.</div>
         <button onClick={()=>window.location.href="index.html"} style={{marginTop:8,background:"none",border:"none",cursor:"pointer",fontSize:".68rem",fontWeight:600,color:"var(--lime)",padding:0}}>← Back to landing page</button>
       </div>
     </div>

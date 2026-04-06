@@ -989,17 +989,138 @@ const CSS = `
 .uc-ti{font-size:.82rem;font-weight:900;margin-bottom:2px}
 .uc-sc{font-size:.68rem;color:var(--ink3);margin-bottom:5px;line-height:1.3}
 .bt{height:2px;background:var(--st);border-radius:999px;overflow:hidden}.bf{height:100%;border-radius:999px;background:var(--lime);transition:width .3s}
-.home-search{width:100%;background:var(--wh);border:1.5px solid var(--st);border-radius:12px;padding:12px 14px;font-size:.85rem;color:var(--ink);outline:none;font-family:inherit;min-height:48px;transition:border-color .2s}
-.home-search:focus{border-color:var(--plum)}
+/* Search */
 .search-results{background:var(--wh);border:1px solid var(--st);border-radius:12px;margin-top:6px;overflow:hidden;box-shadow:0 4px 16px rgba(0,0,0,.08)}
 .search-result{display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid var(--st);cursor:pointer}
 .search-result:last-child{border-bottom:none}
 .search-result:active{background:var(--cream)}
 .search-badge{font-size:.6rem;font-weight:800;padding:3px 8px;border-radius:999px;text-transform:uppercase;letter-spacing:.5px}
-.topics-scroll{display:grid;grid-auto-flow:column;grid-template-rows:repeat(3,1fr);gap:10px;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;padding:4px 0 12px;scrollbar-width:none}
-.topics-scroll::-webkit-scrollbar{display:none}
-.topic-card{width:145px;border-radius:14px;overflow:hidden;border:1px solid var(--st);cursor:pointer;scroll-snap-align:start;transition:transform .15s;background:var(--wh)}
-.topic-card:active{transform:scale(.97)}
+
+/* Home header with album art gradient */
+.home-hdr{position:relative;overflow:hidden;padding:48px 20px 0}
+.home-hdr::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,#1F3329 0%,#2a5a3a 40%,#1A1F3D 100%);opacity:.9}
+.home-hdr::after{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 80% 20%,rgba(196,240,0,.12) 0%,transparent 50%),radial-gradient(ellipse at 20% 80%,rgba(143,106,232,.08) 0%,transparent 50%)}
+.home-hdr-top{display:flex;justify-content:space-between;align-items:center;position:relative;z-index:1;margin-bottom:20px}
+.home-hdr-left{display:flex;align-items:center;gap:10px}
+.home-hdr-title{font-size:20px;font-weight:700;color:#fff}
+.home-hdr-title span{color:var(--lime)}
+.home-hdr-lang{font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:rgba(255,255,255,.4);font-weight:600}
+.home-hdr-avatar{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#E8A040,#E06040);border:2px solid var(--lime);overflow:hidden}
+.home-hdr-avatar img{width:100%;height:100%;object-fit:cover}
+.home-greeting{position:relative;z-index:1;padding-bottom:20px}
+.greeting-text{font-size:24px;font-weight:700;color:#fff;margin-bottom:4px}
+.greeting-sub{font-size:13px;color:rgba(255,255,255,.7);margin-bottom:16px}
+.stats-row{display:flex;gap:10px;margin-bottom:16px}
+.stat-item{display:flex;flex-direction:column;align-items:center;padding:8px 10px;border-radius:8px;background:rgba(255,255,255,.08);flex:1}
+.stat-num{font-size:16px;font-weight:700;color:var(--lime)}
+.stat-label{font-size:9px;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.5px;margin-top:1px;text-align:center;line-height:1.2}
+.start-btn{width:100%;padding:16px;border-radius:14px;border:none;background:var(--lime);color:#111;font-family:'DM Sans',sans-serif;font-size:16px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 4px 16px rgba(196,240,0,.25);min-height:56px}
+
+/* Search bar */
+.home-search{width:100%;background:rgba(0,0,0,.04);border:1px solid rgba(0,0,0,.06);border-radius:10px;padding:12px 16px 12px 40px;font-size:14px;color:var(--ink);outline:none;font-family:inherit;min-height:48px}
+.home-search::placeholder{color:var(--ink3)}
+.search-wrap{position:relative;margin:12px 16px 14px}
+.search-icon{position:absolute;left:14px;top:50%;transform:translateY(-50%);pointer-events:none}
+
+/* My Library card */
+.lib-card{margin:0 16px 16px;padding:18px 20px;border-radius:14px;background:var(--wh);box-shadow:0 2px 12px rgba(0,0,0,.06);display:flex;align-items:center;gap:16px;cursor:pointer;transition:transform .15s}
+.lib-card:active{transform:translateY(-2px)}
+.lib-card-icon{width:52px;height:52px;border-radius:12px;background:linear-gradient(135deg,#1F3329,#2a5a3a);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.lib-card-info{flex:1}
+.lib-card-title{font-size:15px;font-weight:700;color:var(--ink);margin-bottom:2px}
+.lib-card-sub{font-size:12px;color:var(--ink3)}
+
+/* Section headers */
+.sec-hdr{display:flex;justify-content:space-between;align-items:baseline;padding:4px 20px 10px}
+.sec-title{font-size:17px;font-weight:700;color:var(--ink)}
+.sec-link{font-size:12px;font-weight:600;color:var(--for);cursor:pointer}
+
+/* Most Recent grid */
+.recent-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:0 16px 16px}
+.recent-card{display:flex;align-items:center;gap:10px;background:var(--wh);border-radius:6px;overflow:hidden;height:56px;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.06);transition:background .15s}
+.recent-card:active{background:#f0ede6}
+.recent-card-art{width:56px;height:56px;display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;position:relative}
+.recent-card-art img{width:100%;height:100%;object-fit:cover}
+.recent-card-name{font-size:12px;font-weight:600;color:var(--ink);line-height:1.3;padding-right:8px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+
+/* Continue Learning shelf */
+.cont-scroll{display:flex;gap:12px;overflow-x:auto;padding:0 20px 20px;scroll-snap-type:x mandatory;scrollbar-width:none}
+.cont-scroll::-webkit-scrollbar{display:none}
+.cont-card{flex:0 0 200px;scroll-snap-align:start;border-radius:12px;background:var(--wh);overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.06);cursor:pointer;transition:transform .15s}
+.cont-card:active{transform:scale(.98)}
+.cont-art{height:80px;display:flex;align-items:center;justify-content:space-between;padding:0 16px;position:relative;overflow:hidden}
+.cont-art img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.cont-art::after{content:'';position:absolute;inset:0;background:linear-gradient(0deg,rgba(0,0,0,.45) 0%,rgba(0,0,0,.1) 100%);pointer-events:none}
+.cont-art .topic-label{font-size:14px;font-weight:700;color:rgba(255,255,255,.9);text-shadow:0 1px 4px rgba(0,0,0,.3);z-index:1;position:relative}
+.cont-art .play-circle{width:36px;height:36px;border-radius:50%;background:var(--lime);display:flex;align-items:center;justify-content:center;font-size:14px;box-shadow:0 4px 12px rgba(0,0,0,.15);z-index:1;position:relative;color:#111}
+.cont-info{padding:12px 14px 14px}
+.cont-name{font-size:14px;font-weight:600;color:var(--ink);margin-bottom:2px}
+.cont-meta{font-size:11px;color:var(--ink3);margin-bottom:8px}
+.cont-pbar{height:3px;background:rgba(0,0,0,.06);border-radius:3px;overflow:hidden}
+.cont-pbar-fill{height:100%;background:var(--lime);border-radius:3px}
+
+/* 2-row topic grid */
+.topics-wrap{padding:0 16px 20px;overflow-x:auto;scrollbar-width:none}
+.topics-wrap::-webkit-scrollbar{display:none}
+.topics-grid{display:grid;grid-template-rows:1fr 1fr;grid-auto-flow:column;grid-auto-columns:130px;gap:10px}
+.t-card{border-radius:12px;overflow:hidden;cursor:pointer;transition:transform .15s;background:var(--wh);box-shadow:0 1px 6px rgba(0,0,0,.05)}
+.t-card:active{transform:scale(.97)}
+.t-card .t-art{height:70px;position:relative;overflow:hidden}
+.t-card .t-art img{width:100%;height:100%;object-fit:cover}
+.t-card .t-art .t-num{position:absolute;top:6px;right:8px;font-size:9px;font-weight:600;color:rgba(255,255,255,.7);background:rgba(0,0,0,.35);padding:2px 6px;border-radius:4px;z-index:1}
+.t-card .t-info{padding:8px 10px 10px}
+.t-card .t-name{font-size:11px;font-weight:600;color:var(--ink);margin-bottom:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.t-card .t-meta{font-size:10px;color:var(--ink3)}
+
+/* Lesson/Topic View header */
+.lesson-hdr{position:relative;overflow:hidden;padding:48px 20px 20px}
+.lesson-hdr::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,#1F3329 0%,#2a5a3a 50%,#1A3D3D 100%)}
+.lesson-hdr::after{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 75% 25%,rgba(196,240,0,.1) 0%,transparent 50%)}
+.lesson-hdr-top{display:flex;align-items:center;justify-content:space-between;position:relative;z-index:1;margin-bottom:16px}
+.lesson-back{font-size:14px;color:rgba(255,255,255,.7);background:none;border:none;font-family:inherit;cursor:pointer;min-height:44px;display:flex;align-items:center}
+.lesson-stats-badge{font-size:11px;color:var(--lime);font-weight:600}
+.lesson-hero{position:relative;z-index:1;display:flex;align-items:center;gap:16px}
+.lesson-art{width:80px;height:80px;border-radius:12px;overflow:hidden;flex-shrink:0;position:relative}
+.lesson-art img{width:100%;height:100%;object-fit:cover}
+.lesson-meta{flex:1}
+.lesson-meta-title{font-size:18px;font-weight:700;color:#fff;margin-bottom:2px}
+.lesson-meta-sub{font-size:12px;color:rgba(255,255,255,.7);margin-bottom:4px}
+.lesson-meta-progress{font-size:11px;color:var(--lime);font-weight:600}
+
+/* Controls row */
+.ctrl-row{display:flex;align-items:center;gap:10px;padding:14px 16px 8px;border-bottom:1px solid rgba(0,0,0,.06)}
+.play-all-btn{width:48px;height:48px;border-radius:50%;background:var(--for);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#fff;box-shadow:0 2px 8px rgba(31,51,41,.3);min-height:48px}
+.shuffle-btn{font-size:12px;color:var(--ink3);background:none;border:none;font-family:inherit;display:flex;align-items:center;gap:4px;cursor:pointer;min-height:44px}
+.filter-chip{margin-left:auto;font-size:11px;padding:5px 12px;border-radius:999px;background:var(--wh);border:1px solid rgba(0,0,0,.08);color:var(--ink2);font-weight:500;cursor:pointer;min-height:36px;display:inline-flex;align-items:center}
+
+/* Phrase items */
+.ph-item{padding:12px 16px;border-bottom:1px solid rgba(0,0,0,.05);cursor:pointer;transition:background .2s}
+.ph-item:active{background:rgba(0,0,0,.02)}
+.ph-item.expanded{background:rgba(31,51,41,.06);border-left:3px solid var(--for);padding-left:13px}
+.ph-row{display:flex;align-items:flex-start;gap:10px}
+.ph-play{width:32px;height:32px;border-radius:50%;background:var(--for);border:none;display:flex;align-items:center;justify-content:center;color:#fff;cursor:pointer;flex-shrink:0;margin-top:2px;font-size:10px}
+.ph-text{flex:1;min-width:0}
+.ph-eng{font-size:15px;font-weight:600;color:var(--ink);margin-bottom:3px;display:flex;justify-content:space-between;align-items:center}
+.ph-chev{width:22px;height:22px;border-radius:50%;background:rgba(0,0,0,.04);display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--ink3);transition:transform .2s,background .2s;flex-shrink:0;margin-left:8px}
+.ph-item.expanded .ph-chev{transform:rotate(180deg);background:rgba(31,51,41,.1);color:var(--for)}
+.ph-jyut{font-size:12px;color:var(--plum);font-weight:500;margin-bottom:2px}
+.ph-chi{font-size:13px;color:var(--ink2)}
+.ph-detail{max-height:0;overflow:hidden;transition:max-height .3s ease,padding .3s ease;padding:0}
+.ph-item.expanded .ph-detail{max-height:400px;padding:12px 0 4px}
+.ph-context{font-size:11px;color:var(--ink3);font-style:italic;margin-bottom:10px}
+.gloss-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.gloss-chip{display:flex;flex-direction:column;align-items:center;padding:8px 12px;border-radius:10px;background:var(--wh);border:1px solid rgba(0,0,0,.06);cursor:pointer;transition:border-color .15s,box-shadow .15s}
+.gloss-chip:active{border-color:var(--for);box-shadow:0 2px 8px rgba(31,51,41,.1)}
+.gloss-chi{font-size:16px;font-weight:700;color:var(--ink)}
+.gloss-jyut{font-size:10px;color:var(--plum);font-weight:500}
+.gloss-eng{font-size:9px;color:var(--ink3);margin-bottom:6px}
+.gloss-actions{display:flex;gap:4px}
+.gloss-action{width:24px;height:24px;border-radius:6px;border:1px solid rgba(0,0,0,.08);background:rgba(0,0,0,.02);display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--ink2);cursor:pointer;transition:all .15s}
+.gloss-action:active{background:var(--for);color:#fff;border-color:var(--for)}
+.ph-actions{display:flex;gap:6px}
+.ph-action-btn{flex:1;padding:10px 0;border-radius:10px;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;border:1px solid rgba(0,0,0,.1);background:var(--wh);color:var(--ink);transition:all .15s;min-height:44px}
+.ph-action-btn:active{border-color:var(--for);color:var(--for)}
+.ph-action-btn.shadow-btn{background:var(--for);color:#fff;border-color:var(--for)}
 `;
 
 // ============================================================
@@ -1070,7 +1191,7 @@ const QUIZ_CSS = `
   .reading-mode .wc-cn{font-size:1.1rem}
 }
 
-/* Playlist view */
+/* Playlist view (legacy kept for PhraseCard compat) */
 .playlist-header{background:linear-gradient(160deg, #1F3329 0%, #2a4535 100%);border-radius:20px;padding:20px;margin-bottom:0;position:relative;overflow:hidden}
 .playlist-header::after{content:'';position:absolute;top:-50%;right:-30%;width:200px;height:200px;background:radial-gradient(circle,rgba(196,240,0,.06) 0%,transparent 70%);pointer-events:none}
 .action-bar{position:sticky;top:0;z-index:50;background:var(--wh);padding:12px 0;display:flex;align-items:center;gap:10px;border-bottom:1px solid transparent;transition:border-color .2s}
@@ -1098,8 +1219,6 @@ const QUIZ_CSS = `
 .track-know-btn{border:1.5px solid var(--lime);border-radius:999px;padding:8px 14px;font-size:.7rem;font-weight:800;cursor:pointer;min-height:44px;display:inline-flex;align-items:center;gap:4px;transition:all .15s;background:none;color:var(--for);white-space:nowrap}
 .track-know-btn.known{background:var(--lime);color:var(--for);border-color:var(--lime)}
 .track-know-btn:active{transform:scale(.95)}
-.gloss-chip{text-align:center;padding:6px 8px;min-width:40px;background:var(--wh);border-radius:8px;border:1px solid var(--st);cursor:pointer;transition:background .15s}
-.gloss-chip:active{background:var(--cream)}
 @keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
 @keyframes celebPop{0%{transform:scale(0);opacity:0}50%{transform:scale(1.2)}100%{transform:scale(1);opacity:1}}
 @keyframes confettiFall{0%{transform:translateY(-20px) rotate(0deg);opacity:1}100%{transform:translateY(200px) rotate(720deg);opacity:0}}
@@ -2435,6 +2554,7 @@ function HomeTab({ profile, progress, upd, settings, setTab, recentTopics, setRe
   const [shadow, setShadow] = useState(null);
   const [searchQ, setSearchQ] = useState("");
   const [readingMode, setReadingMode] = useState(false);
+  const [expandedIdx, setExpandedIdx] = useState(null);
   const [actionBarScrolled, setActionBarScrolled] = useState(false);
   const phraseListRef = useRef(null);
   const searchRef = useRef(null);
@@ -2463,7 +2583,7 @@ function HomeTab({ profile, progress, upd, settings, setTab, recentTopics, setRe
   });
   const selectUnit = (id) => { setSelUnit(id); setTimeout(() => { if (phraseListRef.current) phraseListRef.current.scrollIntoView({ behavior: "smooth" }); }, 80); };
 
-  // Gradient colors for topic cards
+  // Gradient colors for topic cards (fallbacks)
   const TOPIC_GRADIENTS = [
     "linear-gradient(135deg, #2D5A3D, #1F3329)",
     "linear-gradient(135deg, #3D4A5A, #1F2939)",
@@ -2472,6 +2592,29 @@ function HomeTab({ profile, progress, upd, settings, setTab, recentTopics, setRe
     "linear-gradient(135deg, #3D5A4A, #1F3929)",
     "linear-gradient(135deg, #5A3D4A, #391F29)",
   ];
+
+  const TOPIC_IMAGES = {
+    1: "https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?w=300&h=200&fit=crop",
+    2: "https://images.unsplash.com/photo-1529156069898-49953e39b3ac?w=300&h=200&fit=crop",
+    3: "https://images.unsplash.com/photo-1536640712-4d4c36ff0e4e?w=300&h=200&fit=crop",
+    4: "https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=300&h=200&fit=crop",
+    5: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=300&h=200&fit=crop",
+    6: "https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=300&h=200&fit=crop",
+    7: "https://images.unsplash.com/photo-1523050854058-8df90110c9f1?w=300&h=200&fit=crop",
+    8: "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=300&h=200&fit=crop",
+    9: "https://images.unsplash.com/photo-1508739773434-c26b3d09e071?w=300&h=200&fit=crop",
+    10: "https://images.unsplash.com/photo-1518199266791-5375a83190b7?w=300&h=200&fit=crop",
+    11: "https://images.unsplash.com/photo-1575037614876-c38a4ca44f42?w=300&h=200&fit=crop",
+    12: "https://images.unsplash.com/photo-1501691223387-dd0500403074?w=300&h=200&fit=crop",
+    13: "https://images.unsplash.com/photo-1553729459-afe8f2e2ed65?w=300&h=200&fit=crop",
+    14: "https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=300&h=200&fit=crop",
+    15: "https://images.unsplash.com/photo-1544027993-37dbfe43562a?w=300&h=200&fit=crop",
+    16: "https://images.unsplash.com/photo-1512941937669-90a1b58e7e9c?w=300&h=200&fit=crop",
+    17: "https://images.unsplash.com/photo-1516483638261-f4dbaf036963?w=300&h=200&fit=crop",
+    18: "https://images.unsplash.com/photo-1466378284817-a6b7fd50cc5a?w=300&h=200&fit=crop",
+    19: "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=300&h=200&fit=crop",
+    20: "https://images.unsplash.com/photo-1462275646964-a0e3c11f18a6?w=300&h=200&fit=crop",
+  };
 
   // Search across ALL units + GLOSS_DATA
   const searchResults = useMemo(() => {
@@ -2526,125 +2669,97 @@ function HomeTab({ profile, progress, upd, settings, setTab, recentTopics, setRe
     return ordered.slice(0, 4);
   }, [inProgressTopics, recentTopics]);
 
+  // Helper to update recent topics
+  const updateRecent = (id) => {
+    setRecentTopics(prev => [id, ...(prev || []).filter(x => x !== id)].slice(0, 10));
+  };
+
+  // Resolve recent topics to units
+  const recentUnits = useMemo(() => {
+    return (recentTopics || []).map(id => UNITS.find(u => u.id === id)).filter(Boolean);
+  }, [recentTopics]);
+
+  // Library count
+  const libraryCount = (progress.unit10 || []).length;
+
   // Preload audio for selected unit
   useEffect(() => { preloadUnitAudio(unit.phrases); }, [selUnit]);
 
   if (shadow !== null) return <ShadowMode unit={unit} progress={progress} upd={upd} settings={settings} onClose={() => { releaseMicStream(); setShadow(null); }} startIdx={shadow === "unit" ? 0 : shadow} single={shadow !== "unit"} />;
 
-  return (
-    <div className="mc" style={{ padding: "0 14px 80px" }}>
-      {/* Hero section — dark forest green */}
-      <div style={{ background: "#1F3329", borderRadius: 20, padding: 16, marginBottom: 16, marginTop: 12 }}>
-        <div style={{ fontSize: "1.25rem", fontWeight: 900, color: "#fff" }}>{greeting}, {userName.split(" ")[0]} 👋</div>
-        <div style={{ fontSize: ".78rem", color: "rgba(255,255,255,.55)", marginTop: 4 }}>
-          {knownPhrases} of {totalPhrases} mastered
-        </div>
-        {/* Progress bar */}
-        <div style={{ height: 5, background: "rgba(255,255,255,.1)", borderRadius: 3, overflow: "hidden", marginTop: 10 }}>
-          <div style={{ height: "100%", width: pct + "%", background: "var(--lime)", borderRadius: 3, transition: "width .5s ease" }} />
-        </div>
-        {practiceCount > 0 && (
-          <div style={{ fontSize: ".72rem", color: "rgba(255,255,255,.5)", marginTop: 8 }}>🔥 {practiceCount} daily practice{practiceCount !== 1 ? "s" : ""} completed</div>
-        )}
-        {/* Start practice CTA */}
-        <button onClick={() => setTab("practice")} style={{ width: "100%", background: "var(--lime)", color: "#1F3329", border: "none", borderRadius: 12, padding: "14px 20px", fontSize: ".88rem", fontWeight: 900, cursor: "pointer", marginTop: 14, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <span>Start today's practice</span>
-          <span style={{ fontSize: ".72rem", fontWeight: 700, background: "rgba(31,51,41,.12)", padding: "4px 10px", borderRadius: 8 }}>30 min</span>
-        </button>
-      </div>
+  // When a unit is selected, show lesson view
+  if (selUnit) {
+    const items = unit.phrases;
+    const knownInUnit = items.filter((_,i)=>(progress.phrases||{})[`${unit.id}-${i}`]).length;
+    const unitPct = Math.round(knownInUnit/items.length*100);
 
-      {/* Search Bar */}
-      <div style={{ position: "relative", marginBottom: 16 }}>
-        <div style={{ position: "relative" }}>
-          <span style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", fontSize: ".85rem", pointerEvents: "none" }}>🔍</span>
-          <input
-            ref={searchRef}
-            className="home-search"
-            style={{ paddingLeft: 38, paddingRight: searchQ ? 38 : 14 }}
-            placeholder={"Search phrases & words..."}
-            value={searchQ}
-            onChange={e => setSearchQ(e.target.value)}
-          />
-          {searchQ && (
-            <span onClick={() => { setSearchQ(""); if (searchRef.current) searchRef.current.focus(); }} style={{ position: "absolute", right: 14, top: "50%", transform: "translateY(-50%)", fontSize: ".9rem", cursor: "pointer", color: "var(--ink3)", lineHeight: 1 }}>✕</span>
-          )}
-        </div>
-        {searchResults.length > 0 && (
-          <div className="search-results">
-            {searchResults.map((r, ri) => (
-              <div key={ri} className="search-result" onClick={() => {
-                if (r.unitId) { selectUnit(r.unitId); setSearchQ(""); }
-              }}>
-                <span className="search-badge" style={{ background: r.type === "phrase" ? "rgba(122,170,0,.15)" : "rgba(143,106,232,.15)", color: r.type === "phrase" ? "var(--ld)" : "var(--plum)" }}>
-                  {r.type === "phrase" ? "PHRASE" : "WORD"}
-                </span>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: ".82rem", fontWeight: 700, color: "var(--ink)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.en}</div>
-                  <div style={{ fontSize: ".72rem", color: "var(--plum)", fontStyle: "italic" }}>{r.jyut}</div>
-                </div>
-                <div style={{ fontSize: ".82rem", color: "var(--ink3)", flexShrink: 0 }}>{r.cn}</div>
-                <span style={{ fontSize: "1rem", color: "var(--ink3)", cursor: "pointer", flexShrink: 0, padding: "4px" }}>+</span>
-              </div>
-            ))}
+    return (
+      <div style={{paddingBottom:80}}>
+        <div className="lesson-hdr">
+          <div className="lesson-hdr-top">
+            <button className="lesson-back" onClick={()=>setSelUnit(null)}>&#8592; Back</button>
+            <div className="lesson-stats-badge">{knownInUnit} known &middot; {unitPct}%</div>
           </div>
-        )}
-      </div>
-
-      {/* Continue Practicing section */}
-      {continueTopics.length > 0 && (
-        <div style={{ marginBottom: 20 }}>
-          <div style={{ fontSize: ".88rem", fontWeight: 900, color: "var(--ink)", marginBottom: 8 }}>Continue Practicing</div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-            {continueTopics.map(u => {
-              const k = u.phrases.filter((_, i) => (progress.phrases || {})[`${u.id}-${i}`]).length;
-              const upct = Math.round(k / u.phrases.length * 100);
-              return (
-                <div key={u.id} onClick={() => { setRecentTopics(prev => [u.id, ...(prev || []).filter(x => x !== u.id)].slice(0, 10)); selectUnit(u.id); }} style={{ background: "var(--wh)", borderRadius: 12, padding: "12px 14px", border: "1px solid var(--st)", cursor: "pointer", transition: "transform .15s" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-                    <span style={{ fontSize: "1.1rem" }}>{topicIcons[u.id] || "📖"}</span>
-                    <span style={{ fontSize: ".78rem", fontWeight: 800, color: "var(--ink)", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{u.title}</span>
-                    <span style={{ fontSize: ".72rem", fontWeight: 700, color: "var(--ink3)" }}>{k}/{u.phrases.length}</span>
-                  </div>
-                  <div style={{ height: 3, background: "var(--st)", borderRadius: 2, overflow: "hidden" }}>
-                    <div style={{ height: "100%", width: upct + "%", background: "var(--lime)", borderRadius: 2, transition: "width .3s" }} />
-                  </div>
-                </div>
-              );
-            })}
+          <div className="lesson-hero">
+            <div className="lesson-art"><img src={TOPIC_IMAGES[unit.id] || TOPIC_IMAGES[1]} alt="" /></div>
+            <div className="lesson-meta">
+              <div className="lesson-meta-title">{unit.title}</div>
+              <div className="lesson-meta-sub">{items.length} phrases &middot; Unit {unit.id}</div>
+              <div className="lesson-meta-progress">{knownInUnit} of {items.length} learned</div>
+            </div>
           </div>
         </div>
-      )}
-
-      {/* All Topics — horizontal scrolling grid, 3 rows */}
-      <div style={{ marginBottom: 20 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-          <span style={{ fontSize: ".88rem", fontWeight: 900, color: "var(--ink)" }}>All Topics</span>
-          <span style={{ fontSize: ".72rem", fontWeight: 700, color: "var(--ink3)" }}>{UNITS.length} topics</span>
+        <div className="ctrl-row">
+          <button className="play-all-btn" onClick={()=>startPlaylist(items.map(p=>({en:p.en,cn:p.cn,jyut:p.jyut})),unit.title)}>
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M4 2.5L15 9L4 15.5V2.5Z" fill="#fff"/></svg>
+          </button>
+          <button className="shuffle-btn" onClick={()=>setShadow("unit")}>Shuffle</button>
+          <span className="filter-chip" onClick={()=>setReadingMode(r=>!r)}>{readingMode?"Chinese first":"English first"}</span>
         </div>
-        <div className="topics-scroll">
-          {sortedUnits.map((u, ui) => {
-            const k = u.phrases.filter((_, i) => (progress.phrases || {})[`${u.id}-${i}`]).length;
-            const upct = Math.round(k / u.phrases.length * 100);
-            const isMastered = upct === 100;
-            const grad = TOPIC_GRADIENTS[ui % TOPIC_GRADIENTS.length];
+        <div>
+          {sorted.map((ph,i) => {
+            const gloss = getAutoGloss(ph);
+            const isExp = expandedIdx === ph.origIdx;
             return (
-              <div key={u.id} className="topic-card" onClick={() => selectUnit(u.id)} style={{ opacity: isMastered ? 0.8 : 1 }}>
-                {/* Gradient header */}
-                <div style={{ background: grad, padding: "14px 12px 10px", position: "relative" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                    <span style={{ fontSize: "1.4rem" }}>{topicIcons[u.id] || "📖"}</span>
-                    <span style={{ fontSize: ".6rem", fontWeight: 800, background: "rgba(255,255,255,.2)", color: "#fff", padding: "2px 7px", borderRadius: 999 }}>#{u.id}</span>
+              <div className={"ph-item" + (isExp?" expanded":"")} key={ph.origIdx} onClick={()=>setExpandedIdx(isExp?null:ph.origIdx)}>
+                <div className="ph-row">
+                  <button className="ph-play" onClick={e=>{e.stopPropagation();speak(ph.cn);}}>
+                    <svg width="10" height="12" viewBox="0 0 10 12" fill="none"><path d="M0 0L10 6L0 12V0Z" fill="#fff"/></svg>
+                  </button>
+                  <div className="ph-text">
+                    {readingMode ? (
+                      <>
+                        <div className="ph-chi" style={{fontSize:15,fontWeight:600,color:"var(--ink)",marginBottom:3,display:"flex",justifyContent:"space-between",alignItems:"center"}}>{ph.cn}<div className="ph-chev">&#9662;</div></div>
+                        <div className="ph-jyut">{ph.jyut}</div>
+                        <div style={{fontSize:13,color:"var(--ink2)"}}>{ph.en}</div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="ph-eng">{ph.en}<div className="ph-chev">&#9662;</div></div>
+                        <div className="ph-jyut">{ph.jyut}</div>
+                        <div className="ph-chi">{ph.cn}</div>
+                      </>
+                    )}
                   </div>
-                  {isMastered && (
-                    <div style={{ position: "absolute", top: 8, right: 8, background: "var(--lime)", borderRadius: 999, width: 20, height: 20, display: "flex", alignItems: "center", justifyContent: "center", fontSize: ".65rem", fontWeight: 900, color: "#1F3329" }}>✓</div>
-                  )}
                 </div>
-                {/* Card body */}
-                <div style={{ padding: "8px 10px 10px" }}>
-                  <div style={{ fontSize: ".75rem", fontWeight: 800, color: "var(--ink)", lineHeight: 1.2, marginBottom: 4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{u.title}</div>
-                  <div style={{ fontSize: ".65rem", color: "var(--ink3)", marginBottom: 6 }}>{u.phrases.length} phrases</div>
-                  <div style={{ height: 3, background: "var(--st)", borderRadius: 2, overflow: "hidden" }}>
-                    <div style={{ height: "100%", width: upct + "%", background: isMastered ? "var(--ld)" : "var(--lime)", borderRadius: 2, transition: "width .3s" }} />
+                <div className="ph-detail">
+                  {ph.tag && <div className="ph-context">Context: {ph.tag}</div>}
+                  {gloss.length > 0 && <div className="gloss-row">
+                    {gloss.filter(g=>g.cn).map((g,gi) => (
+                      <div className="gloss-chip" key={gi} onClick={e=>e.stopPropagation()}>
+                        <span className="gloss-chi">{g.cn}</span>
+                        <span className="gloss-jyut">{g.jy}</span>
+                        {g.en && <span className="gloss-eng">{g.en}</span>}
+                        <div className="gloss-actions">
+                          <span className="gloss-action" onClick={()=>speak(g.cn)}>&#9654;</span>
+                          <span className="gloss-action">+</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>}
+                  <div className="ph-actions">
+                    <button className="ph-action-btn" onClick={e=>{e.stopPropagation();}}>Save to My Library</button>
+                    <button className="ph-action-btn shadow-btn" onClick={e=>{e.stopPropagation();setShadow(ph.origIdx);}}>Shadow</button>
                   </div>
                 </div>
               </div>
@@ -2652,51 +2767,131 @@ function HomeTab({ profile, progress, upd, settings, setTab, recentTopics, setRe
           })}
         </div>
       </div>
+    );
+  }
 
-      {/* Playlist view */}
-      <div ref={phraseListRef} style={{ marginTop: 4 }}>
-        {/* Playlist Header */}
-        <div className="playlist-header">
-          <div style={{ display: "flex", alignItems: "flex-start", gap: 14 }}>
-            <button onClick={() => setSelUnit(UNITS[0].id)} style={{ background: "rgba(255,255,255,.1)", border: "1px solid rgba(255,255,255,.15)", borderRadius: 999, width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0, color: "#fff", fontSize: ".9rem" }}>&#8249;</button>
-            <div style={{ flex: 1 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
-                <span style={{ fontSize: "2.6rem", lineHeight: 1 }}>{topicIcons[unit.id] || "📖"}</span>
-                <div>
-                  <div style={{ fontSize: "1.1rem", fontWeight: 900, color: "#fff", lineHeight: 1.2 }}>{unit.title}</div>
-                  <div style={{ fontSize: ".72rem", color: "rgba(255,255,255,.5)", marginTop: 3, lineHeight: 1.3 }}>{unit.scene}</div>
-                </div>
-              </div>
-              <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 10 }}>
-                <span style={{ fontSize: ".68rem", fontWeight: 700, color: "rgba(255,255,255,.45)" }}>{unit.phrases.length} phrases</span>
-                <span style={{ color: "rgba(255,255,255,.2)" }}>·</span>
-                <span style={{ fontSize: ".68rem", fontWeight: 700, color: "var(--lime)" }}>{kc} known</span>
-                <span style={{ color: "rgba(255,255,255,.2)" }}>·</span>
-                <span style={{ fontSize: ".68rem", fontWeight: 800, color: "var(--lime)" }}>{Math.round(kc / unit.phrases.length * 100)}%</span>
-              </div>
-              {/* Progress bar */}
-              <div style={{ height: 4, background: "rgba(255,255,255,.1)", borderRadius: 2, overflow: "hidden", marginTop: 8 }}>
-                <div style={{ height: "100%", width: Math.round(kc / unit.phrases.length * 100) + "%", background: "var(--lime)", borderRadius: 2, transition: "width .4s ease" }} />
-              </div>
+  // Home view (no unit selected)
+  return (
+    <div style={{paddingBottom:80}}>
+      {/* Header with gradient */}
+      <div className="home-hdr">
+        <div className="home-hdr-top">
+          <div className="home-hdr-left">
+            <div className="home-hdr-title">Shadow<span>Speak</span></div>
+            <div className="home-hdr-lang">{LANG_CONFIG.name}</div>
+          </div>
+          <div className="home-hdr-avatar"></div>
+        </div>
+        <div className="home-greeting">
+          <div className="greeting-text">{greeting}, {userName.split(" ")[0]}</div>
+          <div className="greeting-sub">Keep going, you're building real fluency.</div>
+          <div className="stats-row">
+            <div className="stat-item">
+              <div className="stat-num">{knownPhrases}</div>
+              <div className="stat-label">Phrases Learned</div>
+            </div>
+            <div className="stat-item">
+              <div className="stat-num">{(progress.lessonLog||[]).length}</div>
+              <div className="stat-label">Lessons Done</div>
             </div>
           </div>
-        </div>
-
-        {/* Sticky Action Bar */}
-        <div className={"action-bar" + (actionBarScrolled ? " scrolled" : "")} style={{ background: "var(--cream)" }}>
-          <button onClick={() => setShadow("unit")} style={{ width: 48, height: 48, borderRadius: "50%", background: "var(--lime)", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.1rem", flexShrink: 0, color: "var(--for)", fontWeight: 900 }}>&#9654;</button>
-          <button className="action-pill" onClick={() => { const shuffled = [...sorted].sort(() => Math.random() - 0.5); setShadow("unit"); }}>🔀 Shuffle</button>
-          <div style={{ width: 1, height: 28, background: "var(--st)", flexShrink: 0 }} />
-          <button className={"action-pill" + (readingMode ? " on" : "")} onClick={() => setReadingMode(m => !m)}>
-            🔤 {readingMode ? "Chinese first" : "English first"}
+          <button className="start-btn" onClick={()=>setTab("practice")}>
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M4 2.5L15 9L4 15.5V2.5Z" fill="#111"/></svg>
+            Start Today's Lesson
           </button>
         </div>
+      </div>
 
-        {/* Track List */}
-        <div style={{ paddingTop: 8 }}>
-          {sorted.map((ph) => (
-            <PhraseCard key={ph.origIdx} ph={ph} unit={unit} upd={upd} setShadow={setShadow} readingMode={readingMode} progress={progress} />
+      <div>
+        {/* Search */}
+        <div className="search-wrap">
+          <svg className="search-icon" width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="6.5" cy="6.5" r="5.5" stroke="#9A9A9A" strokeWidth="1.5"/><path d="M11 11L15 15" stroke="#9A9A9A" strokeWidth="1.5" strokeLinecap="round"/></svg>
+          <input className="home-search" placeholder="Search phrases & words" value={searchQ} onChange={e=>setSearchQ(e.target.value)} ref={searchRef} />
+          {searchQ && <button onClick={()=>{setSearchQ("");if(searchRef.current)searchRef.current.focus();}} style={{position:"absolute",right:12,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",fontSize:16,color:"var(--ink3)",cursor:"pointer"}}>x</button>}
+        </div>
+        {/* Search results dropdown */}
+        {searchResults.length > 0 && <div className="search-results" style={{margin:"0 16px 12px"}}>
+          {searchResults.map((r, ri) => (
+            <div key={ri} className="search-result" onClick={() => {
+              if (r.unitId) { setSelUnit(r.unitId); updateRecent(r.unitId); setSearchQ(""); }
+            }}>
+              <span className="search-badge" style={{ background: r.type === "phrase" ? "rgba(122,170,0,.15)" : "rgba(143,106,232,.15)", color: r.type === "phrase" ? "var(--ld)" : "var(--plum)" }}>
+                {r.type === "phrase" ? "PHRASE" : "WORD"}
+              </span>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: ".82rem", fontWeight: 700, color: "var(--ink)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.en}</div>
+                <div style={{ fontSize: ".72rem", color: "var(--plum)", fontStyle: "italic" }}>{r.jyut}</div>
+              </div>
+              <div style={{ fontSize: ".82rem", color: "var(--ink3)", flexShrink: 0 }}>{r.cn}</div>
+            </div>
           ))}
+        </div>}
+
+        {/* My Library card */}
+        <div className="lib-card" onClick={()=>setTab("library")}>
+          <div className="lib-card-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M4 19V5a2 2 0 012-2h8.5L20 8.5V19a2 2 0 01-2 2H6a2 2 0 01-2-2z" stroke="#C4F000" strokeWidth="1.5"/><path d="M14 3v6h6" stroke="#C4F000" strokeWidth="1.5"/><path d="M8 13h8M8 17h5" stroke="#C4F000" strokeWidth="1.5" strokeLinecap="round"/></svg></div>
+          <div className="lib-card-info">
+            <div className="lib-card-title">My Library</div>
+            <div className="lib-card-sub">{libraryCount} saved phrases</div>
+          </div>
+          <span style={{fontSize:18,color:"var(--ink3)"}}>&#8250;</span>
+        </div>
+
+        {/* Most Recent - 2-col grid, max 4 */}
+        {recentUnits.length > 0 && <>
+          <div className="sec-hdr"><span className="sec-title">Most Recent</span></div>
+          <div className="recent-grid">
+            {recentUnits.slice(0,4).map(u => (
+              <div className="recent-card" key={u.id} onClick={()=>{setSelUnit(u.id);updateRecent(u.id);}}>
+                <div className="recent-card-art"><img src={TOPIC_IMAGES[u.id] || TOPIC_IMAGES[1]} alt="" /></div>
+                <div className="recent-card-name">{u.title}</div>
+              </div>
+            ))}
+          </div>
+        </>}
+
+        {/* Continue Learning - horizontal scroll shelf */}
+        {continueTopics.length > 0 && <>
+          <div className="sec-hdr"><span className="sec-title">Continue Learning</span><span className="sec-link">See all</span></div>
+          <div className="cont-scroll">
+            {continueTopics.map(u => {
+              const k = u.phrases.filter((_,i)=>(progress.phrases||{})[`${u.id}-${i}`]).length;
+              const cpct = Math.round(k/u.phrases.length*100);
+              return (
+                <div className="cont-card" key={u.id} onClick={()=>{setSelUnit(u.id);updateRecent(u.id);}}>
+                  <div className="cont-art">
+                    <img src={TOPIC_IMAGES[u.id] || TOPIC_IMAGES[1]} alt="" />
+                    <span className="topic-label">{u.title}</span>
+                    <span className="play-circle">&#9654;</span>
+                  </div>
+                  <div className="cont-info">
+                    <div className="cont-name">{u.title}</div>
+                    <div className="cont-meta">{k} of {u.phrases.length} phrases learned</div>
+                    <div className="cont-pbar"><div className="cont-pbar-fill" style={{width:cpct+"%"}} /></div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </>}
+
+        {/* All Topics - 2-row horizontal grid */}
+        <div className="sec-hdr"><span className="sec-title">All Topics</span><span className="sec-link">{UNITS.length} topics</span></div>
+        <div className="topics-wrap">
+          <div className="topics-grid">
+            {UNITS.map((u,i) => (
+              <div className="t-card" key={u.id} onClick={()=>{setSelUnit(u.id);updateRecent(u.id);}}>
+                <div className="t-art">
+                  <img src={TOPIC_IMAGES[u.id] || TOPIC_IMAGES[1]} alt="" />
+                  <span className="t-num">#{i+1}</span>
+                </div>
+                <div className="t-info">
+                  <div className="t-name">{u.title}</div>
+                  <div className="t-meta">{u.phrases.length} phrases</div>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </div>
@@ -4695,7 +4890,7 @@ function SettingsTab({ settings, updSettings }) {
       {/* About */}
       <div className="set-card">
         <div className="set-lb">About</div>
-        <div style={{fontSize:".68rem",color:"var(--ink2)",lineHeight:1.5}}>" + "ShadowSpeak " + LANG_CONFIG.name + " v3.8.0. Shadowing method + spaced repetition. {ALL_WORDS.length} vocabulary words across {VOCAB_CATS.length} categories. {UNITS.reduce((s,u)=>s+u.phrases.length,0)} phrases across {UNITS.length} units.</div>
+        <div style={{fontSize:".68rem",color:"var(--ink2)",lineHeight:1.5}}>" + "ShadowSpeak " + LANG_CONFIG.name + " v3.9.0. Shadowing method + spaced repetition. {ALL_WORDS.length} vocabulary words across {VOCAB_CATS.length} categories. {UNITS.reduce((s,u)=>s+u.phrases.length,0)} phrases across {UNITS.length} units.</div>
         <button onClick={()=>window.location.href="index.html"} style={{marginTop:8,background:"none",border:"none",cursor:"pointer",fontSize:".68rem",fontWeight:600,color:"var(--lime)",padding:0}}>← Back to landing page</button>
       </div>
     </div>

@@ -2645,18 +2645,26 @@ function HomeTab({ profile, progress, upd, settings, setTab, recentTopics, setRe
         }
       });
     });
-    // Search GLOSS_DATA keys
+    // Search GLOSS_DATA — match by key (jyutping), English, or Chinese
+    const seenWords = new Set();
     Object.keys(GLOSS_DATA || {}).forEach(key => {
-      if (key.toLowerCase().includes(q)) {
-        const g = GLOSS_DATA[key];
-        if (Array.isArray(g)) {
-          g.forEach(w => {
-            results.push({ type: "word", en: w.en || "", cn: w.cn || key, jyut: w.jy || "", unitId: null, unitTitle: null });
-          });
+      const g = GLOSS_DATA[key];
+      if (!Array.isArray(g)) return;
+      g.forEach(w => {
+        const matchKey = key.toLowerCase().includes(q);
+        const matchEn = (w.en || "").toLowerCase().includes(q);
+        const matchCn = (w.cn || "").toLowerCase().includes(q);
+        const matchJy = (w.jy || "").toLowerCase().includes(q);
+        if (matchKey || matchEn || matchCn || matchJy) {
+          const wordId = w.cn || key;
+          if (!seenWords.has(wordId)) {
+            seenWords.add(wordId);
+            results.push({ type: "word", en: w.en || "", cn: w.cn || key, jyut: w.jy || key, unitId: null, unitTitle: null });
+          }
         }
-      }
+      });
     });
-    return results.slice(0, 8);
+    return results.slice(0, 12);
   }, [searchQ]);
 
   // Continue practicing: in-progress topics (at least 1 known but not all)
@@ -3137,11 +3145,11 @@ function LibraryTab({ library, setLibrary, progress, upd, settings }) {
                 <svg width="10" height="12" viewBox="0 0 10 12" fill="none"><path d="M0 0L10 6L0 12V0Z" fill="#fff"/></svg>
               </button>
               <div className="ph-text">
-                <div className="ph-eng">{s.en}<div className="ph-chev">&#9662;</div></div>
+                <div className="ph-eng">{s.en || s.cn}<div className="ph-chev">&#9662;</div></div>
                 {s[romKey] && s[romKey] !== `(add ${romLabel.toLowerCase()})` && (
                   <div className="ph-jyut">{s[romKey]}</div>
                 )}
-                {s.cn && s.cn.trim() !== "" && (
+                {s.cn && s.cn.trim() !== "" && s.en && (
                   <div className="ph-chi">{s.cn}</div>
                 )}
               </div>

@@ -709,8 +709,8 @@ const CSS = `
   .qs-ti{font-size:1rem}
   .qs-sub{font-size:.75rem}
   .sh-en{font-size:1.6rem}
-  .sh-jy{font-size:1.3rem}
-  .sh-cn{font-size:1rem}
+  .sh-jy{font-size:1.2rem}
+  .sh-cn{font-size:1.2rem}
   .sh-cl{font-size:.88rem;padding:10px 20px}
   .sh-tg-b{font-size:.82rem;padding:10px 18px}
   .sh-tg{font-size:.7rem}
@@ -738,13 +738,16 @@ const CSS = `
 /* Shadow overlay */
 .sho{position:fixed;inset:0;background:var(--for);z-index:200;display:flex;flex-direction:column}
 .sh-hd{padding:10px 14px;display:flex;align-items:center;justify-content:space-between}
-.sh-cl{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:#fff;border-radius:999px;padding:8px 16px;font-size:.75rem;font-weight:700;cursor:pointer;min-height:40px;display:inline-flex;align-items:center}
+.sh-cl{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:#fff;border-radius:999px;padding:8px 16px;font-size:.75rem;font-weight:700;cursor:pointer;min-height:44px;display:inline-flex;align-items:center;gap:5px}
 .sh-bar{height:2px;background:rgba(255,255,255,.1);margin:0 14px;border-radius:2px;overflow:hidden}.sh-bf{height:100%;background:var(--lime);border-radius:2px;transition:width .3s}
 .sh-bd{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:14px;text-align:center}
 .sh-tg{font-size:.68rem;font-weight:800;text-transform:uppercase;letter-spacing:.6px;color:rgba(255,255,255,.4);margin-bottom:8px}
 .sh-en{font-size:1.3rem;font-weight:800;color:#fff;margin-bottom:6px;line-height:1.2}
-.sh-jy{font-size:1.1rem;font-weight:700;font-style:italic;color:var(--lime);margin-bottom:6px}
-.sh-cn{font-family:' + LANG_CONFIG.fontFamily.replace(/'/g, '') + ';font-size:.92rem;color:rgba(255,255,255,.4);margin-bottom:14px}.sh-cn.hid{opacity:0}
+.sh-jy{font-size:1.05rem;font-weight:600;font-style:italic;color:var(--lime);margin-bottom:6px}
+.sh-cn{font-family:' + LANG_CONFIG.fontFamily.replace(/'/g, '') + ';font-size:1.05rem;font-weight:600;color:rgba(255,255,255,.65);margin-bottom:14px}.sh-cn.hid{opacity:0}
+.sh-peek{border:2px dashed rgba(255,255,255,.15);border-radius:12px;padding:14px 28px;margin-bottom:14px;cursor:pointer;text-align:center}
+.sh-peek-text{font-size:.72rem;font-weight:700;color:rgba(255,255,255,.25)}
+.sh-ctx{font-size:.68rem;font-weight:700;color:rgba(255,255,255,.3);margin-bottom:10px;letter-spacing:.3px}
 .sh-cue{display:flex;align-items:center;gap:6px;background:rgba(196,240,0,.08);border:1px solid rgba(196,240,0,.15);border-radius:999px;padding:8px 16px}
 .sh-cd{width:6px;height:6px;border-radius:50%;background:var(--lime);flex-shrink:0}
 .sh-cd.on{animation:pulse 1.2s ease-in-out infinite}.sh-cd.off{background:rgba(255,255,255,.15);animation:none}
@@ -760,7 +763,7 @@ const CSS = `
 .sc-wrap{display:flex;flex-direction:column;align-items:center;gap:4px}
 .sc-lbl{font-size:.62rem;font-weight:700;color:rgba(255,255,255,.4);text-align:center}
 .sh-r2{display:flex;align-items:center;justify-content:center;gap:6px;flex-wrap:wrap}
-.sh-tg-b{padding:8px 14px;border-radius:999px;border:1px solid rgba(255,255,255,.12);background:0;color:rgba(255,255,255,.4);font-size:.72rem;font-weight:700;cursor:pointer;min-height:40px;display:inline-flex;align-items:center;justify-content:center}
+.sh-tg-b{padding:10px 14px;border-radius:999px;border:1px solid rgba(255,255,255,.12);background:0;color:rgba(255,255,255,.4);font-size:.72rem;font-weight:700;cursor:pointer;min-height:44px;display:inline-flex;align-items:center;justify-content:center}
 .sh-tg-b.on{background:rgba(196,240,0,.1);border-color:rgba(196,240,0,.25);color:var(--lime)}
 
 /* Lesson mode - navy background */
@@ -824,17 +827,17 @@ const CSS = `
 .l-ctrl{padding:16px 20px 0;padding-bottom:max(16px,env(safe-area-inset-bottom));background:rgba(0,0,0,.15);border-top:1px solid rgba(255,255,255,.06)}
 .l-transport{display:flex;align-items:center;justify-content:center;gap:20px;margin-bottom:14px}
 .lt-wrap{display:flex;flex-direction:column;align-items:center;gap:4px}
-.lt-btn{width:52px;height:52px;border-radius:50%;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:20px;font-family:inherit;transition:transform .1s}
+.lt-btn{width:56px;height:56px;border-radius:50%;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:20px;font-family:inherit;transition:transform .1s}
 .lt-btn:active{transform:scale(.9)}
 .lt-btn.sec{background:rgba(255,255,255,.07);border:1.5px solid rgba(255,255,255,.1);color:rgba(255,255,255,.6)}
 .lt-btn.pri{width:64px;height:64px;background:var(--lime);color:var(--navy);font-size:24px;font-weight:900;box-shadow:0 4px 16px rgba(196,240,0,.2)}
 .lt-lbl{font-size:.6rem;font-weight:700;color:rgba(255,255,255,.3)}
 .l-know-row{display:flex;justify-content:center;margin-bottom:14px}
-.l-know-btn{display:flex;align-items:center;gap:8px;padding:12px 28px;border-radius:999px;background:rgba(196,240,0,.15);border:2px solid var(--lime);color:var(--lime);font-family:'DM Sans',sans-serif;font-size:.85rem;font-weight:900;cursor:pointer;min-height:48px;transition:all .15s;box-shadow:0 2px 8px rgba(196,240,0,.2)}.l-know-btn:active{transform:scale(.96);background:rgba(196,240,0,.25)}
+.l-know-btn{display:flex;align-items:center;gap:8px;padding:12px 28px;border-radius:999px;background:rgba(196,240,0,.15);border:2px solid var(--lime);color:var(--lime);font-family:'DM Sans',sans-serif;font-size:.85rem;font-weight:900;cursor:pointer;min-height:56px;transition:all .15s;box-shadow:0 2px 8px rgba(196,240,0,.2)}.l-know-btn:active{transform:scale(.96);background:rgba(196,240,0,.25)}
 .l-divider{height:1px;background:rgba(255,255,255,.06);margin-bottom:12px}
 .l-row-label{font-size:.58rem;font-weight:800;color:rgba(255,255,255,.2);text-transform:uppercase;letter-spacing:1.2px;text-align:center;margin-bottom:6px}
 .l-pill-row{display:flex;align-items:center;justify-content:center;gap:6px}
-.l-pill-btn{padding:8px 14px;border-radius:999px;border:1px solid rgba(255,255,255,.1);background:none;color:rgba(255,255,255,.35);font-family:'DM Sans',sans-serif;font-size:.72rem;font-weight:700;cursor:pointer;min-height:36px;display:inline-flex;align-items:center;justify-content:center}
+.l-pill-btn{padding:10px 16px;border-radius:999px;border:1px solid rgba(255,255,255,.1);background:none;color:rgba(255,255,255,.35);font-family:'DM Sans',sans-serif;font-size:.72rem;font-weight:700;cursor:pointer;min-height:44px;display:inline-flex;align-items:center;justify-content:center}
 .l-pill-btn.on{background:rgba(196,240,0,.1);border-color:rgba(196,240,0,.25);color:var(--lime)}
 .l-speed{margin-bottom:8px}
 .l-jyut-toggle{display:flex;justify-content:center;margin-bottom:8px}
@@ -877,11 +880,11 @@ const CSS = `
 @keyframes fi{from{opacity:0}to{opacity:1}}
 .comp-em{font-size:3rem;margin-bottom:12px}.comp-t{font-size:1.2rem;font-weight:900;color:#fff;margin-bottom:3px}
 .comp-s{font-size:.72rem;color:rgba(255,255,255,.45);margin-bottom:20px}
-.comp-btn{background:var(--lime);color:var(--for);border:none;border-radius:10px;padding:10px 24px;font-size:.8rem;font-weight:900;cursor:pointer}
+.comp-btn{background:var(--lime);color:var(--for);border:none;border-radius:10px;padding:12px 24px;font-size:.8rem;font-weight:900;cursor:pointer;min-height:48px}
 
 /* Vocab accordion */
 .acc{margin-bottom:5px}
-.acc-hd{background:var(--wh);border-radius:10px;padding:12px 14px;border:1px solid var(--st);display:flex;align-items:center;justify-content:space-between;cursor:pointer;min-height:48px}
+.acc-hd{background:var(--wh);border-radius:10px;padding:12px 14px;border:1px solid var(--st);display:flex;align-items:center;justify-content:space-between;cursor:pointer;min-height:56px}
 .acc-hd.open{border-radius:10px 10px 0 0;border-bottom-color:transparent}
 .acc-ti{font-size:.82rem;font-weight:800}.acc-ct{font-size:.72rem;color:var(--ink3);font-weight:700}
 .acc-chv{font-size:12px;color:var(--ink3);transition:transform .2s}.acc-chv.open{transform:rotate(180deg)}
@@ -903,7 +906,7 @@ const CSS = `
 
 /* Tier tabs */
 .tt{display:flex;gap:4px;margin:10px 0}
-.ttb{flex:1;padding:10px;border-radius:10px;border:1.5px solid var(--st);background:var(--wh);cursor:pointer;text-align:center;min-height:48px}
+.ttb{flex:1;padding:10px;border-radius:10px;border:1.5px solid var(--st);background:var(--wh);cursor:pointer;text-align:center;min-height:56px}
 .ttb.on{border-color:var(--for);background:#F5FFF0}
 .ttb-l{font-size:.75rem;font-weight:800}.ttb-s{font-size:.62rem;color:var(--ink3)}
 
@@ -922,7 +925,7 @@ const CSS = `
 .coach-card{background:var(--for);border-radius:12px;padding:14px;margin-bottom:8px}
 .coach-ti{font-size:.88rem;font-weight:900;color:#fff;margin-bottom:5px}
 .coach-sub{font-size:.72rem;color:rgba(255,255,255,.45);margin-bottom:10px}
-.coach-btn{background:var(--lime);color:var(--for);border:none;border-radius:999px;padding:10px 18px;font-size:.78rem;font-weight:900;cursor:pointer;min-height:44px}
+.coach-btn{background:var(--lime);color:var(--for);border:none;border-radius:999px;padding:12px 18px;font-size:.78rem;font-weight:900;cursor:pointer;min-height:56px}
 .coach-list{margin-top:8px}
 .coach-item{background:rgba(255,255,255,.06);border-radius:8px;padding:10px 12px;margin-bottom:4px;display:flex;align-items:center;justify-content:space-between}
 .ci-en{font-size:.78rem;font-weight:600;color:rgba(255,255,255,.8)}.ci-unit{font-size:.62rem;color:rgba(255,255,255,.35)}
@@ -931,14 +934,14 @@ const CSS = `
 .playlist-bar{background:var(--for);border-radius:10px;padding:12px 14px;margin-bottom:8px;display:flex;align-items:center;gap:10px}
 .pl-btn{width:40px;height:40px;border-radius:50%;background:var(--lime);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--for);font-size:14px;font-weight:900;flex-shrink:0}
 .pl-info{flex:1}.pl-ti{font-size:.78rem;font-weight:800;color:#fff}.pl-sub{font-size:.68rem;color:rgba(255,255,255,.45)}
-.pl-stop{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.15);color:#fff;border-radius:999px;padding:8px 14px;font-size:.72rem;font-weight:700;cursor:pointer;min-height:40px}
+.pl-stop{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.15);color:#fff;border-radius:999px;padding:10px 14px;font-size:.72rem;font-weight:700;cursor:pointer;min-height:44px}
 
 /* Playlist builder */
 .plb-ov{position:fixed;inset:0;background:var(--cream);z-index:200;display:flex;flex-direction:column}
 .plb-hd{background:var(--for);padding:12px 14px;display:flex;align-items:center;justify-content:space-between}
-.plb-cl{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:#fff;border-radius:999px;padding:8px 14px;font-size:.75rem;font-weight:700;cursor:pointer;min-height:40px}
+.plb-cl{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:#fff;border-radius:999px;padding:10px 14px;font-size:.75rem;font-weight:700;cursor:pointer;min-height:44px}
 .plb-ti{font-size:.92rem;font-weight:900;color:#fff}
-.plb-play{background:var(--lime);color:var(--for);border:none;border-radius:999px;padding:8px 16px;font-size:.78rem;font-weight:900;cursor:pointer;min-height:40px}
+.plb-play{background:var(--lime);color:var(--for);border:none;border-radius:999px;padding:10px 16px;font-size:.78rem;font-weight:900;cursor:pointer;min-height:44px}
 .plb-play:disabled{opacity:.4}
 .plb-body{flex:1;overflow-y:auto;padding:14px}
 .plb-sec{font-size:.72rem;font-weight:800;text-transform:uppercase;letter-spacing:.8px;color:var(--ink3);margin:12px 0 6px}
@@ -1022,7 +1025,7 @@ const HKFlag = () => (
 const QUIZ_CSS = `
 .quiz-ov{position:fixed;inset:0;background:var(--cream);z-index:200;display:flex;flex-direction:column}
 .quiz-hd{background:var(--for);padding:12px 14px;display:flex;align-items:center;justify-content:space-between}
-.quiz-cl{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:#fff;border-radius:999px;padding:8px 14px;font-size:.75rem;font-weight:700;cursor:pointer;min-height:40px}
+.quiz-cl{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:#fff;border-radius:999px;padding:10px 14px;font-size:.75rem;font-weight:700;cursor:pointer;min-height:44px}
 .quiz-ti{font-size:.88rem;font-weight:900;color:#fff}
 .quiz-body{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;text-align:center}
 .quiz-prompt{font-size:1.5rem;font-weight:800;color:var(--ink);margin-bottom:14px;line-height:1.3}
@@ -1072,7 +1075,7 @@ const QUIZ_CSS = `
 .playlist-header::after{content:'';position:absolute;top:-50%;right:-30%;width:200px;height:200px;background:radial-gradient(circle,rgba(196,240,0,.06) 0%,transparent 70%);pointer-events:none}
 .action-bar{position:sticky;top:0;z-index:50;background:var(--wh);padding:12px 0;display:flex;align-items:center;gap:10px;border-bottom:1px solid transparent;transition:border-color .2s}
 .action-bar.scrolled{border-bottom-color:var(--st);box-shadow:0 2px 8px rgba(0,0,0,.04)}
-.action-pill{background:none;border:1.5px solid var(--st);border-radius:999px;padding:8px 16px;font-size:.75rem;font-weight:700;color:var(--ink);cursor:pointer;min-height:40px;display:inline-flex;align-items:center;gap:6px;transition:all .15s}
+.action-pill{background:none;border:1.5px solid var(--st);border-radius:999px;padding:10px 16px;font-size:.75rem;font-weight:700;color:var(--ink);cursor:pointer;min-height:44px;display:inline-flex;align-items:center;gap:6px;transition:all .15s}
 .action-pill:active{background:var(--cream)}
 .action-pill.on{background:rgba(196,240,0,.1);border-color:var(--lime);color:var(--for)}
 .track{background:var(--wh);border:1px solid var(--st);border-radius:14px;padding:14px;margin-bottom:8px;transition:all .2s}
@@ -1092,7 +1095,7 @@ const QUIZ_CSS = `
 .bottom-sheet-opt:active{background:var(--cream)}
 .track-play-btn{width:40px;height:40px;border-radius:50%;border:none;background:var(--for);color:#fff;font-size:14px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;transition:transform .1s}
 .track-play-btn:active{transform:scale(.92)}
-.track-know-btn{border:1.5px solid var(--lime);border-radius:999px;padding:6px 14px;font-size:.7rem;font-weight:800;cursor:pointer;min-height:32px;display:inline-flex;align-items:center;gap:4px;transition:all .15s;background:none;color:var(--for);white-space:nowrap}
+.track-know-btn{border:1.5px solid var(--lime);border-radius:999px;padding:8px 14px;font-size:.7rem;font-weight:800;cursor:pointer;min-height:44px;display:inline-flex;align-items:center;gap:4px;transition:all .15s;background:none;color:var(--for);white-space:nowrap}
 .track-know-btn.known{background:var(--lime);color:var(--for);border-color:var(--lime)}
 .track-know-btn:active{transform:scale(.95)}
 .gloss-chip{text-align:center;padding:6px 8px;min-width:40px;background:var(--wh);border-radius:8px;border:1px solid var(--st);cursor:pointer;transition:background .15s}
@@ -2317,17 +2320,12 @@ function LessonMode({ progress, upd, profile, settings, onComplete, onQuit }) {
 
           <div className="l-divider" />
           <div className="l-speed">
-            <div className="l-row-label">Time before you repeat</div>
+            <div className="l-row-label">Pause between phrases</div>
             <div className="l-pill-row">
-              {[{k:"slow",l:"🐢 More time"},{k:"normal",l:"Normal"},{k:"fast",l:"🐇 Less time"}].map(s=>
+              {[{k:"slow",l:"Longer pause"},{k:"normal",l:"Normal"},{k:"fast",l:"Shorter pause"}].map(s=>
                 <button key={s.k} className={`l-pill-btn ${speed===s.k?"on":""}`} onClick={()=>setSpeed(s.k)}>{s.l}</button>
               )}
             </div>
-          </div>
-          <div className="l-jyut-toggle">
-            <button className={`l-pill-btn ${!showJyut?"on":""}`} onClick={()=>setShowJyut(v=>!v)}>
-              {showJyut?"🫣 Hide jyutping":"👀 Show jyutping"}
-            </button>
           </div>
         </div>
       )}
@@ -2978,64 +2976,147 @@ function LibraryTab({ library, setLibrary, progress, upd, settings }) {
   );
 }
 
-// ---- PRACTICE TAB (Phase 2a) ----
+// ---- PRACTICE TAB (Phase 2f) ----
 function PracticeTab({ progress, upd, settings, library, practiceCount, setPracticeCount }) {
   const [showQuiz, setShowQuiz] = useState(false);
+  const [showLaunch, setShowLaunch] = useState(false);
   const stats = useMemo(() => getStats(progress), [progress]);
-  const knownPhrases = Object.keys(progress.phrases || {}).filter(k => (progress.phrases || {})[k]).length;
+  const mastered = Object.keys(progress.phrases || {}).filter(k => (progress.phrases || {})[k]).length;
+  const totalPhrases = UNITS.reduce((s, u) => s + u.phrases.length, 0);
+  const practicing = totalPhrases - mastered;
+
+  // Items available for Quick Quiz: mastered + still learning
+  const quizAvailable = useMemo(() => {
+    let count = 0;
+    UNITS.forEach(u => { u.phrases.forEach((_, i) => { const key = `${u.id}-${i}`; if ((progress.phrases || {})[key]) count++; }); });
+    // Also count library items
+    (progress.unit10 || []).forEach(s => { if (s.known) count++; });
+    return count;
+  }, [progress]);
+
+  // Next uncompleted topic for launch screen
+  const nextTopic = useMemo(() => {
+    for (const u of UNITS) {
+      const done = u.phrases.every((_, i) => (progress.phrases || {})[`${u.id}-${i}`]);
+      if (!done) return u;
+    }
+    return UNITS[0];
+  }, [progress]);
+
+  // Still learning count for launch screen
+  const stillLearningCount = useMemo(() => {
+    let count = 0;
+    UNITS.forEach(u => { u.phrases.forEach((_, i) => { if (!(progress.phrases || {})[`${u.id}-${i}`]) count++; }); });
+    return count;
+  }, [progress]);
 
   if (showQuiz) return <QuizTab progress={progress} upd={upd} />;
+
+  // 6-phase Daily Practice launch screen
+  if (showLaunch) {
+    const phases = [
+      { icon: "🔥", name: "Warm-up", time: "3 min", desc: "Review 5–8 mastered items" },
+      { icon: "🆕", name: "Learn new", time: "7 min", desc: "3–5 new phrases from next topic" },
+      { icon: "🗣", name: "Shadow drill", time: "8 min", desc: "Listen & repeat pattern" },
+      { icon: "🔁", name: "Mix & review", time: "5 min", desc: "Everything shuffled" },
+      { icon: "🧠", name: "Quiz", time: "5 min", desc: "Rapid-fire recall" },
+      { icon: "😌", name: "Cool-down", time: "2 min", desc: "Relaxed listen-through" },
+    ];
+    return (
+      <div style={{ position: "fixed", inset: 0, zIndex: 999, background: "linear-gradient(160deg, #1F3329 0%, #2A4A35 50%, #1F3329 100%)", display: "flex", flexDirection: "column", alignItems: "center", padding: "0 24px", overflowY: "auto" }}>
+        {/* Back button */}
+        <button onClick={() => setShowLaunch(false)} style={{ position: "absolute", top: 16, left: 16, background: "rgba(255,255,255,.1)", border: "none", borderRadius: 999, width: 40, height: 40, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "#fff", fontSize: "1.1rem" }}>&#8249;</button>
+
+        <div style={{ marginTop: 72, textAlign: "center" }}>
+          <div style={{ fontSize: "3rem", marginBottom: 8 }}>🎧</div>
+          <div style={{ fontSize: "1.3rem", fontWeight: 900, color: "#fff", marginBottom: 4 }}>Today's Practice</div>
+          <div style={{ fontSize: ".72rem", color: "rgba(255,255,255,.45)" }}>~30 minutes · 6 phases</div>
+        </div>
+
+        {/* Phase list */}
+        <div style={{ width: "100%", maxWidth: 360, marginTop: 28 }}>
+          {phases.map((p, i) => (
+            <div key={i} style={{ display: "flex", alignItems: "center", gap: 14, padding: "13px 0", borderBottom: i < phases.length - 1 ? "1px solid rgba(255,255,255,.08)" : "none" }}>
+              <div style={{ fontSize: "1.3rem", width: 32, textAlign: "center", flexShrink: 0 }}>{p.icon}</div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: ".82rem", fontWeight: 800, color: "#fff" }}>{p.name}</div>
+                <div style={{ fontSize: ".68rem", color: "rgba(255,255,255,.45)", marginTop: 1 }}>{p.desc}</div>
+              </div>
+              <div style={{ fontSize: ".68rem", fontWeight: 700, color: "var(--lime)", flexShrink: 0 }}>{p.time}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* Info line */}
+        <div style={{ marginTop: 20, fontSize: ".72rem", color: "rgba(255,255,255,.4)", textAlign: "center", lineHeight: 1.5 }}>
+          {stillLearningCount} items in Still Learning · Next topic: {nextTopic.title}
+        </div>
+
+        {/* Begin button */}
+        <button onClick={() => {
+          const next = practiceCount + 1;
+          setPracticeCount(next);
+          localStorage.setItem(LANG_CONFIG.id + '-practice-count', next);
+          setShowLaunch(false);
+          setShowQuiz(true);
+        }} style={{ marginTop: 24, marginBottom: 40, background: "var(--lime)", color: "var(--for)", border: "none", borderRadius: 999, padding: "16px 48px", fontSize: ".92rem", fontWeight: 900, cursor: "pointer", minHeight: 56, boxShadow: "0 4px 20px rgba(196,240,0,.3)" }}>
+          ▶ Begin practice
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="mc">
       <div className="pt">Practice & Quiz</div>
-      <div className="ps">Sharpen your skills with focused practice or test what you know.</div>
+      <div className="ps">Build your skills with structured practice or test what you know.</div>
 
-      {/* Daily Practice card */}
-      <div style={{ background: "var(--for)", borderRadius: 16, padding: 20, marginBottom: 12, cursor: "pointer" }} onClick={() => setShowQuiz(true)}>
+      {/* Daily Practice card — dark green, recommended */}
+      <div style={{ background: "var(--for)", borderRadius: 16, padding: 20, marginBottom: 12, cursor: "pointer" }} onClick={() => setShowLaunch(true)}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <div style={{ fontSize: "2rem" }}>🧠</div>
+          <div style={{ fontSize: "2rem" }}>🎧</div>
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: ".92rem", fontWeight: 900, color: "#fff", marginBottom: 2 }}>Daily Practice</div>
-            <div style={{ fontSize: ".72rem", color: "rgba(255,255,255,.55)", lineHeight: 1.4 }}>Review phrases you've learned with flashcards, listening, and pronunciation drills.</div>
+            <div style={{ fontSize: ".72rem", color: "rgba(255,255,255,.55)", lineHeight: 1.4 }}>A full 30-minute session with warm-up, new phrases, shadowing, review, and quiz.</div>
           </div>
           <div style={{ fontSize: "1.2rem", color: "var(--lime)" }}>&#8250;</div>
         </div>
-        {practiceCount > 0 && (
-          <div style={{ marginTop: 10, fontSize: ".68rem", color: "rgba(255,255,255,.4)" }}>Sessions completed: {practiceCount}</div>
-        )}
+        <div style={{ display: "flex", gap: 6, marginTop: 10 }}>
+          <span style={{ fontSize: ".62rem", fontWeight: 700, background: "rgba(255,255,255,.12)", color: "rgba(255,255,255,.6)", padding: "3px 8px", borderRadius: 999 }}>30 min</span>
+          <span style={{ fontSize: ".62rem", fontWeight: 700, background: "rgba(196,240,0,.15)", color: "var(--lime)", padding: "3px 8px", borderRadius: 999 }}>Recommended</span>
+        </div>
       </div>
 
-      {/* Quick Quiz card */}
+      {/* Quick Quiz card — white */}
       <div style={{ background: "var(--wh)", borderRadius: 16, padding: 20, marginBottom: 12, border: "1.5px solid var(--st)", cursor: "pointer" }} onClick={() => setShowQuiz(true)}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <div style={{ fontSize: "2rem" }}>📝</div>
+          <div style={{ fontSize: "2rem" }}>🧠</div>
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: ".92rem", fontWeight: 900, color: "var(--ink)", marginBottom: 2 }}>Quick Quiz</div>
-            <div style={{ fontSize: ".72rem", color: "var(--ink3)", lineHeight: 1.4 }}>Test yourself with multiple choice, dictation, and pronunciation scoring.</div>
+            <div style={{ fontSize: ".72rem", color: "var(--ink3)", lineHeight: 1.4 }}>Test your recall on 10 items from your library and learned phrases.</div>
           </div>
           <div style={{ fontSize: "1.2rem", color: "var(--ink3)" }}>&#8250;</div>
         </div>
-        {knownPhrases > 0 && (
-          <div style={{ marginTop: 10, fontSize: ".68rem", color: "var(--ink3)" }}>{knownPhrases} phrases available for quizzing</div>
-        )}
+        <div style={{ display: "flex", gap: 6, marginTop: 10 }}>
+          <span style={{ fontSize: ".62rem", fontWeight: 700, background: "var(--cream)", color: "var(--ink3)", padding: "3px 8px", borderRadius: 999 }}>5 min</span>
+          <span style={{ fontSize: ".62rem", fontWeight: 700, background: "var(--cream)", color: "var(--ink3)", padding: "3px 8px", borderRadius: 999 }}>{quizAvailable} items available</span>
+        </div>
       </div>
 
-      {/* Stats summary */}
+      {/* Stats bar — Mastered | Practicing | Sessions */}
       <div style={{ background: "var(--cream)", borderRadius: 14, padding: 16, marginTop: 8 }}>
-        <div style={{ fontSize: ".68rem", fontWeight: 800, textTransform: "uppercase", letterSpacing: 1, color: "var(--ink3)", marginBottom: 10 }}>Your stats</div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
           <div style={{ textAlign: "center" }}>
-            <div style={{ fontSize: "1.3rem", fontWeight: 900, color: "var(--for)" }}>{stats.streak}</div>
-            <div style={{ fontSize: ".62rem", fontWeight: 700, color: "var(--ink3)" }}>Day streak</div>
-          </div>
-          <div style={{ textAlign: "center" }}>
-            <div style={{ fontSize: "1.3rem", fontWeight: 900, color: "var(--for)" }}>{knownPhrases}</div>
+            <div style={{ fontSize: "1.3rem", fontWeight: 900, color: "var(--for)" }}>{mastered}</div>
             <div style={{ fontSize: ".62rem", fontWeight: 700, color: "var(--ink3)" }}>Mastered</div>
           </div>
           <div style={{ textAlign: "center" }}>
-            <div style={{ fontSize: "1.3rem", fontWeight: 900, color: "var(--for)" }}>{progress.quizCount || 0}</div>
-            <div style={{ fontSize: ".62rem", fontWeight: 700, color: "var(--ink3)" }}>Quizzes</div>
+            <div style={{ fontSize: "1.3rem", fontWeight: 900, color: "var(--for)" }}>{practicing}</div>
+            <div style={{ fontSize: ".62rem", fontWeight: 700, color: "var(--ink3)" }}>Practicing</div>
+          </div>
+          <div style={{ textAlign: "center" }}>
+            <div style={{ fontSize: "1.3rem", fontWeight: 900, color: "var(--for)" }}>{practiceCount}</div>
+            <div style={{ fontSize: ".62rem", fontWeight: 700, color: "var(--ink3)" }}>Sessions</div>
           </div>
         </div>
       </div>
@@ -3735,14 +3816,24 @@ function ShadowMode({ unit, progress, upd, settings, onClose, startIdx=0, single
   const [idx, setIdx] = useState(startIdx);
   const [phase, setPhase] = useState("play");
   const [playing, setPlaying] = useState(true);
-  const [showJyut, setShowJyut] = useState(true);
+  const [showCn, setShowCn] = useState(true);
+  const [peeking, setPeeking] = useState(false);
   const [speed, setSpeed] = useState(settings?.defaultSpeed || "normal");
   const [complete, setComplete] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [scoring, setScoring] = useState(false);
   const [scoreResult, setScoreResult] = useState(null);
   const timer = useRef(null);
+  const peekTimer = useRef(null);
   const knownN = useRef(0);
+
+  // Eye toggle peek: auto-hide after 2.5s
+  const doPeek = () => {
+    setPeeking(true);
+    clearTimeout(peekTimer.current);
+    peekTimer.current = setTimeout(() => setPeeking(false), 2500);
+  };
+  useEffect(() => () => clearTimeout(peekTimer.current), []);
 
   const phrases = single ? [unit.phrases[startIdx]] : unit.phrases;
 
@@ -3837,38 +3928,57 @@ function ShadowMode({ unit, progress, upd, settings, onClose, startIdx=0, single
 
   return (
     <div className="sho">
-      {/* Header: close + unit name + phrase counter */}
+      {/* Header: close pill + unit name + eye toggle */}
       <div className="sh-hd">
-        <button className="sh-cl" onClick={onClose}>✕</button>
+        <button className="sh-cl" onClick={onClose}><span style={{fontSize:".8rem"}}>&#8249;</span> Close</button>
         <div style={{textAlign:"center",flex:1}}>
           <div style={{fontSize:".72rem",fontWeight:800,color:"rgba(255,255,255,.6)"}}>{unit.title}</div>
           <div style={{fontSize:".62rem",fontWeight:700,color:"rgba(255,255,255,.3)",marginTop:1}}>Phrase {(single?1:idx+1)} of {total}</div>
         </div>
-        <div style={{width:40}} />
+        {/* Eye toggle */}
+        <button onClick={()=>setShowCn(v=>!v)} style={{background:"rgba(255,255,255,.08)",border:"1px solid rgba(255,255,255,.12)",borderRadius:999,width:40,height:40,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",color:"rgba(255,255,255,.5)",fontSize:"1.1rem"}}>
+          {showCn ? <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          : <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>}
+        </button>
       </div>
       {!single&&<div className="sh-bar"><div className="sh-bf" style={{width:((idx+1)/total*100)+"%"}} /></div>}
 
-      {/* Coach banner */}
-      <div style={{margin:"8px 16px 0",padding:"10px 14px",background:phase==="shadow"?"rgba(196,240,0,.12)":"rgba(255,255,255,.06)",border:phase==="shadow"?"1px solid rgba(196,240,0,.25)":"1px solid rgba(255,255,255,.1)",borderRadius:10,textAlign:"center"}}>
-        <div style={{fontSize:".82rem",fontWeight:800,color:phase==="shadow"?"var(--lime)":"rgba(255,255,255,.5)"}}>
-          {phase==="play"?"🎯 Listen, then say it out loud...":"🗣️ Say it out loud!"}
-        </div>
-      </div>
+      {/* Hero phrase area */}
+      <div className="sh-bd" style={{position:"relative"}}>
+        {/* "I know this!" floats top-right */}
+        <button onClick={markKn} style={{position:"absolute",top:12,right:12,background:isKn?"rgba(196,240,0,.08)":"rgba(196,240,0,.15)",border:isKn?"1.5px solid rgba(196,240,0,.15)":"1.5px solid rgba(196,240,0,.3)",borderRadius:999,padding:"8px 14px",fontSize:".72rem",fontWeight:800,color:isKn?"rgba(196,240,0,.4)":"var(--lime)",cursor:"pointer",display:"flex",alignItems:"center",gap:5,minHeight:36}}>
+          <span style={{fontSize:".9rem"}}>{isKn?"✓":"💪"}</span> {isKn?"Known":"I know this!"}
+        </button>
 
-      <div className="sh-bd">
-        <div className="sh-tg">{ph.tag}</div>
+        {/* Context line */}
+        {ph.tag && <div className="sh-ctx">Context: {ph.tag}</div>}
+
         <div className="sh-en">{ph.en}</div>
-        {showJyut && <div className="sh-jy"><JyutpingTone text={ph.jyut} /></div>}
-        <div className="sh-cn">{ph.cn}</div>
-        {/* Cue pill */}
+
+        {/* Chinese + Jyutping with eye toggle */}
+        {showCn ? (<>
+          <div className="sh-jy"><JyutpingTone text={ph.jyut} /></div>
+          <div className="sh-cn">{ph.cn}</div>
+        </>) : (
+          <div className="sh-peek" onClick={doPeek}>
+            {peeking ? (<>
+              <div className="sh-jy" style={{marginBottom:4}}><JyutpingTone text={ph.jyut} /></div>
+              <div className="sh-cn" style={{marginBottom:0}}>{ph.cn}</div>
+            </>) : (
+              <div className="sh-peek-text">Tap to peek</div>
+            )}
+          </div>
+        )}
+
+        {/* Two-state cue — centered below phrase */}
         <div className={`cue-pill ${phase==="shadow"?"speak":"listen"}`}>
-          <span className="cue-pill-emoji">{phase==="shadow"?"🗣️":"👂"}</span>
+          <span className="cue-pill-emoji">{phase==="shadow"?"👄":"👂"}</span>
           <div className="cue-pill-dot" />
-          <span className="cue-pill-text">{phase==="shadow"?"Say it out loud!":"Listen"}</span>
+          <span className="cue-pill-text">{phase==="shadow"?"Repeat out loud":"Listen"}</span>
         </div>
       </div>
 
-      {/* Controls area */}
+      {/* Controls area — thumb zone */}
       <div className="l-ctrl">
         {/* Transport: Replay / Pause / Next */}
         <div className="l-transport">
@@ -3890,31 +4000,16 @@ function ShadowMode({ unit, progress, upd, settings, onClose, startIdx=0, single
           </div>}
         </div>
 
-        {/* I know this now pill */}
-        <div className="l-know-row">
-          <button className="l-know-btn" style={isKn?{opacity:.4}:{}} onClick={markKn}>
-            <span style={{fontSize:"1rem"}}>💪</span>
-            <span>{isKn?"Known!":"I know this now!"}</span>
-          </button>
-        </div>
-
         <div className="l-divider" />
 
-        {/* Speed row */}
+        {/* Speed row — pause between phrases */}
         <div className="l-speed">
-          <div className="l-row-label">Time before you repeat</div>
+          <div className="l-row-label">Pause between phrases</div>
           <div className="l-pill-row">
-            {[{k:"slow",l:"🐢 More time"},{k:"normal",l:"Normal"},{k:"fast",l:"🐇 Less time"}].map(s=>
+            {[{k:"slow",l:"Longer pause"},{k:"normal",l:"Normal"},{k:"fast",l:"Shorter pause"}].map(s=>
               <button key={s.k} className={`l-pill-btn ${speed===s.k?"on":""}`} onClick={()=>setSpeed(s.k)}>{s.l}</button>
             )}
           </div>
-        </div>
-
-        {/* Hide/Show jyutping toggle */}
-        <div className="l-jyut-toggle">
-          <button className={`l-pill-btn ${!showJyut?"on":""}`} onClick={()=>setShowJyut(v=>!v)}>
-            {showJyut?"🫣 Hide jyutping":"👀 Show jyutping"}
-          </button>
         </div>
       </div>
 
@@ -4600,7 +4695,7 @@ function SettingsTab({ settings, updSettings }) {
       {/* About */}
       <div className="set-card">
         <div className="set-lb">About</div>
-        <div style={{fontSize:".68rem",color:"var(--ink2)",lineHeight:1.5}}>" + "ShadowSpeak " + LANG_CONFIG.name + " v3.5.0. Shadowing method + spaced repetition. {ALL_WORDS.length} vocabulary words across {VOCAB_CATS.length} categories. {UNITS.reduce((s,u)=>s+u.phrases.length,0)} phrases across {UNITS.length} units.</div>
+        <div style={{fontSize:".68rem",color:"var(--ink2)",lineHeight:1.5}}>" + "ShadowSpeak " + LANG_CONFIG.name + " v3.8.0. Shadowing method + spaced repetition. {ALL_WORDS.length} vocabulary words across {VOCAB_CATS.length} categories. {UNITS.reduce((s,u)=>s+u.phrases.length,0)} phrases across {UNITS.length} units.</div>
         <button onClick={()=>window.location.href="index.html"} style={{marginTop:8,background:"none",border:"none",cursor:"pointer",fontSize:".68rem",fontWeight:600,color:"var(--lime)",padding:0}}>← Back to landing page</button>
       </div>
     </div>

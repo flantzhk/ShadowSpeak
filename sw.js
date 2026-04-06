@@ -16,7 +16,7 @@
  * and the SW caches them as users browse.
  */
 
-const CACHE_VERSION = "ss-v5";
+const CACHE_VERSION = "ss-v6";
 const CACHE_STATIC = `${CACHE_VERSION}-static`;
 const CACHE_AUDIO = `${CACHE_VERSION}-audio`;
 const CACHE_FONTS = `${CACHE_VERSION}-fonts`;
@@ -137,9 +137,9 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // ---- HTML / STATIC: cache-first ----
+  // ---- HTML / STATIC: network-first (ensures updates are picked up) ----
   if (url.origin === self.location.origin) {
-    event.respondWith(cacheFirst(event.request, CACHE_STATIC));
+    event.respondWith(networkFirst(event.request, CACHE_STATIC));
     return;
   }
 });
@@ -164,6 +164,27 @@ async function cacheFirst(request, cacheName) {
     if (request.headers.get("Accept")?.includes("text/html")) {
       return new Response(
         "<html><body style='font-family:sans-serif;text-align:center;padding:40px'><h2>You're offline</h2><p>This page hasn't been cached yet. Open it once while online, then it will work offline.</p></body></html>",
+        { headers: { "Content-Type": "text/html" } }
+      );
+    }
+    throw err;
+  }
+}
+
+async function networkFirst(request, cacheName) {
+  try {
+    const response = await fetch(request);
+    if (response.ok) {
+      const cache = await caches.open(cacheName);
+      cache.put(request, response.clone());
+    }
+    return response;
+  } catch (err) {
+    const cached = await caches.match(request);
+    if (cached) return cached;
+    if (request.headers.get("Accept")?.includes("text/html")) {
+      return new Response(
+        "<html><body style='font-family:sans-serif;text-align:center;padding:40px'><h2>You're offline</h2><p>Open this page once while online.</p></body></html>",
         { headers: { "Content-Type": "text/html" } }
       );
     }

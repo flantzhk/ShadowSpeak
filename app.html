@@ -3160,6 +3160,22 @@ function LibraryTab({ library, setLibrary, progress, upd, settings }) {
   const [masteredOpen, setMasteredOpen] = useState(false);
   const [libShadow, setLibShadow] = useState(null);
   const [readingMode, setReadingMode] = useState(false);
+  const [masteryConfirm, setMasteryConfirm] = useState(null);
+  const [showConfetti, setShowConfetti] = useState(false);
+  const [toastMsg, setToastMsg] = useState(null);
+
+  const showMasteryToast = (msg) => {
+    setShowConfetti(true); setToastMsg(msg);
+    setTimeout(() => setShowConfetti(false), 2000);
+    setTimeout(() => setToastMsg(null), 2200);
+  };
+
+  const handleLibMastery = (idx) => {
+    const updated = items.map((s, i) => i === idx ? { ...s, known: true } : s);
+    upd("unit10", updated);
+    setMasteryConfirm(null);
+    showMasteryToast("Added to Mastered!");
+  };
 
   // Separate phrases (3+ words) from vocab (1-2 words)
   const isVocab = (s) => !s.en || s.en.split(/\s+/).length <= 2;
@@ -3212,7 +3228,7 @@ function LibraryTab({ library, setLibrary, progress, upd, settings }) {
             ))}
           </div>}
           <div className="ph-actions">
-            <button className="ph-action-btn know-btn" onClick={e => { e.stopPropagation(); toggleKnown(idx); }}>I know this!</button>
+            <button className="ph-action-btn know-btn" onClick={e => { e.stopPropagation(); setMasteryConfirm({...s, _idx: idx}); }}>I know this!</button>
             <button className="ph-action-btn shadow-btn" style={{gap:4}} onClick={e => { e.stopPropagation(); setLibShadow(idx); }}><svg width="10" height="10" viewBox="0 0 10 12" fill="none"><path d="M0 0L10 6L0 12V0Z" fill="#fff"/></svg> Repeat</button>
             <button className="ph-action-btn" onClick={e => { e.stopPropagation(); removeItem(idx); }} style={{color:"#e74c3c",borderColor:"rgba(231,76,60,.2)"}}>Remove</button>
           </div>
@@ -3346,6 +3362,11 @@ function LibraryTab({ library, setLibrary, progress, upd, settings }) {
           </div>
         )}
       </div>
+
+      {/* Mastery confirmation + celebration */}
+      {masteryConfirm && <MasteryConfirmSheet phrase={masteryConfirm} onCancel={()=>setMasteryConfirm(null)} onMastered={()=>handleLibMastery(masteryConfirm._idx)} />}
+      {showConfetti && <ConfettiBurst />}
+      {toastMsg && <div className="mastery-toast">🎉 {toastMsg}</div>}
     </div>
   );
 }

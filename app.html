@@ -2556,6 +2556,16 @@ function HomeTab({ profile, progress, upd, settings, setTab, recentTopics, setRe
   const [readingMode, setReadingMode] = useState(false);
   const [expandedIdx, setExpandedIdx] = useState(null);
   const [actionBarScrolled, setActionBarScrolled] = useState(false);
+  const [miniPlayer, setMiniPlayer] = useState(null);
+  const miniTimer = useRef(null);
+
+  const playPhraseMini = (ph) => {
+    clearTimeout(miniTimer.current);
+    setMiniPlayer({ en: ph.en, cn: ph.cn, jyut: ph.jyut, playing: true });
+    speak(ph.cn);
+    miniTimer.current = setTimeout(() => setMiniPlayer(null), 6000);
+  };
+  useEffect(() => () => clearTimeout(miniTimer.current), []);
   const phraseListRef = useRef(null);
   const searchRef = useRef(null);
   const stats = useMemo(() => getStats(progress), [progress]);
@@ -2723,7 +2733,7 @@ function HomeTab({ profile, progress, upd, settings, setTab, recentTopics, setRe
             return (
               <div className={"ph-item" + (isExp?" expanded":"")} key={ph.origIdx} onClick={()=>setExpandedIdx(isExp?null:ph.origIdx)}>
                 <div className="ph-row">
-                  <button className="ph-play" onClick={e=>{e.stopPropagation();speak(ph.cn);}}>
+                  <button className="ph-play" onClick={e=>{e.stopPropagation();playPhraseMini(ph);}}>
                     <svg width="10" height="12" viewBox="0 0 10 12" fill="none"><path d="M0 0L10 6L0 12V0Z" fill="#fff"/></svg>
                   </button>
                   <div className="ph-text">
@@ -2746,13 +2756,12 @@ function HomeTab({ profile, progress, upd, settings, setTab, recentTopics, setRe
                   {ph.tag && <div className="ph-context">Context: {ph.tag}</div>}
                   {gloss.length > 0 && <div className="gloss-row">
                     {gloss.filter(g=>g.cn).map((g,gi) => (
-                      <div className="gloss-chip" key={gi} onClick={e=>e.stopPropagation()}>
+                      <div className="gloss-chip" key={gi} onClick={e=>{e.stopPropagation();speak(g.cn);}}>
                         <span className="gloss-chi">{g.cn}</span>
                         <span className="gloss-jyut">{g.jy}</span>
                         {g.en && <span className="gloss-eng">{g.en}</span>}
                         <div className="gloss-actions">
-                          <span className="gloss-action" onClick={()=>speak(g.cn)}>&#9654;</span>
-                          <span className="gloss-action">+</span>
+                          <span className="gloss-action" onClick={e=>{e.stopPropagation();const items=progress.unit10||[];if(!items.find(s=>s.cn===g.cn)){upd("unit10",[{en:g.en||"",jyut:g.jy||"",cn:g.cn,tag:unit.title,known:false,date:new Date().toLocaleDateString("en-GB",{day:"numeric",month:"short"})},...items]);}}}>{(progress.unit10||[]).find(s=>s.cn===g.cn)?"\u2713":"+"}</span>
                         </div>
                       </div>
                     ))}
@@ -2766,6 +2775,21 @@ function HomeTab({ profile, progress, upd, settings, setTab, recentTopics, setRe
             );
           })}
         </div>
+
+        {/* Mini player — shows when a phrase is playing */}
+        {miniPlayer && <div style={{position:"fixed",bottom:64,left:0,right:0,zIndex:110,padding:"0 12px",animation:"fadeUp .2s ease"}}>
+          <div style={{background:"rgba(20,20,20,.95)",borderRadius:14,padding:"10px 14px",display:"flex",alignItems:"center",gap:12,boxShadow:"0 8px 32px rgba(0,0,0,.4)",border:"1px solid rgba(255,255,255,.06)"}}>
+            <div style={{width:40,height:40,borderRadius:8,background:"var(--for)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,cursor:"pointer"}} onClick={()=>{speak(miniPlayer.cn);}}>
+              <svg width="12" height="14" viewBox="0 0 10 12" fill="none"><path d="M0 0L10 6L0 12V0Z" fill="#C4F000"/></svg>
+            </div>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{fontSize:".78rem",fontWeight:600,color:"rgba(255,255,255,.85)",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{miniPlayer.en}</div>
+              <div style={{fontSize:".68rem",fontStyle:"italic",color:"var(--lime)",marginTop:1}}>{miniPlayer.jyut}</div>
+            </div>
+            <div style={{fontSize:"1.4rem",fontWeight:900,color:"#fff",flexShrink:0}}>{miniPlayer.cn}</div>
+            <button onClick={()=>{stopAudio();clearTimeout(miniTimer.current);setMiniPlayer(null);}} style={{background:"rgba(255,255,255,.08)",border:"1px solid rgba(255,255,255,.1)",borderRadius:"50%",width:28,height:28,display:"flex",alignItems:"center",justifyContent:"center",color:"rgba(255,255,255,.5)",fontSize:12,cursor:"pointer",flexShrink:0}}>x</button>
+          </div>
+        </div>}
       </div>
     );
   }

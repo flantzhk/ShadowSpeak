@@ -1260,6 +1260,7 @@ function QuizTab({ progress, upd, startMode, onBack }) {
   const [selectedUnits, setSelectedUnits] = useState(new Set());
   const [source, setSource] = useState("known");
   const [pronScores, setPronScores] = useState([]);
+  const exitQuiz = () => { if (onBack) onBack(); else setMode(null); };
 
   const knownPhrases = useMemo(() => {
     const items = [];
@@ -1434,7 +1435,7 @@ function QuizTab({ progress, upd, startMode, onBack }) {
         <div className="comp-em">{avg >= 80 ? "🌟" : avg >= 60 ? "💪" : "📝"}</div>
         <div className="comp-t">{avg >= 80 ? "Amazing pronunciation!" : avg >= 60 ? "Getting there!" : "Good practice!"}</div>
         <div className="comp-s">Average score: {avg}% across {scored.length} phrase{scored.length!==1?"s":""}{pronScores.length-scored.length>0?` (${pronScores.length-scored.length} skipped)`:""}</div>
-        <button className="comp-btn" onClick={() => setMode(null)}>Done</button>
+        <button className="comp-btn" onClick={exitQuiz}>Done</button>
       </div>);
     }
     const total = score.right + score.almost + score.wrong; const pct = total ? Math.round(score.right / total * 100) : 0;
@@ -1447,7 +1448,7 @@ function QuizTab({ progress, upd, startMode, onBack }) {
         <div style={{background:"rgba(255,255,255,.06)",borderRadius:10,padding:"10px 16px",textAlign:"center"}}><div style={{fontSize:"1.2rem",fontWeight:900,color:"#fff"}}>{score.almost}</div><div style={{fontSize:".52rem",color:"rgba(255,255,255,.4)",fontWeight:700}}>Almost</div></div>
         <div style={{background:"rgba(240,90,58,.15)",borderRadius:10,padding:"10px 16px",textAlign:"center"}}><div style={{fontSize:"1.2rem",fontWeight:900,color:"var(--cor)"}}>{score.wrong}</div><div style={{fontSize:".52rem",color:"rgba(255,255,255,.4)",fontWeight:700}}>Review</div></div>
       </div>
-      <button className="comp-btn" onClick={() => setMode(null)}>Done</button>
+      <button className="comp-btn" onClick={exitQuiz}>Done</button>
     </div>);
   }
 
@@ -1456,7 +1457,7 @@ function QuizTab({ progress, upd, startMode, onBack }) {
   if (mode === "pronunciation") {
     return (<div className="quiz-ov">
       <div className="quiz-hd">
-        <button className="quiz-cl" onClick={()=>{setMode(null);setScoreResult(null);}}>✕ End</button>
+        <button className="quiz-cl" onClick={()=>{exitQuiz();setScoreResult(null);}}>✕ End</button>
         <div className="quiz-ti">🎙 Pronunciation</div>
         <div style={{fontSize:".65rem",color:"rgba(255,255,255,.4)"}}>{idx+1}/{quizItems.length}</div>
       </div>
@@ -1487,7 +1488,7 @@ function QuizTab({ progress, upd, startMode, onBack }) {
   if (mode === "speaking") {
     return (<div className="quiz-ov">
       <div className="quiz-hd">
-        <button className="quiz-cl" onClick={()=>setMode(null)}>✕ End</button>
+        <button className="quiz-cl" onClick={exitQuiz}>✕ End</button>
         <div className="quiz-ti">🧠 Recall</div>
         <div style={{fontSize:".65rem",color:"rgba(255,255,255,.4)"}}>{idx+1}/{quizItems.length}</div>
       </div>
@@ -1515,7 +1516,7 @@ function QuizTab({ progress, upd, startMode, onBack }) {
   if (mode === "listening") {
     return (<div className="quiz-ov">
       <div className="quiz-hd">
-        <button className="quiz-cl" onClick={()=>setMode(null)}>✕ End</button>
+        <button className="quiz-cl" onClick={exitQuiz}>✕ End</button>
         <div className="quiz-ti">👂 Listening</div>
         <div style={{fontSize:".65rem",color:"rgba(255,255,255,.4)"}}>{idx+1}/{quizItems.length}</div>
       </div>

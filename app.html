@@ -1684,13 +1684,32 @@ function App() {
     })();
   }, [user]);
 
+  // Offline fallback: load from localStorage when no Firebase user
+  useEffect(() => {
+    if (user || !offlineUser) return;
+    const localRaw = localStorage.getItem(`${LANG_CONFIG.localStoragePrefix}${offlineUser.uid}`);
+    if (localRaw) {
+      const d = JSON.parse(localRaw);
+      setProgress({ phrases:d.phrases||{}, vocab:d.vocab||{}, unit10:d.unit10||[], phraseTs:d.phraseTs||{}, lastReview:d.lastReview||{}, lessonLog:d.lessonLog||[], quizCount:d.quizCount||0 });
+    }
+    const ls = JSON.parse(localStorage.getItem(LANG_CONFIG.localStorageSettingsKey)||"{}");
+    if (ls.onboardingDone) {
+      setSettings(ls);
+      _activeEnVoiceId = ls.enVoice || DEFAULT_EN_VOICE;
+      _activeCnVoiceId = ls.cnVoice || DEFAULT_CN_VOICE;
+    }
+  }, [offlineUser, user]);
+
   // Debounced save: localStorage immediately, Firestore after 2s idle
   const save = useCallback((updated) => {
-    if (!user) return;
-    localStorage.setItem(`${LANG_CONFIG.localStoragePrefix}${user.uid}`, JSON.stringify(updated));
-    clearTimeout(saveTimer.current);
-    saveTimer.current = setTimeout(() => saveToFirestore(user.uid, updated), 2000);
-  }, [user]);
+    const uid = user?.uid || offlineUser?.uid;
+    if (!uid) return;
+    localStorage.setItem(`${LANG_CONFIG.localStoragePrefix}${uid}`, JSON.stringify(updated));
+    if (user) {
+      clearTimeout(saveTimer.current);
+      saveTimer.current = setTimeout(() => saveToFirestore(user.uid, updated), 2000);
+    }
+  }, [user, offlineUser]);
 
   const upd = useCallback((path, value) => {
     setProgress(prev => {
@@ -1750,15 +1769,31 @@ function App() {
     setPlaylist({ items, title, idx: 0, playing: true, speed: "normal" });
   }, []);
 
+  // Offline fallback: if no Firebase user but we have cached data, create a fake user
+  const offlineUser = useMemo(() => {
+    if (user) return null;
+    try {
+      const keys = Object.keys(localStorage);
+      const progressKey = keys.find(k => k.startsWith(LANG_CONFIG.localStoragePrefix) && k !== LANG_CONFIG.localStoragePrefix);
+      if (progressKey) {
+        const uid = progressKey.replace(LANG_CONFIG.localStoragePrefix, "");
+        return { uid, displayName: "Learner", photoURL: null, email: "" };
+      }
+    } catch(e) {}
+    return null;
+  }, [user]);
+
+  const activeUser = user || offlineUser;
+
   // Loading state
-  if (authLoading) return <div className="ca"><div className="pkr"><div style={{color:"var(--lime)",fontSize:"1rem",fontWeight:900}}>Loading...</div></div></div>;
+  if (authLoading && !offlineUser) return <div className="ca"><div className="pkr"><div style={{color:"var(--lime)",fontSize:"1rem",fontWeight:900}}>Loading...</div></div></div>;
 
-  // Not signed in: redirect to landing page
-  if (!user) { window.location.href = "index.html"; return null; }
+  // Not signed in and no offline data: redirect to landing page
+  if (!activeUser) { window.location.href = "index.html"; return null; }
 
-  const profile = user.uid;
-  const displayName = user.displayName || "Learner";
-  const photoURL = user.photoURL;
+  const profile = activeUser.uid;
+  const displayName = activeUser.displayName || "Learner";
+  const photoURL = activeUser.photoURL;
   const vk = Object.keys(progress.vocab||{}).filter(k=>progress.vocab[k]).length;
 
   // Voice onboarding — show once on first visit (skip if offline or returning user)
@@ -1814,7 +1849,7 @@ function App() {
               <div style={{position:"absolute",right:0,top:"calc(100% + 8px)",background:"var(--wh)",border:"1.5px solid var(--st)",borderRadius:14,padding:"10px 0",minWidth:220,zIndex:999,boxShadow:"0 8px 32px rgba(0,0,0,.15)"}}>
                 <div style={{padding:"8px 16px",borderBottom:"1px solid var(--st)"}}>
                   <div style={{fontSize:".78rem",fontWeight:800,color:"var(--ink)"}}>{displayName}</div>
-                  <div style={{fontSize:".62rem",color:"var(--ink2)"}}>{user.email}</div>
+                  <div style={{fontSize:".62rem",color:"var(--ink2)"}}>{activeUser.email}</div>
                 </div>
                 <button onClick={()=>{setProfileMenu(false);window.location.href="app.html?lang=" + LANG_CONFIG.switchTo.lang;}} style={{width:"100%",padding:"14px 16px",background:"none",border:"none",cursor:"pointer",fontSize:".82rem",fontWeight:700,color:"var(--ink)",textAlign:"left",display:"flex",alignItems:"center",gap:10,minHeight:48}}>{LANG_CONFIG.switchTo.flag} {LANG_CONFIG.switchTo.label}</button>
                 <button onClick={()=>{setProfileMenu(false);setTab("settings");}} style={{width:"100%",padding:"14px 16px",background:"none",border:"none",cursor:"pointer",fontSize:".82rem",fontWeight:700,color:"var(--ink)",textAlign:"left",display:"flex",alignItems:"center",gap:10,minHeight:48}}>⚙️ Settings</button>

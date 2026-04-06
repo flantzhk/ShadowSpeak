@@ -2839,7 +2839,8 @@ function HomeTab({ profile, progress, upd, settings, setTab, recentTopics, setRe
           </span>
         </div>
         <div>
-          {sorted.map((ph,i) => {
+          {(() => { const notKnown = sorted.filter(p=>!p.known); const known = sorted.filter(p=>p.known); return <>
+            {notKnown.map((ph,i) => {
             const gloss = getAutoGloss(ph);
             const isExp = expandedIdx === ph.origIdx;
             return (
@@ -2887,6 +2888,28 @@ function HomeTab({ profile, progress, upd, settings, setTab, recentTopics, setRe
               </div>
             );
           })}
+          {known.length > 0 && <div style={{padding:"12px 16px 6px",display:"flex",alignItems:"center",gap:8}}>
+            <div style={{flex:1,height:1,background:"var(--st)"}} />
+            <span style={{fontSize:".68rem",fontWeight:800,color:"var(--ink3)",letterSpacing:"1px",textTransform:"uppercase"}}>Mastered ({known.length})</span>
+            <div style={{flex:1,height:1,background:"var(--st)"}} />
+          </div>}
+          {known.map((ph,i) => (
+            <div className="ph-item" key={ph.origIdx} style={{opacity:.55}} onClick={()=>{setExpandedIdx(expandedIdx===ph.origIdx?null:ph.origIdx);}}>
+              <div className="ph-row" style={{alignItems:"center"}}>
+                <button className="ph-play" onClick={e=>{e.stopPropagation();playPhraseMini(ph);}} style={{opacity:.7}}>
+                  <svg width="10" height="12" viewBox="0 0 10 12" fill="none"><path d="M0 0L10 6L0 12V0Z" fill="#fff"/></svg>
+                </button>
+                <div className="ph-text" style={{flex:1}}>
+                  <div className="ph-eng" style={{display:"flex",alignItems:"center",gap:6}}>{ph.en}
+                    <span style={{fontSize:".6rem",fontWeight:700,background:"rgba(122,170,0,.15)",color:"var(--ld)",padding:"2px 6px",borderRadius:4,flexShrink:0}}>Mastered</span>
+                  </div>
+                  <div className="ph-jyut">{ph.jyut}</div>
+                  <div className="ph-chi">{ph.cn}</div>
+                </div>
+              </div>
+            </div>
+          ))}
+          </>; })()}
         </div>
 
         {/* Mini player — shows when a phrase is playing */}

@@ -3168,6 +3168,11 @@ function LibraryTab({ library, setLibrary, progress, upd, settings }) {
 
   // Library shadow mode
   if (libShadow !== null) {
+    const isSingle = typeof libShadow === "number";
+    if (isSingle) {
+      const s = items[libShadow];
+      return <ShadowMode unit={{title:"My Library",phrases:[{en:s.en||s.cn,cn:s.cn,jyut:s[romKey]||s.jyut||""}]}} progress={progress} upd={upd} settings={settings} onClose={()=>{releaseMicStream();setLibShadow(null);}} startIdx={0} single={true} />;
+    }
     const shadowItems = stillLearning.length > 0 ? stillLearning : items;
     return <ShadowMode unit={{title:"My Library",phrases:shadowItems.map(s=>({en:s.en||s.cn,cn:s.cn,jyut:s[romKey]||s.jyut||""}))}} progress={progress} upd={upd} settings={settings} onClose={()=>{releaseMicStream();setLibShadow(null);}} startIdx={0} single={false} />;
   }

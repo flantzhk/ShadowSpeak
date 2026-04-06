@@ -3483,9 +3483,8 @@ function PracticeTab({ progress, upd, settings, library, practiceCount, setPract
   }, [progress]);
 
   if (showLesson) return <LessonMode progress={progress} upd={upd} profile="" settings={settings} onComplete={() => {
-    const next = practiceCount + 1;
-    setPracticeCount(next);
-    localStorage.setItem(LANG_CONFIG.id + '-practice-count', next);
+    const log = [...(progress.lessonLog||[]), {date:Date.now(), mins:30}];
+    upd("lessonLog", log);
     setShowLesson(false);
   }} onQuit={() => setShowLesson(false)} />;
 
@@ -3564,8 +3563,8 @@ function PracticeTab({ progress, upd, settings, library, practiceCount, setPract
               <div style={{fontSize:".65rem",fontWeight:700,color:"rgba(255,255,255,.7)",textTransform:"uppercase",letterSpacing:".5px"}}>Practicing</div>
             </div>
             <div style={{flex:1,background:"rgba(255,255,255,.1)",borderRadius:12,padding:"12px 0",textAlign:"center"}}>
-              <div style={{fontSize:"1.2rem",fontWeight:900,color:"var(--lime)"}}>{practiceCount}</div>
-              <div style={{fontSize:".65rem",fontWeight:700,color:"rgba(255,255,255,.7)",textTransform:"uppercase",letterSpacing:".5px"}}>Sessions</div>
+              <div style={{fontSize:"1.2rem",fontWeight:900,color:"var(--lime)"}}>{new Set((progress.lessonLog||[]).map(l=>new Date(l.date).toDateString())).size}</div>
+              <div style={{fontSize:".65rem",fontWeight:700,color:"rgba(255,255,255,.7)",textTransform:"uppercase",letterSpacing:".5px"}}>Practice Days</div>
             </div>
           </div>
         </div>

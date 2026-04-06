@@ -2602,6 +2602,7 @@ function HomeTab({ profile, progress, upd, settings, setTab, recentTopics, setRe
   const [actionBarScrolled, setActionBarScrolled] = useState(false);
   const [miniPlayer, setMiniPlayer] = useState(null);
   const [masteryConfirm, setMasteryConfirm] = useState(null);
+  const [quickCheckPhrase, setQuickCheckPhrase] = useState(null);
   const [showConfetti, setShowConfetti] = useState(false);
   const [toastMsg, setToastMsg] = useState(null);
   const miniTimer = useRef(null);
@@ -2873,7 +2874,8 @@ function HomeTab({ profile, progress, upd, settings, setTab, recentTopics, setRe
         </div>}
 
         {/* Mastery confirmation overlay */}
-        {masteryConfirm && <MasteryConfirmSheet phrase={masteryConfirm} onCancel={()=>setMasteryConfirm(null)} onQuiz={()=>handleMarkKnown(masteryConfirm)} onSkip={()=>handleMarkKnown(masteryConfirm)} />}
+        {masteryConfirm && <MasteryConfirmSheet phrase={masteryConfirm} onCancel={()=>setMasteryConfirm(null)} onQuiz={()=>{const ph=masteryConfirm;setMasteryConfirm(null);setQuickCheckPhrase(ph);}} onSkip={()=>handleMarkKnown(masteryConfirm)} />}
+        {quickCheckPhrase && <QuickCheckSheet phrase={quickCheckPhrase} phraseKey={`${selUnit}-${quickCheckPhrase.origIdx}`} progress={progress} upd={upd} onClose={()=>{setQuickCheckPhrase(null);}} />}
         {showConfetti && <ConfettiBurst />}
         {toastMsg && <div className="mastery-toast">🎉 {toastMsg}</div>}
       </div>

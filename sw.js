@@ -16,7 +16,7 @@
  * and the SW caches them as users browse.
  */
 
-const CACHE_VERSION = "ss-v1";
+const CACHE_VERSION = "ss-v4";
 const CACHE_STATIC = `${CACHE_VERSION}-static`;
 const CACHE_AUDIO = `${CACHE_VERSION}-audio`;
 const CACHE_FONTS = `${CACHE_VERSION}-fonts`;
@@ -26,6 +26,9 @@ const CACHE_CDN = `${CACHE_VERSION}-cdn`;
 const PRECACHE_URLS = [
   "./",
   "./index.html",
+  "./app.html",
+  "./data-canto.js",
+  "./data-mandarin.js",
   "./canto.html",
   "./mandarin.html",
   "./manifest.json",
@@ -45,6 +48,9 @@ self.addEventListener("install", (event) => {
         return cache.addAll([
           "./",
           "./index.html",
+          "./app.html",
+          "./data-canto.js",
+          "./data-mandarin.js",
           "./canto.html",
           "./mandarin.html",
           "./manifest.json",

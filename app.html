@@ -1061,7 +1061,7 @@ const CSS = `
 .cont-art img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 .cont-art::after{content:'';position:absolute;inset:0;background:linear-gradient(0deg,rgba(0,0,0,.5) 0%,rgba(0,0,0,.05) 50%);pointer-events:none}
 .cont-art .topic-label{font-size:13px;font-weight:700;color:rgba(255,255,255,.95);text-shadow:0 1px 4px rgba(0,0,0,.4);z-index:1;position:relative;line-height:1.2}
-.cont-art .play-circle{width:40px;height:40px;border-radius:50%;background:var(--lime);display:flex;align-items:center;justify-content:center;font-size:14px;box-shadow:0 4px 12px rgba(0,0,0,.2);z-index:1;position:relative;color:#111}
+.cont-art .play-circle{width:40px;height:40px;min-width:40px;min-height:40px;border-radius:50%;background:var(--lime);display:flex;align-items:center;justify-content:center;font-size:14px;box-shadow:0 4px 12px rgba(0,0,0,.2);z-index:1;position:relative;color:#111;flex-shrink:0}
 .cont-info{padding:10px 12px 12px}
 .cont-name{font-size:13px;font-weight:600;color:var(--ink);margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .cont-meta{font-size:11px;color:var(--ink3);margin-bottom:6px}

@@ -2978,64 +2978,147 @@ function LibraryTab({ library, setLibrary, progress, upd, settings }) {
   );
 }
 
-// ---- PRACTICE TAB (Phase 2a) ----
+// ---- PRACTICE TAB (Phase 2f) ----
 function PracticeTab({ progress, upd, settings, library, practiceCount, setPracticeCount }) {
   const [showQuiz, setShowQuiz] = useState(false);
+  const [showLaunch, setShowLaunch] = useState(false);
   const stats = useMemo(() => getStats(progress), [progress]);
-  const knownPhrases = Object.keys(progress.phrases || {}).filter(k => (progress.phrases || {})[k]).length;
+  const mastered = Object.keys(progress.phrases || {}).filter(k => (progress.phrases || {})[k]).length;
+  const totalPhrases = UNITS.reduce((s, u) => s + u.phrases.length, 0);
+  const practicing = totalPhrases - mastered;
+
+  // Items available for Quick Quiz: mastered + still learning
+  const quizAvailable = useMemo(() => {
+    let count = 0;
+    UNITS.forEach(u => { u.phrases.forEach((_, i) => { const key = `${u.id}-${i}`; if ((progress.phrases || {})[key]) count++; }); });
+    // Also count library items
+    (progress.unit10 || []).forEach(s => { if (s.known) count++; });
+    return count;
+  }, [progress]);
+
+  // Next uncompleted topic for launch screen
+  const nextTopic = useMemo(() => {
+    for (const u of UNITS) {
+      const done = u.phrases.every((_, i) => (progress.phrases || {})[`${u.id}-${i}`]);
+      if (!done) return u;
+    }
+    return UNITS[0];
+  }, [progress]);
+
+  // Still learning count for launch screen
+  const stillLearningCount = useMemo(() => {
+    let count = 0;
+    UNITS.forEach(u => { u.phrases.forEach((_, i) => { if (!(progress.phrases || {})[`${u.id}-${i}`]) count++; }); });
+    return count;
+  }, [progress]);
 
   if (showQuiz) return <QuizTab progress={progress} upd={upd} />;
+
+  // 6-phase Daily Practice launch screen
+  if (showLaunch) {
+    const phases = [
+      { icon: "🔥", name: "Warm-up", time: "3 min", desc: "Review 5–8 mastered items" },
+      { icon: "🆕", name: "Learn new", time: "7 min", desc: "3–5 new phrases from next topic" },
+      { icon: "🗣", name: "Shadow drill", time: "8 min", desc: "Listen & repeat pattern" },
+      { icon: "🔁", name: "Mix & review", time: "5 min", desc: "Everything shuffled" },
+      { icon: "🧠", name: "Quiz", time: "5 min", desc: "Rapid-fire recall" },
+      { icon: "😌", name: "Cool-down", time: "2 min", desc: "Relaxed listen-through" },
+    ];
+    return (
+      <div style={{ position: "fixed", inset: 0, zIndex: 999, background: "linear-gradient(160deg, #1F3329 0%, #2A4A35 50%, #1F3329 100%)", display: "flex", flexDirection: "column", alignItems: "center", padding: "0 24px", overflowY: "auto" }}>
+        {/* Back button */}
+        <button onClick={() => setShowLaunch(false)} style={{ position: "absolute", top: 16, left: 16, background: "rgba(255,255,255,.1)", border: "none", borderRadius: 999, width: 40, height: 40, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "#fff", fontSize: "1.1rem" }}>&#8249;</button>
+
+        <div style={{ marginTop: 72, textAlign: "center" }}>
+          <div style={{ fontSize: "3rem", marginBottom: 8 }}>🎧</div>
+          <div style={{ fontSize: "1.3rem", fontWeight: 900, color: "#fff", marginBottom: 4 }}>Today's Practice</div>
+          <div style={{ fontSize: ".72rem", color: "rgba(255,255,255,.45)" }}>~30 minutes · 6 phases</div>
+        </div>
+
+        {/* Phase list */}
+        <div style={{ width: "100%", maxWidth: 360, marginTop: 28 }}>
+          {phases.map((p, i) => (
+            <div key={i} style={{ display: "flex", alignItems: "center", gap: 14, padding: "13px 0", borderBottom: i < phases.length - 1 ? "1px solid rgba(255,255,255,.08)" : "none" }}>
+              <div style={{ fontSize: "1.3rem", width: 32, textAlign: "center", flexShrink: 0 }}>{p.icon}</div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: ".82rem", fontWeight: 800, color: "#fff" }}>{p.name}</div>
+                <div style={{ fontSize: ".68rem", color: "rgba(255,255,255,.45)", marginTop: 1 }}>{p.desc}</div>
+              </div>
+              <div style={{ fontSize: ".68rem", fontWeight: 700, color: "var(--lime)", flexShrink: 0 }}>{p.time}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* Info line */}
+        <div style={{ marginTop: 20, fontSize: ".72rem", color: "rgba(255,255,255,.4)", textAlign: "center", lineHeight: 1.5 }}>
+          {stillLearningCount} items in Still Learning · Next topic: {nextTopic.title}
+        </div>
+
+        {/* Begin button */}
+        <button onClick={() => {
+          const next = practiceCount + 1;
+          setPracticeCount(next);
+          localStorage.setItem(LANG_CONFIG.id + '-practice-count', next);
+          setShowLaunch(false);
+          setShowQuiz(true);
+        }} style={{ marginTop: 24, marginBottom: 40, background: "var(--lime)", color: "var(--for)", border: "none", borderRadius: 999, padding: "16px 48px", fontSize: ".92rem", fontWeight: 900, cursor: "pointer", minHeight: 56, boxShadow: "0 4px 20px rgba(196,240,0,.3)" }}>
+          ▶ Begin practice
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="mc">
       <div className="pt">Practice & Quiz</div>
-      <div className="ps">Sharpen your skills with focused practice or test what you know.</div>
+      <div className="ps">Build your skills with structured practice or test what you know.</div>
 
-      {/* Daily Practice card */}
-      <div style={{ background: "var(--for)", borderRadius: 16, padding: 20, marginBottom: 12, cursor: "pointer" }} onClick={() => setShowQuiz(true)}>
+      {/* Daily Practice card — dark green, recommended */}
+      <div style={{ background: "var(--for)", borderRadius: 16, padding: 20, marginBottom: 12, cursor: "pointer" }} onClick={() => setShowLaunch(true)}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <div style={{ fontSize: "2rem" }}>🧠</div>
+          <div style={{ fontSize: "2rem" }}>🎧</div>
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: ".92rem", fontWeight: 900, color: "#fff", marginBottom: 2 }}>Daily Practice</div>
-            <div style={{ fontSize: ".72rem", color: "rgba(255,255,255,.55)", lineHeight: 1.4 }}>Review phrases you've learned with flashcards, listening, and pronunciation drills.</div>
+            <div style={{ fontSize: ".72rem", color: "rgba(255,255,255,.55)", lineHeight: 1.4 }}>A full 30-minute session with warm-up, new phrases, shadowing, review, and quiz.</div>
           </div>
           <div style={{ fontSize: "1.2rem", color: "var(--lime)" }}>&#8250;</div>
         </div>
-        {practiceCount > 0 && (
-          <div style={{ marginTop: 10, fontSize: ".68rem", color: "rgba(255,255,255,.4)" }}>Sessions completed: {practiceCount}</div>
-        )}
+        <div style={{ display: "flex", gap: 6, marginTop: 10 }}>
+          <span style={{ fontSize: ".62rem", fontWeight: 700, background: "rgba(255,255,255,.12)", color: "rgba(255,255,255,.6)", padding: "3px 8px", borderRadius: 999 }}>30 min</span>
+          <span style={{ fontSize: ".62rem", fontWeight: 700, background: "rgba(196,240,0,.15)", color: "var(--lime)", padding: "3px 8px", borderRadius: 999 }}>Recommended</span>
+        </div>
       </div>
 
-      {/* Quick Quiz card */}
+      {/* Quick Quiz card — white */}
       <div style={{ background: "var(--wh)", borderRadius: 16, padding: 20, marginBottom: 12, border: "1.5px solid var(--st)", cursor: "pointer" }} onClick={() => setShowQuiz(true)}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <div style={{ fontSize: "2rem" }}>📝</div>
+          <div style={{ fontSize: "2rem" }}>🧠</div>
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: ".92rem", fontWeight: 900, color: "var(--ink)", marginBottom: 2 }}>Quick Quiz</div>
-            <div style={{ fontSize: ".72rem", color: "var(--ink3)", lineHeight: 1.4 }}>Test yourself with multiple choice, dictation, and pronunciation scoring.</div>
+            <div style={{ fontSize: ".72rem", color: "var(--ink3)", lineHeight: 1.4 }}>Test your recall on 10 items from your library and learned phrases.</div>
           </div>
           <div style={{ fontSize: "1.2rem", color: "var(--ink3)" }}>&#8250;</div>
         </div>
-        {knownPhrases > 0 && (
-          <div style={{ marginTop: 10, fontSize: ".68rem", color: "var(--ink3)" }}>{knownPhrases} phrases available for quizzing</div>
-        )}
+        <div style={{ display: "flex", gap: 6, marginTop: 10 }}>
+          <span style={{ fontSize: ".62rem", fontWeight: 700, background: "var(--cream)", color: "var(--ink3)", padding: "3px 8px", borderRadius: 999 }}>5 min</span>
+          <span style={{ fontSize: ".62rem", fontWeight: 700, background: "var(--cream)", color: "var(--ink3)", padding: "3px 8px", borderRadius: 999 }}>{quizAvailable} items available</span>
+        </div>
       </div>
 
-      {/* Stats summary */}
+      {/* Stats bar — Mastered | Practicing | Sessions */}
       <div style={{ background: "var(--cream)", borderRadius: 14, padding: 16, marginTop: 8 }}>
-        <div style={{ fontSize: ".68rem", fontWeight: 800, textTransform: "uppercase", letterSpacing: 1, color: "var(--ink3)", marginBottom: 10 }}>Your stats</div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
           <div style={{ textAlign: "center" }}>
-            <div style={{ fontSize: "1.3rem", fontWeight: 900, color: "var(--for)" }}>{stats.streak}</div>
-            <div style={{ fontSize: ".62rem", fontWeight: 700, color: "var(--ink3)" }}>Day streak</div>
-          </div>
-          <div style={{ textAlign: "center" }}>
-            <div style={{ fontSize: "1.3rem", fontWeight: 900, color: "var(--for)" }}>{knownPhrases}</div>
+            <div style={{ fontSize: "1.3rem", fontWeight: 900, color: "var(--for)" }}>{mastered}</div>
             <div style={{ fontSize: ".62rem", fontWeight: 700, color: "var(--ink3)" }}>Mastered</div>
           </div>
           <div style={{ textAlign: "center" }}>
-            <div style={{ fontSize: "1.3rem", fontWeight: 900, color: "var(--for)" }}>{progress.quizCount || 0}</div>
-            <div style={{ fontSize: ".62rem", fontWeight: 700, color: "var(--ink3)" }}>Quizzes</div>
+            <div style={{ fontSize: "1.3rem", fontWeight: 900, color: "var(--for)" }}>{practicing}</div>
+            <div style={{ fontSize: ".62rem", fontWeight: 700, color: "var(--ink3)" }}>Practicing</div>
+          </div>
+          <div style={{ textAlign: "center" }}>
+            <div style={{ fontSize: "1.3rem", fontWeight: 900, color: "var(--for)" }}>{practiceCount}</div>
+            <div style={{ fontSize: ".62rem", fontWeight: 700, color: "var(--ink3)" }}>Sessions</div>
           </div>
         </div>
       </div>
@@ -4600,7 +4683,7 @@ function SettingsTab({ settings, updSettings }) {
       {/* About */}
       <div className="set-card">
         <div className="set-lb">About</div>
-        <div style={{fontSize:".68rem",color:"var(--ink2)",lineHeight:1.5}}>" + "ShadowSpeak " + LANG_CONFIG.name + " v3.5.0. Shadowing method + spaced repetition. {ALL_WORDS.length} vocabulary words across {VOCAB_CATS.length} categories. {UNITS.reduce((s,u)=>s+u.phrases.length,0)} phrases across {UNITS.length} units.</div>
+        <div style={{fontSize:".68rem",color:"var(--ink2)",lineHeight:1.5}}>" + "ShadowSpeak " + LANG_CONFIG.name + " v3.6.0. Shadowing method + spaced repetition. {ALL_WORDS.length} vocabulary words across {VOCAB_CATS.length} categories. {UNITS.reduce((s,u)=>s+u.phrases.length,0)} phrases across {UNITS.length} units.</div>
         <button onClick={()=>window.location.href="index.html"} style={{marginTop:8,background:"none",border:"none",cursor:"pointer",fontSize:".68rem",fontWeight:600,color:"var(--lime)",padding:0}}>← Back to landing page</button>
       </div>
     </div>

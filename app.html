@@ -1077,7 +1077,7 @@ const CSS = `
 .lesson-hdr::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,#1F3329 0%,#2a5a3a 50%,#1A3D3D 100%)}
 .lesson-hdr::after{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 75% 25%,rgba(196,240,0,.1) 0%,transparent 50%)}
 .lesson-hdr-top{display:flex;align-items:center;justify-content:space-between;position:relative;z-index:1;margin-bottom:16px}
-.lesson-back{font-size:14px;color:rgba(255,255,255,.7);background:none;border:none;font-family:inherit;cursor:pointer;min-height:44px;display:flex;align-items:center}
+.lesson-back{font-size:14px;color:#fff;background:rgba(255,255,255,.12);border:none;font-family:inherit;cursor:pointer;min-height:44px;display:flex;align-items:center;padding:0 14px;border-radius:10px;font-weight:700;gap:4px}
 .lesson-stats-badge{font-size:11px;color:var(--lime);font-weight:600}
 .lesson-hero{position:relative;z-index:1;display:flex;align-items:center;gap:16px}
 .lesson-art{width:80px;height:80px;border-radius:12px;overflow:hidden;flex-shrink:0;position:relative}
@@ -1089,13 +1089,16 @@ const CSS = `
 
 /* Controls row */
 .ctrl-row{display:flex;align-items:center;gap:10px;padding:14px 16px 8px;border-bottom:1px solid rgba(0,0,0,.06)}
-.play-all-btn{width:48px;height:48px;border-radius:50%;background:var(--for);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#fff;box-shadow:0 2px 8px rgba(31,51,41,.3);min-height:48px}
-.shuffle-btn{font-size:12px;color:var(--ink3);background:none;border:none;font-family:inherit;display:flex;align-items:center;gap:4px;cursor:pointer;min-height:44px}
-.filter-chip{margin-left:auto;font-size:11px;padding:5px 12px;border-radius:999px;background:var(--wh);border:1px solid rgba(0,0,0,.08);color:var(--ink2);font-weight:500;cursor:pointer;min-height:36px;display:inline-flex;align-items:center}
+.play-all-btn{height:40px;border-radius:10px;background:var(--for);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;color:#fff;box-shadow:0 2px 8px rgba(31,51,41,.3);min-height:40px;padding:0 16px;font-size:12px;font-weight:700;font-family:inherit}
+.shuffle-btn{font-size:12px;color:var(--ink);background:var(--wh);border:1.5px solid var(--st);border-radius:10px;font-family:inherit;display:flex;align-items:center;gap:6px;cursor:pointer;min-height:40px;padding:0 14px;font-weight:600;transition:all .15s}
+.shuffle-btn:active{border-color:var(--for);color:var(--for)}
+.filter-chip{margin-left:auto;font-size:12px;padding:0 14px;border-radius:10px;background:var(--wh);border:1.5px solid var(--st);color:var(--ink);font-weight:600;cursor:pointer;min-height:40px;display:inline-flex;align-items:center;font-family:inherit;transition:all .15s}
+.filter-chip:active{border-color:var(--for);color:var(--for)}
 
 /* Phrase items */
 .ph-item{padding:12px 16px;border-bottom:1px solid rgba(0,0,0,.05);cursor:pointer;transition:background .2s}
-.ph-item:active{background:rgba(0,0,0,.02)}
+.ph-item:nth-child(even){background:rgba(0,0,0,.02)}
+.ph-item:active{background:rgba(0,0,0,.04)}
 .ph-item.expanded{background:rgba(31,51,41,.06);border-left:3px solid var(--for);padding-left:13px}
 .ph-row{display:flex;align-items:flex-start;gap:10px}
 .ph-play{width:32px;height:32px;border-radius:50%;background:var(--for);border:none;display:flex;align-items:center;justify-content:center;color:#fff;cursor:pointer;flex-shrink:0;margin-top:2px;font-size:10px}
@@ -1117,7 +1120,7 @@ const CSS = `
 .gloss-actions{display:flex;gap:4px}
 .gloss-action{width:24px;height:24px;border-radius:6px;border:1px solid rgba(0,0,0,.08);background:rgba(0,0,0,.02);display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--ink2);cursor:pointer;transition:all .15s}
 .gloss-action:active{background:var(--for);color:#fff;border-color:var(--for)}
-.ph-actions{display:flex;gap:6px}
+.ph-actions{display:flex;gap:6px;max-width:480px}
 .ph-action-btn{flex:1;padding:10px 0;border-radius:10px;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;border:1px solid rgba(0,0,0,.1);background:var(--wh);color:var(--ink);transition:all .15s;min-height:44px}
 .ph-action-btn:active{border-color:var(--for);color:var(--for)}
 .ph-action-btn.shadow-btn{background:var(--for);color:#fff;border-color:var(--for)}
@@ -2721,10 +2724,17 @@ function HomeTab({ profile, progress, upd, settings, setTab, recentTopics, setRe
         </div>
         <div className="ctrl-row">
           <button className="play-all-btn" onClick={()=>startPlaylist(items.map(p=>({en:p.en,cn:p.cn,jyut:p.jyut})),unit.title)}>
-            <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M4 2.5L15 9L4 15.5V2.5Z" fill="#fff"/></svg>
+            <svg width="14" height="14" viewBox="0 0 18 18" fill="none"><path d="M4 2.5L15 9L4 15.5V2.5Z" fill="#fff"/></svg>
+            Play All
           </button>
-          <button className="shuffle-btn" onClick={()=>setShadow("unit")}>Shuffle</button>
-          <span className="filter-chip" onClick={()=>setReadingMode(r=>!r)}>{readingMode?"Chinese first":"English first"}</span>
+          <button className="shuffle-btn" onClick={()=>setShadow("unit")}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/><line x1="4" y1="4" x2="9" y2="9"/></svg>
+            Shuffle
+          </button>
+          <span className="filter-chip" onClick={()=>setReadingMode(r=>!r)}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" style={{marginRight:4}}><path d="M4 6h16M4 12h16M4 18h10"/></svg>
+            {readingMode?"Chinese first":"English first"}
+          </span>
         </div>
         <div>
           {sorted.map((ph,i) => {
@@ -2900,7 +2910,7 @@ function HomeTab({ profile, progress, upd, settings, setTab, recentTopics, setRe
               <div className="t-card" key={u.id} onClick={()=>{setSelUnit(u.id);updateRecent(u.id);}}>
                 <div className="t-art">
                   <img src={TOPIC_IMAGES[u.id] || TOPIC_IMAGES[1]} alt="" />
-                  <span className="t-num">#{i+1}</span>
+                  <span className="t-num">#{u.id}</span>
                 </div>
                 <div className="t-info">
                   <div className="t-name">{u.title}</div>
@@ -4896,7 +4906,7 @@ function SettingsTab({ settings, updSettings }) {
       {/* About */}
       <div className="set-card">
         <div className="set-lb">About</div>
-        <div style={{fontSize:".68rem",color:"var(--ink2)",lineHeight:1.5}}>ShadowSpeak {LANG_CONFIG.name} v3.9.2. Shadowing method + spaced repetition. {ALL_WORDS.length} vocabulary words across {VOCAB_CATS.length} categories. {UNITS.reduce((s,u)=>s+u.phrases.length,0)} phrases across {UNITS.length} units.</div>
+        <div style={{fontSize:".68rem",color:"var(--ink2)",lineHeight:1.5}}>ShadowSpeak {LANG_CONFIG.name} v3.9.6. Shadowing method + spaced repetition. {ALL_WORDS.length} vocabulary words across {VOCAB_CATS.length} categories. {UNITS.reduce((s,u)=>s+u.phrases.length,0)} phrases across {UNITS.length} units.</div>
         <button onClick={()=>window.location.href="index.html"} style={{marginTop:8,background:"none",border:"none",cursor:"pointer",fontSize:".68rem",fontWeight:600,color:"var(--lime)",padding:0}}>← Back to landing page</button>
       </div>
     </div>

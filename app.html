@@ -1865,7 +1865,7 @@ function App() {
       </div>
 
       {tab==="home"&&<HomeTab profile={displayName} progress={progress} upd={upd} settings={settings} setTab={setTab} recentTopics={recentTopics} setRecentTopics={setRecentTopics} practiceCount={practiceCount} library={library} selUnit={selUnit} setSelUnit={setSelUnit} markReviewed={markReviewed} startPlaylist={startPlaylist} openPlBuilder={()=>setShowPlBuilder(true)} setAutoLaunch={setAutoLaunch} />}
-      {tab==="library"&&<LibraryTab library={library} setLibrary={setLibrary} progress={progress} upd={upd} settings={settings} />}
+      {tab==="library"&&<LibraryTab library={library} setLibrary={setLibrary} progress={progress} upd={upd} settings={settings} startPlaylist={startPlaylist} />}
       {tab==="practice"&&<PracticeTab progress={progress} upd={upd} settings={settings} library={library} practiceCount={practiceCount} setPracticeCount={setPracticeCount} autoLaunch={autoLaunch} />}
       {tab==="settings"&&<SettingsTab settings={settings} updSettings={updSettings} />}
 
@@ -3190,7 +3190,7 @@ function HomeTab({ profile, progress, upd, settings, setTab, recentTopics, setRe
 }
 
 // ---- LIBRARY TAB (Phase 2a) ----
-function LibraryTab({ library, setLibrary, progress, upd, settings }) {
+function LibraryTab({ library, setLibrary, progress, upd, settings, startPlaylist }) {
   const [showAddForm, setShowAddForm] = useState(false);
   const [en, setEn] = useState("");
   const [rom, setRom] = useState("");
@@ -3394,11 +3394,11 @@ function LibraryTab({ library, setLibrary, progress, upd, settings }) {
         {/* Control row — matches unit view ctrl-row */}
         {stillLearning.length > 0 && (
           <div className="ctrl-row">
-            <button className="play-all-btn" onClick={()=>setLibShadow("all")}>
+            <button className="play-all-btn" onClick={()=>startPlaylist(stillLearning.map(s=>({en:s.en||s.cn,cn:s.cn,jyut:s[romKey]||s.jyut||""})),"My Library")}>
               <svg width="14" height="14" viewBox="0 0 18 18" fill="none"><path d="M4 2.5L15 9L4 15.5V2.5Z" fill="#fff"/></svg>
               Play All
             </button>
-            <button className="shuffle-btn" onClick={()=>setLibShadow("all")}>
+            <button className="shuffle-btn" onClick={()=>{const shuffled=[...stillLearning].sort(()=>Math.random()-.5);startPlaylist(shuffled.map(s=>({en:s.en||s.cn,cn:s.cn,jyut:s[romKey]||s.jyut||""})),"My Library (Shuffled)");}}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/><line x1="4" y1="4" x2="9" y2="9"/></svg>
               Shuffle
             </button>

@@ -1244,7 +1244,7 @@ const QUIZ_CSS = `
 `;
 
 // ---- QUIZ COMPONENTS ----
-function QuizTab({ progress, upd, startMode }) {
+function QuizTab({ progress, upd, startMode, onBack }) {
   const [mode, setMode] = useState(null);
   const [quizItems, setQuizItems] = useState([]);
   const [idx, setIdx] = useState(0);
@@ -1323,55 +1323,56 @@ function QuizTab({ progress, upd, startMode }) {
     const topicImgs = {1:"https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?w=120&h=80&fit=crop",2:"https://images.unsplash.com/photo-1529156069898-49953e39b3ac?w=120&h=80&fit=crop",3:"https://images.unsplash.com/photo-1536640712-4d4c36ff0e4e?w=120&h=80&fit=crop",4:"https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=120&h=80&fit=crop",5:"https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=120&h=80&fit=crop",6:"https://images.unsplash.com/photo-1555529669-e69e7aa0ba9a?w=120&h=80&fit=crop",7:"https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=120&h=80&fit=crop",8:"https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=120&h=80&fit=crop",9:"https://images.unsplash.com/photo-1508672019048-805c876b67e2?w=120&h=80&fit=crop",10:"https://images.unsplash.com/photo-1518199266791-5375a83190b7?w=120&h=80&fit=crop",11:"https://images.unsplash.com/photo-1575444758702-4a6b9222c016?w=120&h=80&fit=crop",12:"https://images.unsplash.com/photo-1534274988757-a28bf1a57c17?w=120&h=80&fit=crop",13:"https://images.unsplash.com/photo-1526304640581-d334cdbbf45e?w=120&h=80&fit=crop",14:"https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=120&h=80&fit=crop",15:"https://images.unsplash.com/photo-1544027993-37dbfe43562a?w=120&h=80&fit=crop",16:"https://images.unsplash.com/photo-1512941937669-90a1b58e7e9c?w=120&h=80&fit=crop",17:"https://images.unsplash.com/photo-1516483638261-f4dbaf036963?w=120&h=80&fit=crop",18:"https://images.unsplash.com/photo-1466378284817-a6b7fd50cc5a?w=120&h=80&fit=crop",19:"https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=120&h=80&fit=crop",20:"https://images.unsplash.com/photo-1462275646964-a0e3c11f18a6?w=120&h=80&fit=crop"};
     return (<div style={{paddingBottom:unitCount>0?140:80}}>
       {/* Header with back button */}
-      <div style={{position:"relative",overflow:"hidden",padding:"16px 20px 16px"}}>
+      <div style={{position:"relative",overflow:"hidden",padding:"16px 20px 14px"}}>
         <div style={{position:"absolute",inset:0,background:"linear-gradient(135deg,#3D2A1A 0%,#2A1F15 100%)"}} />
         <div style={{position:"relative",zIndex:1}}>
-          <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:8}}>
-            <button onClick={()=>setPicking(false)} style={{background:"rgba(255,255,255,.12)",border:"none",borderRadius:10,padding:"0 14px",height:40,display:"flex",alignItems:"center",gap:4,cursor:"pointer",color:"#fff",fontSize:".82rem",fontWeight:700,fontFamily:"inherit"}}>&#8592; Back</button>
+          <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10}}>
+            <button onClick={()=>{if(onBack)onBack();else setPicking(false);}} style={{background:"rgba(255,255,255,.12)",border:"none",borderRadius:10,padding:"0 14px",height:38,display:"flex",alignItems:"center",gap:4,cursor:"pointer",color:"#fff",fontSize:".82rem",fontWeight:700,fontFamily:"inherit"}}>&#8592; Back</button>
             <div style={{flex:1}} />
-            <button onClick={()=>setSelectedUnits(new Set(UNITS.map(u=>u.id)))} style={{background:"rgba(255,255,255,.12)",border:"none",borderRadius:10,padding:"0 12px",height:36,cursor:"pointer",color:"rgba(255,255,255,.8)",fontSize:".72rem",fontWeight:700,fontFamily:"inherit"}}>Select all</button>
-            <button onClick={()=>setSelectedUnits(new Set())} style={{background:"rgba(255,255,255,.08)",border:"none",borderRadius:10,padding:"0 12px",height:36,cursor:"pointer",color:"rgba(255,255,255,.6)",fontSize:".72rem",fontWeight:700,fontFamily:"inherit"}}>Clear</button>
+            <button onClick={()=>setSelectedUnits(new Set(UNITS.map(u=>u.id)))} style={{background:"rgba(255,255,255,.12)",border:"none",borderRadius:10,padding:"0 12px",height:34,cursor:"pointer",color:"rgba(255,255,255,.8)",fontSize:".72rem",fontWeight:700,fontFamily:"inherit"}}>Select all</button>
+            <button onClick={()=>setSelectedUnits(new Set())} style={{background:"rgba(255,255,255,.08)",border:"none",borderRadius:10,padding:"0 12px",height:34,cursor:"pointer",color:"rgba(255,255,255,.6)",fontSize:".72rem",fontWeight:700,fontFamily:"inherit"}}>Clear</button>
           </div>
-          <div style={{fontSize:"1.1rem",fontWeight:900,color:"#fff",marginBottom:2}}>🎙 Pick units to practise</div>
-          <div style={{fontSize:".78rem",color:"rgba(255,255,255,.7)"}}>Tap to select, then start your pronunciation quiz.</div>
+          <div style={{fontSize:"1.05rem",fontWeight:900,color:"#fff",marginBottom:2}}>🎙 Pronunciation Practice</div>
+          <div style={{fontSize:".76rem",color:"rgba(255,255,255,.7)"}}>Select units, then practise saying each phrase out loud.</div>
         </div>
       </div>
 
       {/* 2-column grid */}
-      <div style={{padding:"12px 16px 0",display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+      <div style={{padding:"10px 12px 0",display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
         {UNITS.map(u=>{
           const k=u.phrases.filter((_,i)=>(progress.phrases||{})[`${u.id}-${i}`]).length;
           const isSel=selectedUnits.has(u.id);
           return (
             <div key={u.id} onClick={()=>toggleUnit(u.id)} style={{
               background:isSel?"rgba(196,240,0,.06)":"var(--wh)",
-              borderRadius:12,overflow:"hidden",
-              border:isSel?"1.5px solid var(--lime)":"1.5px solid var(--st)",
+              borderRadius:10,overflow:"hidden",
+              border:isSel?"1.5px solid var(--lime)":"1.5px solid rgba(0,0,0,.06)",
               cursor:"pointer",transition:"all .15s",
+              boxShadow:isSel?"0 2px 8px rgba(122,170,0,.15)":"0 1px 3px rgba(0,0,0,.04)",
             }}>
               {/* Image with checkbox overlay */}
-              <div style={{height:64,position:"relative",overflow:"hidden"}}>
+              <div style={{height:48,position:"relative",overflow:"hidden"}}>
                 <img src={topicImgs[u.id]||topicImgs[1]} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}} />
-                <div style={{position:"absolute",inset:0,background:"linear-gradient(0deg,rgba(0,0,0,.4) 0%,transparent 60%)"}} />
-                <div style={{position:"absolute",top:6,left:6,width:22,height:22,borderRadius:6,border:isSel?"none":"2px solid rgba(255,255,255,.5)",background:isSel?"var(--lime)":"rgba(0,0,0,.2)",display:"flex",alignItems:"center",justifyContent:"center"}}>
-                  {isSel && <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--for)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>}
+                <div style={{position:"absolute",inset:0,background:"linear-gradient(0deg,rgba(0,0,0,.35) 0%,transparent 70%)"}} />
+                <div style={{position:"absolute",top:5,left:5,width:20,height:20,borderRadius:5,border:isSel?"none":"2px solid rgba(255,255,255,.5)",background:isSel?"var(--lime)":"rgba(0,0,0,.25)",display:"flex",alignItems:"center",justifyContent:"center"}}>
+                  {isSel && <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="var(--for)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>}
                 </div>
-                <span style={{position:"absolute",top:6,right:8,fontSize:".85rem"}}>{topicIcons[u.id]||"📖"}</span>
+                <span style={{position:"absolute",top:5,right:6,fontSize:".75rem"}}>{topicIcons[u.id]||"📖"}</span>
               </div>
               {/* Info */}
-              <div style={{padding:"8px 10px 10px"}}>
-                <div style={{fontSize:".78rem",fontWeight:700,color:"var(--ink)",marginBottom:2,lineHeight:1.2}}>{u.title}</div>
-                <div style={{fontSize:".62rem",color:"var(--ink3)",fontWeight:600}}>{u.phrases.length} phrases · {k} known</div>
+              <div style={{padding:"6px 8px 8px"}}>
+                <div style={{fontSize:".72rem",fontWeight:700,color:"var(--ink)",marginBottom:1,lineHeight:1.2}}>{u.title}</div>
+                <div style={{fontSize:".58rem",color:"var(--ink3)",fontWeight:600}}>{u.phrases.length} phrases</div>
               </div>
             </div>
           );
         })}
       </div>
 
-      {/* Sticky start bar — flush with bottom nav */}
-      {unitCount > 0 && (<div style={{position:"fixed",bottom:0,left:0,right:0,zIndex:150,padding:"8px 16px",paddingBottom:"calc(64px + env(safe-area-inset-bottom))",background:"var(--wh)",borderTop:"1px solid var(--st)",boxShadow:"0 -8px 24px rgba(0,0,0,.12)"}}>
+      {/* Sticky start bar — covers nav */}
+      {unitCount > 0 && (<div style={{position:"fixed",bottom:0,left:0,right:0,zIndex:150,padding:"10px 16px",paddingBottom:"calc(66px + env(safe-area-inset-bottom))",background:"var(--cream)",borderTop:"1.5px solid var(--st)",boxShadow:"0 -8px 24px rgba(0,0,0,.1)"}}>
         <div style={{display:"flex",alignItems:"center",gap:10}}>
-          <div style={{flex:1,fontSize:".75rem",color:"var(--ink2)",fontWeight:600}}>{unitCount} unit{unitCount>1?"s":""} · {phraseCount} phrases</div>
+          <div style={{flex:1,fontSize:".78rem",color:"var(--ink)",fontWeight:700}}>{unitCount} unit{unitCount>1?"s":""} · {phraseCount} phrases</div>
           <button onClick={()=>startQuiz("pronunciation","units")} style={{padding:"12px 28px",borderRadius:12,border:"none",background:"var(--lime)",color:"var(--for)",fontSize:".84rem",fontWeight:900,cursor:"pointer",minHeight:44}}>🎙 Start practice</button>
         </div>
       </div>)}
@@ -3404,7 +3405,7 @@ function PracticeTab({ progress, upd, settings, library, practiceCount, setPract
     setShowLesson(false);
   }} onQuit={() => setShowLesson(false)} />;
 
-  if (showPronun) return <QuizTab progress={progress} upd={upd} startMode="pronunciation" />;
+  if (showPronun) return <QuizTab progress={progress} upd={upd} startMode="pronunciation" onBack={()=>setShowPronun(false)} />;
 
   if (showQuiz) return <QuizTab progress={progress} upd={upd} />;
 
@@ -3524,8 +3525,8 @@ function PracticeTab({ progress, upd, settings, library, practiceCount, setPract
           <div style={{ display:"flex", alignItems:"center", gap:12 }}>
             <div style={{width:48,height:48,borderRadius:12,background:"rgba(232,160,64,.15)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1.5rem",flexShrink:0}}>🎙</div>
             <div style={{ flex:1 }}>
-              <div style={{ fontSize:".92rem", fontWeight:900, color:"#fff", marginBottom:2 }}>Pronunciation Quiz</div>
-              <div style={{ fontSize:".76rem", color:"rgba(255,255,255,.75)", lineHeight:1.4 }}>Record yourself and get AI pronunciation scores.</div>
+              <div style={{ fontSize:".92rem", fontWeight:900, color:"#fff", marginBottom:2 }}>Pronunciation Practice</div>
+              <div style={{ fontSize:".76rem", color:"rgba(255,255,255,.75)", lineHeight:1.4 }}>Practise saying phrases out loud and get AI scores.</div>
             </div>
             <div style={{ fontSize:"1.2rem", color:"rgba(255,200,120,.8)" }}>&#8250;</div>
           </div>

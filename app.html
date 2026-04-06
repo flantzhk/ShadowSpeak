@@ -2580,15 +2580,42 @@ function ConfettiBurst() {
   )}</div>;
 }
 
-function MasteryConfirmSheet({ phrase, onQuiz, onSkip, onCancel }) {
+function MasteryConfirmSheet({ phrase, onMastered, onCancel }) {
+  const [mode, setMode] = useState("ask");
+  const [revealed, setRevealed] = useState(false);
+  const romanization = phrase[LANG_CONFIG.romanizationKey] || phrase.jyut;
+
+  if (mode === "quiz") {
+    return <div className="mastery-overlay">
+      <div className="mastery-card" onClick={e=>e.stopPropagation()} style={{maxWidth:360}}>
+        <div style={{fontSize:".68rem",fontWeight:800,color:"var(--ink3)",letterSpacing:"0.08em",textTransform:"uppercase",marginBottom:12}}>SAY THIS IN CANTONESE:</div>
+        <div style={{fontSize:"1.1rem",fontWeight:800,color:"var(--ink)",marginBottom:8}}>{phrase.en}</div>
+        <div style={{fontSize:".75rem",color:"var(--ink3)",marginBottom:16}}>Try to say it out loud first!</div>
+        {!revealed ? (
+          <button onClick={()=>setRevealed(true)} style={{width:"100%",padding:"14px",borderRadius:12,border:"none",background:"var(--lime)",color:"var(--for)",fontSize:".88rem",fontWeight:800,cursor:"pointer",minHeight:48}}>Reveal answer</button>
+        ) : (
+          <div>
+            <div style={{background:"var(--cream)",borderRadius:14,padding:"16px",marginBottom:16}}>
+              {romanization && <div style={{fontSize:".85rem",fontStyle:"italic",color:"var(--plum)",fontWeight:600,marginBottom:4}}>{romanization}</div>}
+              <div style={{fontFamily:LANG_CONFIG.fontFamily,fontSize:"1.1rem",fontWeight:800,color:"var(--ink)"}}>{phrase.cn}</div>
+            </div>
+            <div style={{fontSize:".78rem",fontWeight:700,color:"var(--ink2)",marginBottom:12}}>Did you get it right?</div>
+            <button onClick={onMastered} style={{width:"100%",padding:"14px",borderRadius:12,border:"none",background:"var(--lime)",color:"var(--for)",fontSize:".88rem",fontWeight:800,cursor:"pointer",marginBottom:8,minHeight:48}}>Yes, I nailed it!</button>
+            <button onClick={onCancel} style={{width:"100%",padding:"14px",borderRadius:12,border:"1.5px solid var(--st)",background:"var(--wh)",color:"var(--ink3)",fontSize:".82rem",fontWeight:700,cursor:"pointer",minHeight:48}}>Not quite yet</button>
+          </div>
+        )}
+      </div>
+    </div>;
+  }
+
   return <div className="mastery-overlay" onClick={onCancel}>
     <div className="mastery-card" onClick={e=>e.stopPropagation()}>
       <div style={{fontSize:"2.5rem",marginBottom:8}}>🔥</div>
       <div style={{fontSize:"1rem",fontWeight:900,color:"var(--ink)",marginBottom:4}}>Nice — let's lock it in!</div>
       <div style={{fontSize:".78rem",color:"var(--ink3)",marginBottom:6,lineHeight:1.5}}><strong>{phrase.en}</strong></div>
       <div style={{fontSize:".82rem",fontWeight:700,color:"var(--plum)",marginBottom:20}}>{phrase.cn}</div>
-      <button onClick={onQuiz} style={{width:"100%",padding:"14px",borderRadius:12,border:"none",background:"var(--for)",color:"#fff",fontSize:".84rem",fontWeight:800,cursor:"pointer",marginBottom:8,minHeight:48}}>🧠 Quick test to make it stick</button>
-      <button onClick={onSkip} style={{width:"100%",padding:"14px",borderRadius:12,border:"1.5px solid var(--st)",background:"var(--wh)",color:"var(--ink)",fontSize:".84rem",fontWeight:700,cursor:"pointer",minHeight:48}}>I've got this one — mark as mastered</button>
+      <button onClick={()=>setMode("quiz")} style={{width:"100%",padding:"14px",borderRadius:12,border:"none",background:"var(--for)",color:"#fff",fontSize:".84rem",fontWeight:800,cursor:"pointer",marginBottom:8,minHeight:48}}>🧠 Quick test to make it stick</button>
+      <button onClick={onMastered} style={{width:"100%",padding:"14px",borderRadius:12,border:"1.5px solid var(--st)",background:"var(--wh)",color:"var(--ink)",fontSize:".84rem",fontWeight:700,cursor:"pointer",minHeight:48}}>I've got this one — mark as mastered</button>
     </div>
   </div>;
 }
@@ -2602,7 +2629,6 @@ function HomeTab({ profile, progress, upd, settings, setTab, recentTopics, setRe
   const [actionBarScrolled, setActionBarScrolled] = useState(false);
   const [miniPlayer, setMiniPlayer] = useState(null);
   const [masteryConfirm, setMasteryConfirm] = useState(null);
-  const [quickCheckPhrase, setQuickCheckPhrase] = useState(null);
   const [showConfetti, setShowConfetti] = useState(false);
   const [toastMsg, setToastMsg] = useState(null);
   const miniTimer = useRef(null);
@@ -2874,8 +2900,7 @@ function HomeTab({ profile, progress, upd, settings, setTab, recentTopics, setRe
         </div>}
 
         {/* Mastery confirmation overlay */}
-        {masteryConfirm && <MasteryConfirmSheet phrase={masteryConfirm} onCancel={()=>setMasteryConfirm(null)} onQuiz={()=>{const ph=masteryConfirm;setMasteryConfirm(null);setQuickCheckPhrase(ph);}} onSkip={()=>handleMarkKnown(masteryConfirm)} />}
-        {quickCheckPhrase && <QuickCheckSheet phrase={quickCheckPhrase} phraseKey={`${selUnit}-${quickCheckPhrase.origIdx}`} progress={progress} upd={upd} onClose={()=>{setQuickCheckPhrase(null);}} skipPrompt />}
+        {masteryConfirm && <MasteryConfirmSheet phrase={masteryConfirm} onCancel={()=>setMasteryConfirm(null)} onMastered={()=>handleMarkKnown(masteryConfirm)} />}
         {showConfetti && <ConfettiBurst />}
         {toastMsg && <div className="mastery-toast">🎉 {toastMsg}</div>}
       </div>

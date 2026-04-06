@@ -991,9 +991,18 @@ const CSS = `
 .bt{height:2px;background:var(--st);border-radius:999px;overflow:hidden}.bf{height:100%;border-radius:999px;background:var(--lime);transition:width .3s}
 /* Search */
 .search-results{background:var(--wh);border:1px solid var(--st);border-radius:12px;margin-top:6px;overflow:hidden;box-shadow:0 4px 16px rgba(0,0,0,.08)}
-.search-result{display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid var(--st);cursor:pointer}
+.search-result{padding:10px 14px;border-bottom:1px solid var(--st)}
 .search-result:last-child{border-bottom:none}
-.search-result:active{background:var(--cream)}
+.sr-top{display:flex;align-items:center;gap:8px;cursor:pointer}
+.sr-top:active{opacity:.7}
+.sr-bottom{display:flex;align-items:center;gap:8px;margin-top:6px;padding-left:0}
+.sr-add{border:1.5px solid var(--st);background:var(--wh);border-radius:8px;padding:5px 12px;font-size:11px;font-weight:700;color:var(--ink2);cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:4px;white-space:nowrap;transition:all .15s}
+.sr-add:active{border-color:var(--for);color:var(--for)}
+.sr-add.saved{border-color:var(--lime);background:rgba(196,240,0,.1);color:var(--for);cursor:default}
+.sr-play{border:1.5px solid var(--st);background:var(--wh);border-radius:8px;padding:5px 12px;font-size:11px;font-weight:700;color:var(--plum);cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:4px;white-space:nowrap}
+.sr-play:active{border-color:var(--plum);background:rgba(143,106,232,.08)}
+.sr-goto{border:1.5px solid var(--st);background:var(--wh);border-radius:8px;padding:5px 12px;font-size:11px;font-weight:700;color:var(--ink2);cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:4px;white-space:nowrap}
+.sr-goto:active{border-color:var(--for);color:var(--for)}
 .search-badge{font-size:.6rem;font-weight:800;padding:3px 8px;border-radius:999px;text-transform:uppercase;letter-spacing:.5px}
 
 /* Home header with album art gradient */
@@ -2849,16 +2858,10 @@ function HomeTab({ profile, progress, upd, settings, setTab, recentTopics, setRe
           {searchResults.map((r, ri) => {
             const inLib = (progress.unit10||[]).find(s=>s.cn===r.cn);
             return (
-            <div key={ri} className="search-result" style={{display:"flex",alignItems:"center",gap:8}}>
-              <div style={{flex:1,display:"flex",alignItems:"center",gap:8,minWidth:0,cursor:"pointer"}} onClick={() => {
-                if (r.type === "word") {
-                  speak(r.cn);
-                } else if (r.unitId) {
-                  setSelUnit(r.unitId);
-                  updateRecent(r.unitId);
-                  setExpandedIdx(r.idx);
-                  setSearchQ("");
-                }
+            <div key={ri} className="search-result">
+              <div className="sr-top" onClick={() => {
+                if (r.type === "word") { speak(r.cn); }
+                else if (r.unitId) { setSelUnit(r.unitId); updateRecent(r.unitId); setExpandedIdx(r.idx); setSearchQ(""); }
               }}>
                 <span className="search-badge" style={{ background: r.type === "phrase" ? "rgba(122,170,0,.15)" : "rgba(143,106,232,.15)", color: r.type === "phrase" ? "var(--ld)" : "var(--plum)" }}>
                   {r.type === "phrase" ? "PHRASE" : "WORD"}
@@ -2867,10 +2870,13 @@ function HomeTab({ profile, progress, upd, settings, setTab, recentTopics, setRe
                   <div style={{ fontSize: ".82rem", fontWeight: 700, color: "var(--ink)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.en || r.cn}</div>
                   <div style={{ fontSize: ".72rem", color: "var(--plum)", fontStyle: "italic" }}>{r.jyut}</div>
                 </div>
-                <span style={{ fontSize: ".82rem", color: "var(--ink3)", flexShrink: 0 }}>{r.cn}</span>
-                {r.type === "word" && <span style={{ fontSize: ".7rem", color: "var(--plum)", flexShrink: 0 }}>&#9654;</span>}
+                <span style={{ fontSize: ".95rem", fontWeight: 700, color: "var(--ink3)", flexShrink: 0 }}>{r.cn}</span>
               </div>
-              <button onClick={(e)=>{e.stopPropagation();if(!inLib){const items=progress.unit10||[];upd("unit10",[{en:r.en||"",jyut:r.jyut||"",cn:r.cn,tag:r.unitTitle||"Search",known:false,date:new Date().toLocaleDateString("en-GB",{day:"numeric",month:"short"})},...items]);}}} style={{width:32,height:32,borderRadius:8,border:inLib?"1.5px solid var(--lime)":"1.5px solid var(--st)",background:inLib?"rgba(196,240,0,.1)":"var(--wh)",cursor:inLib?"default":"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,color:inLib?"var(--for)":"var(--ink3)",fontWeight:700,flexShrink:0}}>{inLib?"\u2713":"+"}</button>
+              <div className="sr-bottom">
+                {r.type === "word" && <button className="sr-play" onClick={()=>speak(r.cn)}>&#9654; Play</button>}
+                {r.type === "phrase" && r.unitId && <button className="sr-goto" onClick={()=>{setSelUnit(r.unitId);updateRecent(r.unitId);setExpandedIdx(r.idx);setSearchQ("");}}>Go to unit &#8250;</button>}
+                <button className={"sr-add"+(inLib?" saved":"")} onClick={(e)=>{e.stopPropagation();if(!inLib){const items=progress.unit10||[];upd("unit10",[{en:r.en||"",jyut:r.jyut||"",cn:r.cn,tag:r.unitTitle||"Search",known:false,date:new Date().toLocaleDateString("en-GB",{day:"numeric",month:"short"})},...items]);}}}>{inLib?"\u2713 Saved":"+ Add to library"}</button>
+              </div>
             </div>
           );}
           )}

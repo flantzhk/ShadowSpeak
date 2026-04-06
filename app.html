@@ -1256,6 +1256,7 @@ function QuizTab({ progress, upd, startMode, onBack }) {
   const [scoring, setScoring] = useState(false);
   const [scoreResult, setScoreResult] = useState(null);
   const [picking, setPicking] = useState(startMode === "pronunciation");
+  const [autoStarted, setAutoStarted] = useState(false);
   const [selectedUnits, setSelectedUnits] = useState(new Set());
   const [source, setSource] = useState("known");
   const [pronScores, setPronScores] = useState([]);
@@ -1265,6 +1266,17 @@ function QuizTab({ progress, upd, startMode, onBack }) {
     UNITS.forEach(u => { u.phrases.forEach((p, i) => { const key = `${u.id}-${i}`; if ((progress.phrases || {})[key]) items.push({ ...p, unitId: u.id, phraseIdx: i, key }); }); });
     return items;
   }, [progress]);
+
+  // Auto-start recall quiz when launched from Quick Quiz card
+  useEffect(() => {
+    if (startMode === "recall" && !autoStarted && knownPhrases.length >= 3) {
+      setAutoStarted(true);
+      const pool = [...knownPhrases].sort(() => Math.random() - 0.5).slice(0, 10);
+      setQuizItems(pool);
+      setMode("speaking");
+      setSource("known");
+    }
+  }, [startMode, knownPhrases, autoStarted]);
 
   const getUnitPhrases = () => {
     const items = [];
@@ -3407,7 +3419,7 @@ function PracticeTab({ progress, upd, settings, library, practiceCount, setPract
 
   if (showPronun) return <QuizTab progress={progress} upd={upd} startMode="pronunciation" onBack={()=>setShowPronun(false)} />;
 
-  if (showQuiz) return <QuizTab progress={progress} upd={upd} />;
+  if (showQuiz) return <QuizTab progress={progress} upd={upd} startMode="recall" onBack={()=>setShowQuiz(false)} />;
 
   // 6-phase Daily Practice launch screen
   if (showLaunch) {

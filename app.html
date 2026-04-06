@@ -1739,7 +1739,7 @@ function App() {
         <div style={{display:"flex",alignItems:"center",gap:8}}>
           <div style={{position:"relative"}}>
             {photoURL ? (
-              <img src={photoURL} referrerPolicy="no-referrer" style={{width:30,height:30,borderRadius:"50%",border:"2px solid var(--lime)",cursor:"pointer"}} onClick={()=>setProfileMenu(v=>!v)} title={displayName} />
+              <img src={photoURL} referrerPolicy="no-referrer" style={{width:36,height:36,borderRadius:"50%",border:"2px solid var(--lime)",cursor:"pointer"}} onClick={()=>setProfileMenu(v=>!v)} title={displayName} />
             ) : (
               <div className="ha" style={{background:"var(--lime)",color:"var(--for)",cursor:"pointer"}} onClick={()=>setProfileMenu(v=>!v)}>{displayName[0]}</div>
             )}
@@ -1750,11 +1750,11 @@ function App() {
                   <div style={{fontSize:".78rem",fontWeight:800,color:"var(--ink)"}}>{displayName}</div>
                   <div style={{fontSize:".62rem",color:"var(--ink2)"}}>{user.email}</div>
                 </div>
-                <button onClick={()=>{setProfileMenu(false);window.location.href="app.html?lang=" + LANG_CONFIG.switchTo.lang;}} style={{width:"100%",padding:"10px 16px",background:"none",border:"none",cursor:"pointer",fontSize:".75rem",fontWeight:700,color:"var(--ink)",textAlign:"left",display:"flex",alignItems:"center",gap:8}}>{LANG_CONFIG.switchTo.flag} {LANG_CONFIG.switchTo.label}</button>
-                <button onClick={()=>{setProfileMenu(false);setTab("settings");}} style={{width:"100%",padding:"10px 16px",background:"none",border:"none",cursor:"pointer",fontSize:".75rem",fontWeight:700,color:"var(--ink)",textAlign:"left",display:"flex",alignItems:"center",gap:8}}>⚙️ Settings</button>
-                <button onClick={()=>{setProfileMenu(false);window.location.href="index.html";}} style={{width:"100%",padding:"10px 16px",background:"none",border:"none",cursor:"pointer",fontSize:".75rem",fontWeight:700,color:"var(--ink)",textAlign:"left",display:"flex",alignItems:"center",gap:8}}>🏠 Back to home</button>
+                <button onClick={()=>{setProfileMenu(false);window.location.href="app.html?lang=" + LANG_CONFIG.switchTo.lang;}} style={{width:"100%",padding:"14px 16px",background:"none",border:"none",cursor:"pointer",fontSize:".82rem",fontWeight:700,color:"var(--ink)",textAlign:"left",display:"flex",alignItems:"center",gap:10,minHeight:48}}>{LANG_CONFIG.switchTo.flag} {LANG_CONFIG.switchTo.label}</button>
+                <button onClick={()=>{setProfileMenu(false);setTab("settings");}} style={{width:"100%",padding:"14px 16px",background:"none",border:"none",cursor:"pointer",fontSize:".82rem",fontWeight:700,color:"var(--ink)",textAlign:"left",display:"flex",alignItems:"center",gap:10,minHeight:48}}>⚙️ Settings</button>
+                <button onClick={()=>{setProfileMenu(false);window.location.href="index.html";}} style={{width:"100%",padding:"14px 16px",background:"none",border:"none",cursor:"pointer",fontSize:".82rem",fontWeight:700,color:"var(--ink)",textAlign:"left",display:"flex",alignItems:"center",gap:10,minHeight:48}}>🏠 Back to home</button>
                 <div style={{borderTop:"1px solid var(--st)",margin:"2px 0"}} />
-                <button onClick={()=>{fbAuth.signOut();window.location.href="index.html";}} style={{width:"100%",padding:"10px 16px",background:"none",border:"none",cursor:"pointer",fontSize:".75rem",fontWeight:700,color:"#e74c3c",textAlign:"left",display:"flex",alignItems:"center",gap:8}}>🚪 Sign out</button>
+                <button onClick={()=>{fbAuth.signOut();window.location.href="index.html";}} style={{width:"100%",padding:"14px 16px",background:"none",border:"none",cursor:"pointer",fontSize:".82rem",fontWeight:700,color:"#e74c3c",textAlign:"left",display:"flex",alignItems:"center",gap:10,minHeight:48}}>🚪 Sign out</button>
               </div>
             </>}
           </div>
@@ -2787,7 +2787,7 @@ function HomeTab({ profile, progress, upd, settings, setTab, recentTopics, setRe
               <div style={{fontSize:".68rem",fontStyle:"italic",color:"var(--lime)",marginTop:1}}>{miniPlayer.jyut}</div>
             </div>
             <div style={{fontSize:"1.4rem",fontWeight:900,color:"#fff",flexShrink:0}}>{miniPlayer.cn}</div>
-            <button onClick={()=>{stopAudio();clearTimeout(miniTimer.current);setMiniPlayer(null);}} style={{background:"rgba(255,255,255,.08)",border:"1px solid rgba(255,255,255,.1)",borderRadius:"50%",width:28,height:28,display:"flex",alignItems:"center",justifyContent:"center",color:"rgba(255,255,255,.5)",fontSize:12,cursor:"pointer",flexShrink:0}}>x</button>
+            <button onClick={()=>{stopAudio();clearTimeout(miniTimer.current);setMiniPlayer(null);}} style={{background:"rgba(255,255,255,.08)",border:"1px solid rgba(255,255,255,.1)",borderRadius:"50%",width:36,height:36,display:"flex",alignItems:"center",justifyContent:"center",color:"rgba(255,255,255,.5)",fontSize:14,cursor:"pointer",flexShrink:0}}>x</button>
           </div>
         </div>}
       </div>
@@ -2922,6 +2922,7 @@ function LibraryTab({ library, setLibrary, progress, upd, settings }) {
   const [rom, setRom] = useState("");
   const [cn, setCn] = useState("");
   const [saved, setSaved] = useState(false);
+  const [expandedIdx, setExpandedIdx] = useState(null);
 
   const items = progress.unit10 || [];
   const stillLearning = items.filter(s => !s.known);
@@ -3053,7 +3054,7 @@ function LibraryTab({ library, setLibrary, progress, upd, settings }) {
                     }}>{s.cn || s.en}</span>
                     {canSpeak(s) && (
                       <button onClick={() => speak(s.cn)} style={{
-                        width: 28, height: 28, borderRadius: "50%", border: "none",
+                        width: 36, height: 36, borderRadius: "50%", border: "none",
                         background: "rgba(122,170,0,.15)", cursor: "pointer",
                         display: "flex", alignItems: "center", justifyContent: "center",
                         fontSize: ".7rem", color: "var(--for)", flexShrink: 0
@@ -3070,8 +3071,8 @@ function LibraryTab({ library, setLibrary, progress, upd, settings }) {
                   }}>{s.cn ? s.en : ""}</div>
                   <button onClick={() => toggleKnown(idx)} style={{
                     background: "none", border: "none", color: "var(--plum)",
-                    fontSize: ".68rem", fontWeight: 700, cursor: "pointer",
-                    padding: 0, textAlign: "left", marginTop: 2
+                    fontSize: ".72rem", fontWeight: 700, cursor: "pointer",
+                    padding: "8px 0", textAlign: "left", marginTop: 2, minHeight: 36
                   }}>Relearn</button>
                 </div>
               );
@@ -3100,8 +3101,8 @@ function LibraryTab({ library, setLibrary, progress, upd, settings }) {
           </div>
           <button onClick={() => {/* shuffle shadow — future hook */}} style={{
             background: "rgba(255,255,255,.1)", border: "none", borderRadius: 999,
-            padding: "6px 12px", color: "rgba(255,255,255,.7)", fontSize: ".72rem",
-            fontWeight: 700, cursor: "pointer", minHeight: 36
+            padding: "10px 14px", color: "rgba(255,255,255,.7)", fontSize: ".72rem",
+            fontWeight: 700, cursor: "pointer", minHeight: 44
           }}>🔀 Shuffle</button>
         </div>
       )}
@@ -3114,56 +3115,44 @@ function LibraryTab({ library, setLibrary, progress, upd, settings }) {
         }}>STILL LEARNING ({stillLearning.length})</div>
       )}
 
-      {/* 6. Still Learning track list */}
+      {/* 6. Still Learning track list — expandable like lesson view */}
       {stillLearning.map((s) => {
         const idx = items.indexOf(s);
+        const isExp = expandedIdx === idx;
+        const gloss = canSpeak(s) ? getAutoGloss(s) : [];
         return (
-          <div key={idx} style={{
-            display: "flex", alignItems: "center", gap: 12,
-            padding: "10px 0", borderBottom: "1px solid var(--st)", minHeight: 48
-          }}>
-            {/* Play button */}
-            <button onClick={() => canSpeak(s) && speak(s.cn)} style={{
-              width: 40, height: 40, borderRadius: "50%",
-              background: canSpeak(s) ? "var(--for)" : "var(--st)",
-              border: "none", cursor: canSpeak(s) ? "pointer" : "default",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              fontSize: ".8rem", color: canSpeak(s) ? "#fff" : "var(--ink3)",
-              flexShrink: 0
-            }}>&#9654;</button>
-
-            {/* Text stack */}
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{
-                fontSize: ".82rem", fontWeight: 700, color: "var(--ink)",
-                whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis"
-              }}>{s.en}</div>
-              {s[romKey] && s[romKey] !== `(add ${romLabel.toLowerCase()})` && (
-                <div style={{
-                  fontSize: ".72rem", color: "var(--plum)", fontStyle: "italic",
-                  fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis"
-                }}>{s[romKey]}</div>
-              )}
-              {s.cn && s.cn.trim() !== "" && (
-                <div style={{
-                  fontSize: ".72rem", color: "var(--ink3)",
-                  fontFamily: LANG_CONFIG.fontFamily,
-                  whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis"
-                }}>{s.cn}</div>
-              )}
+          <div key={idx} className={"ph-item" + (isExp ? " expanded" : "")} onClick={() => setExpandedIdx(isExp ? null : idx)}>
+            <div className="ph-row">
+              <button className="ph-play" onClick={e => { e.stopPropagation(); if (canSpeak(s)) speak(s.cn); }}>
+                <svg width="10" height="12" viewBox="0 0 10 12" fill="none"><path d="M0 0L10 6L0 12V0Z" fill="#fff"/></svg>
+              </button>
+              <div className="ph-text">
+                <div className="ph-eng">{s.en}<div className="ph-chev">&#9662;</div></div>
+                {s[romKey] && s[romKey] !== `(add ${romLabel.toLowerCase()})` && (
+                  <div className="ph-jyut">{s[romKey]}</div>
+                )}
+                {s.cn && s.cn.trim() !== "" && (
+                  <div className="ph-chi">{s.cn}</div>
+                )}
+              </div>
             </div>
-
-            {/* Actions */}
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4, flexShrink: 0 }}>
-              <button onClick={() => toggleKnown(idx)} style={{
-                background: "var(--lime)", color: "var(--for)", border: "none",
-                borderRadius: 999, padding: "6px 12px", fontSize: ".68rem",
-                fontWeight: 900, cursor: "pointer", minHeight: 32, whiteSpace: "nowrap"
-              }}>I know this!</button>
-              <button onClick={() => removeItem(idx)} style={{
-                background: "none", border: "none", color: "var(--ink3)",
-                fontSize: ".62rem", fontWeight: 600, cursor: "pointer", padding: 0
-              }}>Remove</button>
+            <div className="ph-detail">
+              {s.tag && <div className="ph-context">From: {s.tag}</div>}
+              {gloss.length > 0 && <div className="gloss-row">
+                {gloss.filter(g => g.cn).map((g, gi) => (
+                  <div className="gloss-chip" key={gi} onClick={e => { e.stopPropagation(); speak(g.cn); }}>
+                    <span className="gloss-chi">{g.cn}</span>
+                    <span className="gloss-jyut">{g.jy}</span>
+                    {g.en && <span className="gloss-eng">{g.en}</span>}
+                  </div>
+                ))}
+              </div>}
+              <div className="ph-actions">
+                <button className="ph-action-btn" onClick={e => { e.stopPropagation(); toggleKnown(idx); }}>
+                  {s.known ? "Move to Still Learning" : "I know this!"}
+                </button>
+                <button className="ph-action-btn shadow-btn" onClick={e => { e.stopPropagation(); removeItem(idx); }}>Remove</button>
+              </div>
             </div>
           </div>
         );

@@ -134,6 +134,25 @@
   </div>
 
   <script>
+    // One-time SW cache nuke — remove after v3.9.6 is stable
+    (function() {
+      var nukeKey = 'ss-cache-nuke-v6';
+      if (!localStorage.getItem(nukeKey) && 'serviceWorker' in navigator) {
+        localStorage.setItem(nukeKey, '1');
+        navigator.serviceWorker.getRegistrations().then(function(regs) {
+          regs.forEach(function(r) { r.unregister(); });
+        });
+        caches.keys().then(function(keys) {
+          keys.forEach(function(k) { caches.delete(k); });
+        }).then(function() {
+          setTimeout(function() { location.reload(true); }, 500);
+        });
+        return;
+      }
+    })();
+  </script>
+
+  <script>
     const firebaseConfig = {
       apiKey: "AIzaSyBl8PRFr84XLNZNxfSg7LpVekjh5lvBWRI",
       authDomain: "shadowspeak-22f04.firebaseapp.com",

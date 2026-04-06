@@ -36,6 +36,23 @@
 <body>
   <div id="root"></div>
   <script>
+    // One-time SW cache nuke — remove after v3.9.6 is stable
+    (function() {
+      var nukeKey = 'ss-cache-nuke-v6';
+      if (!localStorage.getItem(nukeKey) && 'serviceWorker' in navigator) {
+        localStorage.setItem(nukeKey, '1');
+        navigator.serviceWorker.getRegistrations().then(function(regs) {
+          regs.forEach(function(r) { r.unregister(); });
+        });
+        caches.keys().then(function(keys) {
+          keys.forEach(function(k) { caches.delete(k); });
+        }).then(function() {
+          setTimeout(function() { location.reload(true); }, 500);
+        });
+        return;
+      }
+    })();
+
     var _urlParams = new URLSearchParams(window.location.search);
     var _lang = _urlParams.get('lang') || localStorage.getItem('shadowspeak-lang') || 'canto';
     localStorage.setItem('shadowspeak-lang', _lang);

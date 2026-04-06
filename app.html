@@ -1369,10 +1369,10 @@ function QuizTab({ progress, upd, startMode }) {
       </div>
 
       {/* Sticky start bar — flush with bottom nav */}
-      {unitCount > 0 && (<div style={{position:"fixed",bottom:56,left:0,right:0,zIndex:200,padding:"8px 16px 10px",background:"var(--wh)",borderTop:"1px solid var(--st)",boxShadow:"0 -4px 16px rgba(0,0,0,.08)"}}>
+      {unitCount > 0 && (<div style={{position:"fixed",bottom:56,left:0,right:0,zIndex:300,padding:"8px 16px 10px",background:"var(--wh)",borderTop:"1px solid var(--st)",boxShadow:"0 -8px 24px rgba(0,0,0,.12)"}}>
         <div style={{display:"flex",alignItems:"center",gap:10}}>
           <div style={{flex:1,fontSize:".75rem",color:"var(--ink2)",fontWeight:600}}>{unitCount} unit{unitCount>1?"s":""} · {phraseCount} phrases</div>
-          <button onClick={()=>startQuiz("pronunciation","units")} style={{padding:"12px 28px",borderRadius:12,border:"none",background:"var(--lime)",color:"var(--for)",fontSize:".84rem",fontWeight:900,cursor:"pointer",minHeight:44}}>🎙 Start quiz</button>
+          <button onClick={()=>startQuiz("pronunciation","units")} style={{padding:"12px 28px",borderRadius:12,border:"none",background:"var(--lime)",color:"var(--for)",fontSize:".84rem",fontWeight:900,cursor:"pointer",minHeight:44}}>🎙 Start practice</button>
         </div>
       </div>)}
     </div>);

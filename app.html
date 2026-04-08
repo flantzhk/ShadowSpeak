@@ -170,7 +170,12 @@ async function saveSettingsToFirestore(uid, data) {
 
 // ---- UNITS (10 fixed + Life Sentences) ----
 
-const UNITS = LANG_CONFIG.UNITS;
+// Normalize: ensure every phrase has a .jyut field (maps pinyin→jyut for Mandarin)
+const _romKey = LANG_CONFIG.romanizationKey;
+const UNITS = LANG_CONFIG.UNITS.map(u => ({
+  ...u,
+  phrases: u.phrases.map(p => p.jyut ? p : { ...p, jyut: p[_romKey] || "" })
+}));
 
 
 const GLOSS_DATA = LANG_CONFIG.GLOSS_DATA;
@@ -1831,7 +1836,7 @@ function App() {
           </div>
           <div>
             <div className="ht">Shadow<span style={{color:"var(--lime)"}}>Speak</span></div>
-            <div style={{fontSize:".58rem",fontWeight:700,color:"rgba(255,255,255,.5)",letterSpacing:".5px",marginTop:-1}}>CANTONESE</div>
+            <div style={{fontSize:".58rem",fontWeight:700,color:"rgba(255,255,255,.5)",letterSpacing:".5px",marginTop:-1}}>{LANG_CONFIG.name.toUpperCase()}</div>
           </div>
           <div className="tn">
             {[{id:"home",icon:"🏠",l:"Home"},{id:"library",icon:"📚",l:"My Library"},{id:"practice",icon:"🧠",l:"Practice"}].map(t=>
@@ -2677,7 +2682,7 @@ function MasteryConfirmSheet({ phrase, onMastered, onCancel }) {
   if (mode === "quiz") {
     return <div className="mastery-overlay">
       <div className="mastery-card" onClick={e=>e.stopPropagation()} style={{maxWidth:360}}>
-        <div style={{fontSize:".68rem",fontWeight:800,color:"var(--ink3)",letterSpacing:"0.08em",textTransform:"uppercase",marginBottom:12}}>SAY THIS IN CANTONESE:</div>
+        <div style={{fontSize:".68rem",fontWeight:800,color:"var(--ink3)",letterSpacing:"0.08em",textTransform:"uppercase",marginBottom:12}}>SAY THIS IN {LANG_CONFIG.name.toUpperCase()}:</div>
         <div style={{fontSize:"1.1rem",fontWeight:800,color:"var(--ink)",marginBottom:8}}>{phrase.en}</div>
         <div style={{fontSize:".75rem",color:"var(--ink3)",marginBottom:16}}>Try to say it out loud first!</div>
         {!revealed ? (

@@ -197,11 +197,18 @@ fbAuth.onAuthStateChanged(user => {
   // Create/update user profile on sign-in
   if (user) ensureUserProfile(user);
 
-  render();
-
-  if (user && wasSignedOut && pendingRedirect) {
-    const dest = pendingRedirect;
-    pendingRedirect = null;
-    window.goTo(dest);
+  // Signed-in user: go straight to app (skip landing page)
+  if (user) {
+    if (pendingRedirect) {
+      const dest = pendingRedirect;
+      pendingRedirect = null;
+      window.goTo(dest);
+    } else {
+      // Auto-redirect to app — use last language or let app show picker
+      window.location.href = 'app.html';
+    }
+    return;
   }
+
+  render();
 });

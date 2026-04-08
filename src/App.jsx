@@ -2,15 +2,14 @@ import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { firebase, fbAuth, fbDb } from './firebase.js';
 import { ensureUserProfile } from './profile.js';
 import { Capacitor } from '@capacitor/core';
-import { trackEvent } from './analytics.js';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { StatusBar, Style as StatusBarStyle } from '@capacitor/status-bar';
+import { trackEvent } from './analytics.js';
 
 // ---- CAPACITOR SETUP ----
 if (Capacitor.isNativePlatform()) {
   StatusBar.setStyle({ style: StatusBarStyle.Dark }).catch(() => {});
 }
-
 function hapticLight() {
   if (Capacitor.isNativePlatform()) {
     Haptics.impact({ style: ImpactStyle.Light }).catch(() => {});
@@ -18,17 +17,19 @@ function hapticLight() {
 }
 
 // LANG_CONFIG is set by main.jsx before this module loads
-// It's passed as a prop to avoid import order issues
 let LANG_CONFIG = window.LANG_CONFIG;
+
+export function setLangConfig(config) {
+  LANG_CONFIG = config;
+  window.LANG_CONFIG = config;
+}
+
+// Free units — accessible without premium
+const FREE_UNIT_IDS = [1, 2, 5];
 
 // ============================================================
 // SHADOWSPEAK — v3.9.5 with Firebase Auth + Firestore Sync
 // ============================================================
-
-export function setLangConfig(config) {
-  LANG_CONFIG = config;
-  window.LANG_CONFIG = config; // keep global for compatibility
-}
 
 // ---- OFFLINE DETECTION ----
 let _isOnline = navigator.onLine;
@@ -131,13 +132,12 @@ async function saveSettingsToFirestore(uid, data) {
 
 // ---- UNITS (10 fixed + Life Sentences) ----
 
-const UNITS = LANG_CONFIG.UNITS;
-
-// Helper: get romanization from a phrase (jyut for Cantonese, pinyin for Mandarin)
-function getRom(ph) {
-  if (!ph) return "";
-  return ph[LANG_CONFIG.romanizationKey] || ph.jyut || ph.pinyin || "";
-}
+// Normalize: ensure every phrase has a .jyut field (maps pinyin→jyut for Mandarin)
+const _romKey = LANG_CONFIG.romanizationKey;
+const UNITS = LANG_CONFIG.UNITS.map(u => ({
+  ...u,
+  phrases: u.phrases.map(p => p.jyut ? p : { ...p, jyut: p[_romKey] || "" })
+}));
 
 
 const GLOSS_DATA = LANG_CONFIG.GLOSS_DATA;
@@ -430,7 +430,7 @@ async function speakPhrase(item) {
 }
 
 // ---- Pronunciation Scoring via cantonese.ai ----
-async function scorePronunciation(audioBlob, text, language = "cantonese") {
+async function scorePronunciation(audioBlob, text, language = LANG_CONFIG.id) {
   if (!_isOnline) throw new Error("OFFLINE");
   const formData = new FormData();
   formData.append("text", text);
@@ -439,6 +439,22 @@ async function scorePronunciation(audioBlob, text, language = "cantonese") {
   const res = await fetch(`${PROXY_URL}/score`, { method: "POST", body: formData });
   if (!res.ok) throw new Error("Scoring failed: " + res.status);
   return res.json();
+}
+
+// Parse scoring API response into char-by-char comparison array
+// Handles both Jyutping (Cantonese) and Pinyin (Mandarin) response fields
+function parseScoreChars(result, phraseCn) {
+  const expField = result.expectedJyutping || result.expectedPinyin;
+  const transField = result.transcribedJyutping || result.transcribedPinyin;
+  if (!expField || !transField) return [];
+  const expSyls = expField.trim().split(/\s+/);
+  const yourSyls = transField.trim().split(/\s+/);
+  const cnChars = phraseCn.replace(/[，,。！？!?\s]/g, "").split("");
+  const chars = [];
+  for (let i = 0; i < Math.max(expSyls.length, cnChars.length); i++) {
+    chars.push({ cn: cnChars[i] || "", e: expSyls[i] || "", y: yourSyls[i] || "", m: expSyls[i] === yourSyls[i] ? 1 : 0 });
+  }
+  return chars;
 }
 
 // ---- Offline-aware recording: check connectivity before mic access ----
@@ -862,7 +878,7 @@ const CSS = `
 .wc-en{font-size:.78rem;font-weight:700;color:var(--ink);margin-bottom:1px}.wc-jy{font-size:.68rem;font-style:italic;color:var(--plum)}
 .wc-cn{font-family:${LANG_CONFIG.fontFamily.replace(/'/g, '')};font-size:.68rem;color:var(--ink3)}
 .wc-ft{display:flex;align-items:center;justify-content:space-between;margin-top:5px}
-.wc-pl{width:44px;height:44px;border-radius:50%;background:var(--st);border:none;cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center;color:var(--ink)}
+.wc-pl{width:32px;height:32px;border-radius:50%;background:var(--st);border:none;cursor:pointer;font-size:10px;display:flex;align-items:center;justify-content:center;color:var(--ink)}
 .wc-ik{font-size:.62rem;font-weight:800;border:none;border-radius:999px;padding:6px 10px;cursor:pointer;min-height:32px}
 .wc-ik.un{background:var(--st);color:var(--ink2)}.wc-ik.kn{background:var(--lime);color:var(--for)}
 
@@ -958,9 +974,18 @@ const CSS = `
 .bt{height:2px;background:var(--st);border-radius:999px;overflow:hidden}.bf{height:100%;border-radius:999px;background:var(--lime);transition:width .3s}
 /* Search */
 .search-results{background:var(--wh);border:1px solid var(--st);border-radius:12px;margin-top:6px;overflow:hidden;box-shadow:0 4px 16px rgba(0,0,0,.08)}
-.search-result{display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid var(--st);cursor:pointer}
+.search-result{padding:10px 14px;border-bottom:1px solid var(--st)}
 .search-result:last-child{border-bottom:none}
-.search-result:active{background:var(--cream)}
+.sr-top{display:flex;align-items:center;gap:8px;cursor:pointer}
+.sr-top:active{opacity:.7}
+.sr-bottom{display:flex;align-items:center;gap:8px;margin-top:6px;padding-left:0}
+.sr-add{border:1.5px solid var(--st);background:var(--wh);border-radius:8px;padding:5px 12px;font-size:11px;font-weight:700;color:var(--ink2);cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:4px;white-space:nowrap;transition:all .15s}
+.sr-add:active{border-color:var(--for);color:var(--for)}
+.sr-add.saved{border-color:var(--lime);background:rgba(196,240,0,.1);color:var(--for);cursor:default}
+.sr-play{border:1.5px solid var(--st);background:var(--wh);border-radius:8px;padding:5px 12px;font-size:11px;font-weight:700;color:var(--plum);cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:4px;white-space:nowrap}
+.sr-play:active{border-color:var(--plum);background:rgba(143,106,232,.08)}
+.sr-goto{border:1.5px solid var(--st);background:var(--wh);border-radius:8px;padding:5px 12px;font-size:11px;font-weight:700;color:var(--ink2);cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:4px;white-space:nowrap}
+.sr-goto:active{border-color:var(--for);color:var(--for)}
 .search-badge{font-size:.6rem;font-weight:800;padding:3px 8px;border-radius:999px;text-transform:uppercase;letter-spacing:.5px}
 
 /* Home header with album art gradient */
@@ -1019,7 +1044,7 @@ const CSS = `
 .cont-art img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 .cont-art::after{content:'';position:absolute;inset:0;background:linear-gradient(0deg,rgba(0,0,0,.5) 0%,rgba(0,0,0,.05) 50%);pointer-events:none}
 .cont-art .topic-label{font-size:13px;font-weight:700;color:rgba(255,255,255,.95);text-shadow:0 1px 4px rgba(0,0,0,.4);z-index:1;position:relative;line-height:1.2}
-.cont-art .play-circle{width:40px;height:40px;border-radius:50%;background:var(--lime);display:flex;align-items:center;justify-content:center;font-size:14px;box-shadow:0 4px 12px rgba(0,0,0,.2);z-index:1;position:relative;color:#111}
+.cont-art .play-circle{width:40px;height:40px;min-width:40px;min-height:40px;border-radius:50%;background:var(--lime);display:flex;align-items:center;justify-content:center;font-size:14px;box-shadow:0 4px 12px rgba(0,0,0,.2);z-index:1;position:relative;color:#111;flex-shrink:0}
 .cont-info{padding:10px 12px 12px}
 .cont-name{font-size:13px;font-weight:600;color:var(--ink);margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .cont-meta{font-size:11px;color:var(--ink3);margin-bottom:6px}
@@ -1027,9 +1052,11 @@ const CSS = `
 .cont-pbar-fill{height:100%;background:var(--lime);border-radius:3px}
 
 /* 2-row topic grid */
-.topics-wrap{padding:0 16px 24px;overflow-x:auto;scrollbar-width:none}
+.topics-wrap{padding:0 16px 16px;overflow-x:auto;scrollbar-width:none;position:relative}
 .topics-wrap::-webkit-scrollbar{display:none}
-.topics-grid{display:grid;grid-template-rows:1fr 1fr;grid-auto-flow:column;grid-auto-columns:140px;gap:10px}
+.topics-grid{display:grid;grid-template-rows:repeat(3,auto);grid-auto-flow:column;grid-auto-columns:140px;gap:8px}
+.topics-scrollbar{height:3px;background:var(--st);border-radius:2px;margin:8px 16px 16px;position:relative;overflow:hidden}
+.topics-scrollbar-fill{height:100%;background:var(--lime);border-radius:2px;transition:width .15s}
 .t-card{border-radius:10px;overflow:hidden;cursor:pointer;transition:transform .15s;background:var(--wh);box-shadow:0 1px 6px rgba(0,0,0,.05)}
 .t-card:active{transform:scale(.97)}
 .t-card .t-art{height:100px;position:relative;overflow:hidden}
@@ -1044,7 +1071,7 @@ const CSS = `
 .lesson-hdr::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,#1F3329 0%,#2a5a3a 50%,#1A3D3D 100%)}
 .lesson-hdr::after{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 75% 25%,rgba(196,240,0,.1) 0%,transparent 50%)}
 .lesson-hdr-top{display:flex;align-items:center;justify-content:space-between;position:relative;z-index:1;margin-bottom:16px}
-.lesson-back{font-size:14px;color:rgba(255,255,255,.7);background:none;border:none;font-family:inherit;cursor:pointer;min-height:44px;display:flex;align-items:center}
+.lesson-back{font-size:14px;color:#fff;background:rgba(255,255,255,.12);border:none;font-family:inherit;cursor:pointer;min-height:44px;display:flex;align-items:center;padding:0 14px;border-radius:10px;font-weight:700;gap:4px}
 .lesson-stats-badge{font-size:11px;color:var(--lime);font-weight:600}
 .lesson-hero{position:relative;z-index:1;display:flex;align-items:center;gap:16px}
 .lesson-art{width:80px;height:80px;border-radius:12px;overflow:hidden;flex-shrink:0;position:relative}
@@ -1056,13 +1083,16 @@ const CSS = `
 
 /* Controls row */
 .ctrl-row{display:flex;align-items:center;gap:10px;padding:14px 16px 8px;border-bottom:1px solid rgba(0,0,0,.06)}
-.play-all-btn{width:48px;height:48px;border-radius:50%;background:var(--for);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#fff;box-shadow:0 2px 8px rgba(31,51,41,.3);min-height:48px}
-.shuffle-btn{font-size:12px;color:var(--ink3);background:none;border:none;font-family:inherit;display:flex;align-items:center;gap:4px;cursor:pointer;min-height:44px}
-.filter-chip{margin-left:auto;font-size:11px;padding:5px 12px;border-radius:999px;background:var(--wh);border:1px solid rgba(0,0,0,.08);color:var(--ink2);font-weight:500;cursor:pointer;min-height:36px;display:inline-flex;align-items:center}
+.play-all-btn{height:40px;border-radius:10px;background:var(--for);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;color:#fff;box-shadow:0 2px 8px rgba(31,51,41,.3);min-height:40px;padding:0 16px;font-size:12px;font-weight:700;font-family:inherit}
+.shuffle-btn{font-size:12px;color:var(--ink);background:var(--wh);border:1.5px solid var(--st);border-radius:10px;font-family:inherit;display:flex;align-items:center;gap:6px;cursor:pointer;min-height:40px;padding:0 14px;font-weight:600;transition:all .15s}
+.shuffle-btn:active{border-color:var(--for);color:var(--for)}
+.filter-chip{margin-left:auto;font-size:12px;padding:0 14px;border-radius:10px;background:var(--wh);border:1.5px solid var(--st);color:var(--ink);font-weight:600;cursor:pointer;min-height:40px;display:inline-flex;align-items:center;font-family:inherit;transition:all .15s}
+.filter-chip:active{border-color:var(--for);color:var(--for)}
 
 /* Phrase items */
 .ph-item{padding:12px 16px;border-bottom:1px solid rgba(0,0,0,.05);cursor:pointer;transition:background .2s}
-.ph-item:active{background:rgba(0,0,0,.02)}
+.ph-item:nth-child(even){background:rgba(0,0,0,.02)}
+.ph-item:active{background:rgba(0,0,0,.04)}
 .ph-item.expanded{background:rgba(31,51,41,.06);border-left:3px solid var(--for);padding-left:13px}
 .ph-row{display:flex;align-items:flex-start;gap:10px}
 .ph-play{width:32px;height:32px;border-radius:50%;background:var(--for);border:none;display:flex;align-items:center;justify-content:center;color:#fff;cursor:pointer;flex-shrink:0;margin-top:2px;font-size:10px}
@@ -1084,10 +1114,17 @@ const CSS = `
 .gloss-actions{display:flex;gap:4px}
 .gloss-action{width:24px;height:24px;border-radius:6px;border:1px solid rgba(0,0,0,.08);background:rgba(0,0,0,.02);display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--ink2);cursor:pointer;transition:all .15s}
 .gloss-action:active{background:var(--for);color:#fff;border-color:var(--for)}
-.ph-actions{display:flex;gap:6px}
-.ph-action-btn{flex:1;padding:10px 0;border-radius:10px;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;border:1px solid rgba(0,0,0,.1);background:var(--wh);color:var(--ink);transition:all .15s;min-height:44px}
-.ph-action-btn:active{border-color:var(--for);color:var(--for)}
-.ph-action-btn.shadow-btn{background:var(--for);color:#fff;border-color:var(--for)}
+.ph-actions{display:flex;gap:6px;max-width:480px}
+.ph-action-btn{flex:1;padding:10px 0;border-radius:10px;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:4px;border:1.5px solid var(--for);background:var(--for);color:#fff;transition:all .15s;min-height:44px}
+.ph-action-btn:active{opacity:.85}
+.ph-action-btn.know-btn{background:var(--lime);color:var(--for);border-color:var(--lime);font-weight:800}
+.ph-action-btn.know-btn:active{opacity:.85}
+.ph-action-btn.saved-btn{background:rgba(196,240,0,.12);color:var(--ld);border-color:var(--lime);cursor:default}
+.mastery-overlay{position:fixed;inset:0;z-index:1200;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center}
+.mastery-card{background:#fff;border-radius:20px;padding:28px 24px;max-width:320px;width:90%;text-align:center;box-shadow:0 16px 48px rgba(0,0,0,.25)}
+.mastery-toast{position:fixed;top:60px;left:50%;transform:translateX(-50%);z-index:1300;background:var(--for);color:var(--lime);padding:12px 24px;border-radius:999px;font-size:.82rem;font-weight:800;box-shadow:0 8px 24px rgba(0,0,0,.3)}
+.confetti-container{position:fixed;inset:0;z-index:1250;pointer-events:none;overflow:hidden}
+.confetti-piece{position:absolute;width:8px;height:8px;border-radius:2px}
 `;
 
 // ============================================================
@@ -1192,7 +1229,7 @@ const QUIZ_CSS = `
 `;
 
 // ---- QUIZ COMPONENTS ----
-function QuizTab({ progress, upd }) {
+function QuizTab({ progress, upd, startMode, onBack }) {
   const [mode, setMode] = useState(null);
   const [quizItems, setQuizItems] = useState([]);
   const [idx, setIdx] = useState(0);
@@ -1203,16 +1240,29 @@ function QuizTab({ progress, upd }) {
   const [isRecording, setIsRecording] = useState(false);
   const [scoring, setScoring] = useState(false);
   const [scoreResult, setScoreResult] = useState(null);
-  const [picking, setPicking] = useState(false);
+  const [picking, setPicking] = useState(startMode === "pronunciation");
+  const [autoStarted, setAutoStarted] = useState(false);
   const [selectedUnits, setSelectedUnits] = useState(new Set());
   const [source, setSource] = useState("known");
   const [pronScores, setPronScores] = useState([]);
+  const exitQuiz = () => { if (onBack) onBack(); else setMode(null); };
 
   const knownPhrases = useMemo(() => {
     const items = [];
     UNITS.forEach(u => { u.phrases.forEach((p, i) => { const key = `${u.id}-${i}`; if ((progress.phrases || {})[key]) items.push({ ...p, unitId: u.id, phraseIdx: i, key }); }); });
     return items;
   }, [progress]);
+
+  // Auto-start recall quiz when launched from Quick Quiz card
+  useEffect(() => {
+    if (startMode === "recall" && !autoStarted && knownPhrases.length >= 3) {
+      setAutoStarted(true);
+      const pool = [...knownPhrases].sort(() => Math.random() - 0.5).slice(0, 10);
+      setQuizItems(pool);
+      setMode("speaking");
+      setSource("known");
+    }
+  }, [startMode, knownPhrases, autoStarted]);
 
   const getUnitPhrases = () => {
     const items = [];
@@ -1254,11 +1304,7 @@ function QuizTab({ progress, upd }) {
     if (blob && ph) {
       try {
         const result = await scorePronunciation(blob, ph.cn, LANG_CONFIG.id);
-        let chars = [];
-        if (result.expectedJyutping && result.transcribedJyutping) {
-          const expSyls = result.expectedJyutping.trim().split(/\s+/); const yourSyls = result.transcribedJyutping.trim().split(/\s+/); const cnChars = ph.cn.replace(/[，,。！？!?\s]/g, "").split("");
-          for (let i = 0; i < Math.max(expSyls.length, cnChars.length); i++) chars.push({ cn: cnChars[i] || "", e: expSyls[i] || "", y: yourSyls[i] || "", m: expSyls[i] === yourSyls[i] ? 1 : 0 });
-        }
+        const chars = parseScoreChars(result, ph.cn);
         setScoreResult({ score: result.score, passed: result.passed, chars, phrase: ph });
       } catch(e) { console.error("Scoring error:", e); setScoreResult(null); }
     }
@@ -1268,43 +1314,62 @@ function QuizTab({ progress, upd }) {
   if (picking) {
     const unitCount = selectedUnits.size; const phraseCount = getUnitPhrases().length;
     const topicIcons = {1:"👋",2:"🤝",3:"🚕",4:"☕",5:"🍜",6:"🛍",7:"🏫",8:"🏠",9:"🕐",10:"❤️",11:"🍻",12:"🌧",13:"💰",14:"💪",15:"😤",16:"📱",17:"🥺",18:"🔢",19:"🎉",20:"🌇"};
-    return (<div className="mc">
-      <div className="pt">Pick units to practise 🎙</div>
-      <div className="ps">Tap the units you want in your pronunciation quiz.</div>
+    const topicImgs = {1:"https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?w=120&h=80&fit=crop",2:"https://images.unsplash.com/photo-1529156069898-49953e39b3ac?w=120&h=80&fit=crop",3:"https://images.unsplash.com/photo-1536640712-4d4c36ff0e4e?w=120&h=80&fit=crop",4:"https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=120&h=80&fit=crop",5:"https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=120&h=80&fit=crop",6:"https://images.unsplash.com/photo-1555529669-e69e7aa0ba9a?w=120&h=80&fit=crop",7:"https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=120&h=80&fit=crop",8:"https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=120&h=80&fit=crop",9:"https://images.unsplash.com/photo-1508672019048-805c876b67e2?w=120&h=80&fit=crop",10:"https://images.unsplash.com/photo-1518199266791-5375a83190b7?w=120&h=80&fit=crop",11:"https://images.unsplash.com/photo-1575444758702-4a6b9222c016?w=120&h=80&fit=crop",12:"https://images.unsplash.com/photo-1534274988757-a28bf1a57c17?w=120&h=80&fit=crop",13:"https://images.unsplash.com/photo-1526304640581-d334cdbbf45e?w=120&h=80&fit=crop",14:"https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=120&h=80&fit=crop",15:"https://images.unsplash.com/photo-1544027993-37dbfe43562a?w=120&h=80&fit=crop",16:"https://images.unsplash.com/photo-1512941937669-90a1b58e7e9c?w=120&h=80&fit=crop",17:"https://images.unsplash.com/photo-1516483638261-f4dbaf036963?w=120&h=80&fit=crop",18:"https://images.unsplash.com/photo-1466378284817-a6b7fd50cc5a?w=120&h=80&fit=crop",19:"https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=120&h=80&fit=crop",20:"https://images.unsplash.com/photo-1462275646964-a0e3c11f18a6?w=120&h=80&fit=crop"};
+    return (<div style={{paddingBottom:unitCount>0?140:80}}>
+      {/* Header with back button */}
+      <div style={{position:"relative",overflow:"hidden",padding:"16px 20px 14px"}}>
+        <div style={{position:"absolute",inset:0,background:"linear-gradient(135deg,#3D2A1A 0%,#2A1F15 100%)"}} />
+        <div style={{position:"relative",zIndex:1}}>
+          <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10}}>
+            <button onClick={()=>{if(onBack)onBack();else setPicking(false);}} style={{background:"rgba(255,255,255,.12)",border:"none",borderRadius:10,padding:"0 14px",height:38,display:"flex",alignItems:"center",gap:4,cursor:"pointer",color:"#fff",fontSize:".82rem",fontWeight:700,fontFamily:"inherit"}}>&#8592; Back</button>
+            <div style={{flex:1}} />
+            <button onClick={()=>setSelectedUnits(new Set(UNITS.map(u=>u.id)))} style={{background:"rgba(255,255,255,.12)",border:"none",borderRadius:10,padding:"0 12px",height:34,cursor:"pointer",color:"rgba(255,255,255,.8)",fontSize:".72rem",fontWeight:700,fontFamily:"inherit"}}>Select all</button>
+            <button onClick={()=>setSelectedUnits(new Set())} style={{background:"rgba(255,255,255,.08)",border:"none",borderRadius:10,padding:"0 12px",height:34,cursor:"pointer",color:"rgba(255,255,255,.6)",fontSize:".72rem",fontWeight:700,fontFamily:"inherit"}}>Clear</button>
+          </div>
+          <div style={{fontSize:"1.05rem",fontWeight:900,color:"#fff",marginBottom:2}}>🎙 Pronunciation Practice</div>
+          <div style={{fontSize:".76rem",color:"rgba(255,255,255,.7)"}}>Select units, then practise saying each phrase out loud.</div>
+        </div>
+      </div>
 
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,margin:"16px 0"}}>
+      {/* 2-column grid */}
+      <div style={{padding:"10px 12px 0",display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
         {UNITS.map(u=>{
           const k=u.phrases.filter((_,i)=>(progress.phrases||{})[`${u.id}-${i}`]).length;
-          const pct=Math.round(k/u.phrases.length*100);
           const isSel=selectedUnits.has(u.id);
           return (
             <div key={u.id} onClick={()=>toggleUnit(u.id)} style={{
-              background:isSel?"rgba(196,240,0,.1)":"var(--wh)",
-              borderRadius:12,padding:"14px 12px 10px",
-              border:isSel?"2px solid var(--lime)":"1px solid var(--st)",
+              background:isSel?"rgba(196,240,0,.06)":"var(--wh)",
+              borderRadius:10,overflow:"hidden",
+              border:isSel?"1.5px solid var(--lime)":"1.5px solid rgba(0,0,0,.06)",
               cursor:"pointer",transition:"all .15s",
+              boxShadow:isSel?"0 2px 8px rgba(122,170,0,.15)":"0 1px 3px rgba(0,0,0,.04)",
             }}>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
-                <span style={{fontSize:"1.3rem"}}>{isSel?"✅":topicIcons[u.id]||"📖"}</span>
-                <span style={{fontSize:".72rem",fontWeight:800,color:isSel?"var(--ld)":"var(--ink3)"}}>{k}/{u.phrases.length}</span>
+              {/* Image with checkbox overlay */}
+              <div style={{height:48,position:"relative",overflow:"hidden"}}>
+                <img src={topicImgs[u.id]||topicImgs[1]} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}} />
+                <div style={{position:"absolute",inset:0,background:"linear-gradient(0deg,rgba(0,0,0,.35) 0%,transparent 70%)"}} />
+                <div style={{position:"absolute",top:5,left:5,width:20,height:20,borderRadius:5,border:isSel?"none":"2px solid rgba(255,255,255,.5)",background:isSel?"var(--lime)":"rgba(0,0,0,.25)",display:"flex",alignItems:"center",justifyContent:"center"}}>
+                  {isSel && <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="var(--for)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>}
+                </div>
+                <span style={{position:"absolute",top:5,right:6,fontSize:".75rem"}}>{topicIcons[u.id]||"📖"}</span>
               </div>
-              <div style={{fontSize:".82rem",fontWeight:800,color:isSel?"var(--for)":"var(--ink)",lineHeight:1.2,marginBottom:5}}>{u.title}</div>
-              <div style={{height:4,background:"var(--st)",borderRadius:2,overflow:"hidden"}}><div style={{height:"100%",width:pct+"%",background:isSel?"var(--lime)":"var(--st2)",borderRadius:2,transition:"width .3s"}} /></div>
+              {/* Info */}
+              <div style={{padding:"6px 8px 7px",display:"flex",alignItems:"baseline",justifyContent:"space-between",gap:4}}>
+                <div style={{fontSize:".82rem",fontWeight:700,color:"var(--ink)",lineHeight:1.2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{u.title}</div>
+                <div style={{fontSize:".6rem",color:"var(--ink3)",fontWeight:600,flexShrink:0}}>{u.phrases.length}</div>
+              </div>
             </div>
           );
         })}
       </div>
 
-      <div style={{display:"flex",gap:6,margin:"8px 0"}}>
-        <button onClick={()=>setSelectedUnits(new Set(UNITS.map(u=>u.id)))} style={{flex:1,padding:"10px",borderRadius:10,border:"1.5px solid var(--st)",background:"var(--wh)",fontSize:".72rem",fontWeight:700,color:"var(--ink)",cursor:"pointer"}}>Select all</button>
-        <button onClick={()=>setSelectedUnits(new Set())} style={{flex:1,padding:"10px",borderRadius:10,border:"1.5px solid var(--st)",background:"var(--wh)",fontSize:".72rem",fontWeight:700,color:"var(--ink)",cursor:"pointer"}}>Clear</button>
-      </div>
-
-      {unitCount > 0 && (<div style={{textAlign:"center",margin:"16px 0"}}>
-        <div style={{fontSize:".75rem",color:"var(--ink2)",marginBottom:10,fontWeight:600}}>{unitCount} unit{unitCount>1?"s":""} selected, {phraseCount} phrases</div>
-        <button onClick={()=>startQuiz("pronunciation","units")} style={{padding:"16px 32px",borderRadius:14,border:"none",background:"var(--lime)",color:"var(--for)",fontSize:".88rem",fontWeight:900,cursor:"pointer",width:"100%"}}>🎙 Start with {Math.min(phraseCount,20)} phrases</button>
+      {/* Sticky start bar — covers nav */}
+      {unitCount > 0 && (<div style={{position:"fixed",bottom:56,left:0,right:0,zIndex:150,padding:"10px 16px",background:"var(--cream)",borderTop:"1.5px solid var(--st)",boxShadow:"0 -8px 24px rgba(0,0,0,.1)"}}>
+        <div style={{display:"flex",alignItems:"center",gap:10}}>
+          <div style={{flex:1,fontSize:".78rem",color:"var(--ink)",fontWeight:700}}>{unitCount} unit{unitCount>1?"s":""} · {phraseCount} phrases</div>
+          <button onClick={()=>startQuiz("pronunciation","units")} style={{padding:"12px 28px",borderRadius:12,border:"none",background:"var(--lime)",color:"var(--for)",fontSize:".84rem",fontWeight:900,cursor:"pointer",minHeight:44}}>🎙 Start practice</button>
+        </div>
       </div>)}
-      <button onClick={()=>setPicking(false)} style={{display:"block",margin:"14px auto 0",background:"none",border:"none",cursor:"pointer",fontSize:".75rem",fontWeight:600,color:"var(--ink2)"}}>← Back</button>
     </div>);
   }
 
@@ -1351,7 +1416,7 @@ function QuizTab({ progress, upd }) {
         <div className="comp-em">{avg >= 80 ? "🌟" : avg >= 60 ? "💪" : "📝"}</div>
         <div className="comp-t">{avg >= 80 ? "Amazing pronunciation!" : avg >= 60 ? "Getting there!" : "Good practice!"}</div>
         <div className="comp-s">Average score: {avg}% across {scored.length} phrase{scored.length!==1?"s":""}{pronScores.length-scored.length>0?` (${pronScores.length-scored.length} skipped)`:""}</div>
-        <button className="comp-btn" onClick={() => setMode(null)}>Done</button>
+        <button className="comp-btn" onClick={exitQuiz}>Done</button>
       </div>);
     }
     const total = score.right + score.almost + score.wrong; const pct = total ? Math.round(score.right / total * 100) : 0;
@@ -1364,7 +1429,7 @@ function QuizTab({ progress, upd }) {
         <div style={{background:"rgba(255,255,255,.06)",borderRadius:10,padding:"10px 16px",textAlign:"center"}}><div style={{fontSize:"1.2rem",fontWeight:900,color:"#fff"}}>{score.almost}</div><div style={{fontSize:".52rem",color:"rgba(255,255,255,.4)",fontWeight:700}}>Almost</div></div>
         <div style={{background:"rgba(240,90,58,.15)",borderRadius:10,padding:"10px 16px",textAlign:"center"}}><div style={{fontSize:"1.2rem",fontWeight:900,color:"var(--cor)"}}>{score.wrong}</div><div style={{fontSize:".52rem",color:"rgba(255,255,255,.4)",fontWeight:700}}>Review</div></div>
       </div>
-      <button className="comp-btn" onClick={() => setMode(null)}>Done</button>
+      <button className="comp-btn" onClick={exitQuiz}>Done</button>
     </div>);
   }
 
@@ -1373,7 +1438,7 @@ function QuizTab({ progress, upd }) {
   if (mode === "pronunciation") {
     return (<div className="quiz-ov">
       <div className="quiz-hd">
-        <button className="quiz-cl" onClick={()=>{setMode(null);setScoreResult(null);}}>✕ End</button>
+        <button className="quiz-cl" onClick={()=>{exitQuiz();setScoreResult(null);}}>✕ End</button>
         <div className="quiz-ti">🎙 Pronunciation</div>
         <div style={{fontSize:".65rem",color:"rgba(255,255,255,.4)"}}>{idx+1}/{quizItems.length}</div>
       </div>
@@ -1404,7 +1469,7 @@ function QuizTab({ progress, upd }) {
   if (mode === "speaking") {
     return (<div className="quiz-ov">
       <div className="quiz-hd">
-        <button className="quiz-cl" onClick={()=>setMode(null)}>✕ End</button>
+        <button className="quiz-cl" onClick={exitQuiz}>✕ End</button>
         <div className="quiz-ti">🧠 Recall</div>
         <div style={{fontSize:".65rem",color:"rgba(255,255,255,.4)"}}>{idx+1}/{quizItems.length}</div>
       </div>
@@ -1432,7 +1497,7 @@ function QuizTab({ progress, upd }) {
   if (mode === "listening") {
     return (<div className="quiz-ov">
       <div className="quiz-hd">
-        <button className="quiz-cl" onClick={()=>setMode(null)}>✕ End</button>
+        <button className="quiz-cl" onClick={exitQuiz}>✕ End</button>
         <div className="quiz-ti">👂 Listening</div>
         <div style={{fontSize:".65rem",color:"rgba(255,255,255,.4)"}}>{idx+1}/{quizItems.length}</div>
       </div>
@@ -1508,124 +1573,6 @@ function RecordBtn({ onClick, label, style }) {
   return <button onClick={onClick} style={style || {width:"100%",padding:"16px",borderRadius:14,border:"none",background:"var(--for)",color:"#fff",fontSize:".88rem",fontWeight:800,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:10}}>{label || "🎙 Record yourself"}</button>;
 }
 
-// Free units — these are accessible without premium
-const FREE_UNIT_IDS = [1, 2, 5];
-
-// ---- PREMIUM GATE ----
-function PremiumGate({ onClose, onUnlock, user }) {
-  const [showPromo, setShowPromo] = useState(false);
-  const [promoCode, setPromoCode] = useState("");
-  const [promoStatus, setPromoStatus] = useState(null); // null | "checking" | "success" | "error"
-
-  useEffect(() => { trackEvent('paywall_shown'); }, []);
-
-  const handlePromo = async () => {
-    if (!promoCode.trim()) return;
-    trackEvent('promo_code_entered', { code: promoCode.trim() });
-    setPromoStatus("checking");
-    try {
-      const doc = await fbDb.collection("config").doc("promoCodes").get();
-      if (doc.exists) {
-        const codes = doc.data().codes || [];
-        const match = codes.find(c => c.code.toUpperCase() === promoCode.trim().toUpperCase() && c.active);
-        if (match) {
-          // Set premium in user profile
-          await fbDb.collection("users").doc(user.uid).update({
-            isPremium: true,
-            premiumSince: new Date(),
-            premiumTier: "promo",
-            promoCodeUsed: match.code,
-          });
-          setPromoStatus("success");
-          hapticLight();
-          trackEvent('promo_code_redeemed', { code: match.code });
-          setTimeout(() => onUnlock(), 1500);
-          return;
-        }
-      }
-      setPromoStatus("error");
-    } catch (e) {
-      console.warn("Promo check failed:", e);
-      setPromoStatus("error");
-    }
-  };
-
-  const handlePricingClick = (tier) => {
-    console.log("Payment clicked:", tier);
-    // Toast — payment integration placeholder
-  };
-
-  return (
-    <div style={{position:"fixed",inset:0,zIndex:9999,background:"rgba(0,0,0,.6)",display:"flex",alignItems:"center",justifyContent:"center",padding:16,backdropFilter:"blur(4px)"}}>
-      <div style={{background:"#fff",borderRadius:20,maxWidth:420,width:"100%",maxHeight:"90vh",overflow:"auto",padding:"28px 24px",position:"relative"}}>
-        <button onClick={()=>{trackEvent('paywall_dismissed');onClose();}} style={{position:"absolute",top:12,right:12,background:"none",border:"none",fontSize:20,cursor:"pointer",color:"#7A756E",padding:8,minWidth:44,minHeight:44,display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button>
-
-        <div style={{textAlign:"center",marginBottom:20}}>
-          <div style={{fontSize:32,marginBottom:8}}>🔓</div>
-          <div style={{fontSize:22,fontWeight:900,color:"#1F3329",marginBottom:4}}>Unlock ShadowSpeak Premium</div>
-          <div style={{fontSize:14,color:"#7A756E",lineHeight:1.5}}>Full curriculum. All languages. Pronunciation scoring.</div>
-        </div>
-
-        {/* Pricing cards */}
-        <div style={{display:"flex",flexDirection:"column",gap:10,marginBottom:16}}>
-          <button onClick={()=>handlePricingClick("monthly")} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"16px 18px",borderRadius:14,border:"1.5px solid #EDE8E0",background:"#fff",cursor:"pointer",fontFamily:"inherit"}}>
-            <div style={{textAlign:"left"}}>
-              <div style={{fontSize:15,fontWeight:800,color:"#1F3329"}}>Monthly</div>
-              <div style={{fontSize:12,color:"#7A756E"}}>Cancel anytime</div>
-            </div>
-            <div style={{fontSize:18,fontWeight:900,color:"#1F3329"}}>HKD 98<span style={{fontSize:12,fontWeight:600,color:"#7A756E"}}>/mo</span></div>
-          </button>
-
-          <button onClick={()=>handlePricingClick("annual")} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"16px 18px",borderRadius:14,border:"2px solid #C4F000",background:"rgba(196,240,0,.08)",cursor:"pointer",fontFamily:"inherit",position:"relative"}}>
-            <div style={{position:"absolute",top:-10,left:16,background:"#C4F000",color:"#1F3329",fontSize:11,fontWeight:800,padding:"3px 10px",borderRadius:999}}>Best value — Save 49%</div>
-            <div style={{textAlign:"left"}}>
-              <div style={{fontSize:15,fontWeight:800,color:"#1F3329"}}>Annual</div>
-              <div style={{fontSize:12,color:"#7A756E"}}>HKD 50/month effective</div>
-            </div>
-            <div style={{fontSize:18,fontWeight:900,color:"#1F3329"}}>HKD 598<span style={{fontSize:12,fontWeight:600,color:"#7A756E"}}>/yr</span></div>
-          </button>
-
-          <button onClick={()=>handlePricingClick("lifetime")} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"16px 18px",borderRadius:14,border:"1.5px solid #EDE8E0",background:"#fff",cursor:"pointer",fontFamily:"inherit"}}>
-            <div style={{textAlign:"left"}}>
-              <div style={{fontSize:15,fontWeight:800,color:"#1F3329"}}>Lifetime</div>
-              <div style={{fontSize:12,color:"#7A756E"}}>Pay once, learn forever</div>
-            </div>
-            <div style={{fontSize:18,fontWeight:900,color:"#1F3329"}}>HKD 1,280</div>
-          </button>
-        </div>
-
-        <div style={{textAlign:"center",fontSize:12,color:"#7A756E",marginBottom:16}}>Payment integration coming soon.</div>
-
-        {/* Promo code */}
-        <div style={{borderTop:"1px solid #EDE8E0",paddingTop:14}}>
-          <button onClick={()=>setShowPromo(!showPromo)} style={{background:"none",border:"none",cursor:"pointer",fontSize:13,fontWeight:700,color:"#5A554F",padding:0}}>
-            {showPromo ? "Hide promo code" : "Have a promo code?"}
-          </button>
-          {showPromo && (
-            <div style={{display:"flex",gap:8,marginTop:10}}>
-              <input value={promoCode} onChange={e=>setPromoCode(e.target.value)} placeholder="Enter code" style={{flex:1,padding:"10px 14px",borderRadius:10,border:"1.5px solid #EDE8E0",fontSize:14,fontFamily:"inherit",outline:"none",minHeight:44}} onKeyDown={e=>e.key==="Enter"&&handlePromo()} />
-              <button onClick={handlePromo} disabled={promoStatus==="checking"} style={{padding:"10px 18px",borderRadius:10,border:"none",background:"#1F3329",color:"#C4F000",fontSize:14,fontWeight:700,cursor:"pointer",minHeight:44,minWidth:44}}>{promoStatus==="checking"?"...":"Apply"}</button>
-            </div>
-          )}
-          {promoStatus==="success"&&<div style={{marginTop:8,fontSize:13,fontWeight:700,color:"#27ae60"}}>Unlocked. Welcome to ShadowSpeak Premium.</div>}
-          {promoStatus==="error"&&<div style={{marginTop:8,fontSize:13,fontWeight:700,color:"#e74c3c"}}>Code not recognised.</div>}
-        </div>
-
-        {/* Coming soon languages */}
-        <div style={{marginTop:20,textAlign:"center"}}>
-          <div style={{fontSize:12,fontWeight:700,color:"#7A756E",marginBottom:8}}>More languages coming to ShadowSpeak Premium</div>
-          <div style={{display:"flex",justifyContent:"center",gap:16}}>
-            <span style={{fontSize:24,opacity:.4}}>🇯🇵</span>
-            <span style={{fontSize:24,opacity:.4}}>🇰🇷</span>
-            <span style={{fontSize:24,opacity:.4}}>🇹🇭</span>
-          </div>
-          <div style={{fontSize:11,color:"#AEA9A3",marginTop:4}}>Japanese, Korean, Thai</div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 function App() {
   const [user, setUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
@@ -1637,15 +1584,16 @@ function App() {
   const [playlist, setPlaylist] = useState(null);
   const [profileMenu, setProfileMenu] = useState(false);
   const [library, setLibrary] = useState([]);
-  const [isPremium, setIsPremium] = useState(false);
-  const [showPremiumGate, setShowPremiumGate] = useState(false);
   const [quickCheck, setQuickCheck] = useState(null);
   const [practiceMode, setPracticeMode] = useState(null);
   const [practiceCount, setPracticeCount] = useState(parseInt(localStorage.getItem(LANG_CONFIG.id + '-practice-count') || '0'));
   const [recentTopics, setRecentTopics] = useState(JSON.parse(localStorage.getItem(LANG_CONFIG.id + '-recent-topics') || '[]'));
+  const [autoLaunch, setAutoLaunch] = useState(null);
+  const [isPremium, setIsPremium] = useState(false);
+  const [showPremiumGate, setShowPremiumGate] = useState(false);
   const saveTimer = useRef(null);
 
-  // Inject CSS + track app open
+  // Inject CSS
   useEffect(() => {
     const s = document.createElement("style"); s.textContent = CSS + QUIZ_CSS; document.head.appendChild(s);
     localStorage.setItem('shadowspeak-last-lang', LANG_CONFIG.id);
@@ -1657,7 +1605,7 @@ function App() {
   useEffect(() => {
     const unsub = fbAuth.onAuthStateChanged(u => {
       setUser(u);
-      window._ssUser = u; // for analytics
+      window._ssUser = u;
       setAuthLoading(false);
     });
     return unsub;
@@ -1673,8 +1621,22 @@ function App() {
 
       // Try Firestore first, fall back to localStorage
       const cloud = await loadFromFirestore(user.uid);
-      if (cloud) {
-        setProgress({ phrases:cloud.phrases||{}, vocab:cloud.vocab||{}, unit10:cloud.unit10||[], phraseTs:cloud.phraseTs||{}, lastReview:cloud.lastReview||{}, lessonLog:cloud.lessonLog||[], quizCount:cloud.quizCount||0 });
+      // Also load from localStorage (current key format)
+      const localRaw = localStorage.getItem(`${LANG_CONFIG.localStoragePrefix}${user.uid}`);
+      const local = localRaw ? JSON.parse(localRaw) : null;
+      // Merge: pick the version with more library items and known phrases
+      const cloudUnit10 = (cloud?.unit10 || []);
+      const localUnit10 = (local?.unit10 || []);
+      const cloudPhraseCount = Object.keys(cloud?.phrases || {}).filter(k => cloud.phrases[k]).length;
+      const localPhraseCount = Object.keys(local?.phrases || {}).filter(k => local.phrases[k]).length;
+      const useLocal = local && (localUnit10.length > cloudUnit10.length || localPhraseCount > cloudPhraseCount);
+      const best = useLocal ? local : (cloud || local);
+      if (best) {
+        const merged = { phrases:best.phrases||{}, vocab:best.vocab||{}, unit10:best.unit10||[], phraseTs:best.phraseTs||{}, lastReview:best.lastReview||{}, lessonLog:best.lessonLog||[], quizCount:best.quizCount||0 };
+        setProgress(merged);
+        // Sync back to both stores
+        localStorage.setItem(`${LANG_CONFIG.localStoragePrefix}${user.uid}`, JSON.stringify(merged));
+        saveToFirestore(user.uid, merged);
       } else {
         // Migrate from old localStorage if exists
         const oldProfile = localStorage.getItem(`${LANG_CONFIG.id}-profile`);
@@ -1682,7 +1644,7 @@ function App() {
           const d = JSON.parse(localStorage.getItem(`${LANG_CONFIG.localStoragePrefix}${oldProfile}`)||"{}");
           const migrated = { phrases:d.phrases||{}, vocab:d.vocab||{}, unit10:d.unit10||[], phraseTs:d.phraseTs||{}, lastReview:d.lastReview||{}, lessonLog:d.lessonLog||[], quizCount:d.quizCount||0 };
           setProgress(migrated);
-          saveToFirestore(user.uid, migrated); // migrate up to cloud
+          saveToFirestore(user.uid, migrated);
         }
       }
       const cloudSettings = await loadSettingsFromFirestore(user.uid);
@@ -1711,13 +1673,32 @@ function App() {
     })();
   }, [user]);
 
+  // Offline fallback: load from localStorage when no Firebase user
+  useEffect(() => {
+    if (user || !offlineUser) return;
+    const localRaw = localStorage.getItem(`${LANG_CONFIG.localStoragePrefix}${offlineUser.uid}`);
+    if (localRaw) {
+      const d = JSON.parse(localRaw);
+      setProgress({ phrases:d.phrases||{}, vocab:d.vocab||{}, unit10:d.unit10||[], phraseTs:d.phraseTs||{}, lastReview:d.lastReview||{}, lessonLog:d.lessonLog||[], quizCount:d.quizCount||0 });
+    }
+    const ls = JSON.parse(localStorage.getItem(LANG_CONFIG.localStorageSettingsKey)||"{}");
+    if (ls.onboardingDone) {
+      setSettings(ls);
+      _activeEnVoiceId = ls.enVoice || DEFAULT_EN_VOICE;
+      _activeCnVoiceId = ls.cnVoice || DEFAULT_CN_VOICE;
+    }
+  }, [offlineUser, user]);
+
   // Debounced save: localStorage immediately, Firestore after 2s idle
   const save = useCallback((updated) => {
-    if (!user) return;
-    localStorage.setItem(`${LANG_CONFIG.localStoragePrefix}${user.uid}`, JSON.stringify(updated));
-    clearTimeout(saveTimer.current);
-    saveTimer.current = setTimeout(() => saveToFirestore(user.uid, updated), 2000);
-  }, [user]);
+    const uid = user?.uid || offlineUser?.uid;
+    if (!uid) return;
+    localStorage.setItem(`${LANG_CONFIG.localStoragePrefix}${uid}`, JSON.stringify(updated));
+    if (user) {
+      clearTimeout(saveTimer.current);
+      saveTimer.current = setTimeout(() => saveToFirestore(user.uid, updated), 2000);
+    }
+  }, [user, offlineUser]);
 
   const upd = useCallback((path, value) => {
     setProgress(prev => {
@@ -1777,15 +1758,31 @@ function App() {
     setPlaylist({ items, title, idx: 0, playing: true, speed: "normal" });
   }, []);
 
+  // Offline fallback: if no Firebase user but we have cached data, create a fake user
+  const offlineUser = useMemo(() => {
+    if (user) return null;
+    try {
+      const keys = Object.keys(localStorage);
+      const progressKey = keys.find(k => k.startsWith(LANG_CONFIG.localStoragePrefix) && k !== LANG_CONFIG.localStoragePrefix);
+      if (progressKey) {
+        const uid = progressKey.replace(LANG_CONFIG.localStoragePrefix, "");
+        return { uid, displayName: "Learner", photoURL: null, email: "" };
+      }
+    } catch(e) {}
+    return null;
+  }, [user]);
+
+  const activeUser = user || offlineUser;
+
   // Loading state
-  if (authLoading) return <div className="ca"><div className="pkr"><div style={{color:"var(--lime)",fontSize:"1rem",fontWeight:900}}>Loading...</div></div></div>;
+  if (authLoading && !offlineUser) return <div className="ca"><div className="pkr"><div style={{color:"var(--lime)",fontSize:"1rem",fontWeight:900}}>Loading...</div></div></div>;
 
-  // Not signed in: redirect to landing page
-  if (!user) { window.location.href = "index.html"; return null; }
+  // Not signed in and no offline data: redirect to landing page
+  if (!activeUser) { window.location.href = "index.html"; return null; }
 
-  const profile = user.uid;
-  const displayName = user.displayName || "Learner";
-  const photoURL = user.photoURL;
+  const profile = activeUser.uid;
+  const displayName = activeUser.displayName || "Learner";
+  const photoURL = activeUser.photoURL;
   const vk = Object.keys(progress.vocab||{}).filter(k=>progress.vocab[k]).length;
 
   // Voice onboarding — show once on first visit (skip if offline or returning user)
@@ -1821,7 +1818,7 @@ function App() {
           </div>
           <div>
             <div className="ht">Shadow<span style={{color:"var(--lime)"}}>Speak</span></div>
-            <div style={{fontSize:".62rem",fontWeight:800,color:"var(--lime)",letterSpacing:".5px",marginTop:-1}}>{LANG_CONFIG.flag} {LANG_CONFIG.name.toUpperCase()}</div>
+            <div style={{fontSize:".58rem",fontWeight:700,color:"rgba(255,255,255,.5)",letterSpacing:".5px",marginTop:-1}}>{LANG_CONFIG.name.toUpperCase()}</div>
           </div>
           <div className="tn">
             {[{id:"home",icon:"🏠",l:"Home"},{id:"library",icon:"📚",l:"My Library"},{id:"practice",icon:"🧠",l:"Practice"}].map(t=>
@@ -1841,9 +1838,9 @@ function App() {
               <div style={{position:"absolute",right:0,top:"calc(100% + 8px)",background:"var(--wh)",border:"1.5px solid var(--st)",borderRadius:14,padding:"10px 0",minWidth:220,zIndex:999,boxShadow:"0 8px 32px rgba(0,0,0,.15)"}}>
                 <div style={{padding:"8px 16px",borderBottom:"1px solid var(--st)"}}>
                   <div style={{fontSize:".78rem",fontWeight:800,color:"var(--ink)"}}>{displayName}</div>
-                  <div style={{fontSize:".62rem",color:"var(--ink2)"}}>{user.email}</div>
+                  <div style={{fontSize:".62rem",color:"var(--ink2)"}}>{activeUser.email}</div>
                 </div>
-                <button onClick={()=>{setProfileMenu(false);localStorage.setItem('shadowspeak-lang', LANG_CONFIG.switchTo.lang); window.location.reload();}} style={{width:"100%",padding:"14px 16px",background:"none",border:"none",cursor:"pointer",fontSize:".82rem",fontWeight:700,color:"var(--ink)",textAlign:"left",display:"flex",alignItems:"center",gap:10,minHeight:48}}>{LANG_CONFIG.switchTo.flag} {LANG_CONFIG.switchTo.label}</button>
+                <button onClick={()=>{setProfileMenu(false);window.location.href="app.html?lang=" + LANG_CONFIG.switchTo.lang;}} style={{width:"100%",padding:"14px 16px",background:"none",border:"none",cursor:"pointer",fontSize:".82rem",fontWeight:700,color:"var(--ink)",textAlign:"left",display:"flex",alignItems:"center",gap:10,minHeight:48}}>{LANG_CONFIG.switchTo.flag} {LANG_CONFIG.switchTo.label}</button>
                 <button onClick={()=>{setProfileMenu(false);setTab("settings");}} style={{width:"100%",padding:"14px 16px",background:"none",border:"none",cursor:"pointer",fontSize:".82rem",fontWeight:700,color:"var(--ink)",textAlign:"left",display:"flex",alignItems:"center",gap:10,minHeight:48}}>⚙️ Settings</button>
                 <button onClick={()=>{setProfileMenu(false);window.location.href="index.html";}} style={{width:"100%",padding:"14px 16px",background:"none",border:"none",cursor:"pointer",fontSize:".82rem",fontWeight:700,color:"var(--ink)",textAlign:"left",display:"flex",alignItems:"center",gap:10,minHeight:48}}>🏠 Back to home</button>
                 <div style={{borderTop:"1px solid var(--st)",margin:"2px 0"}} />
@@ -1854,10 +1851,10 @@ function App() {
         </div>
       </div>
 
-      {tab==="home"&&<HomeTab profile={displayName} progress={progress} upd={upd} settings={settings} setTab={setTab} recentTopics={recentTopics} setRecentTopics={setRecentTopics} practiceCount={practiceCount} library={library} selUnit={selUnit} setSelUnit={setSelUnit} markReviewed={markReviewed} startPlaylist={startPlaylist} openPlBuilder={()=>setShowPlBuilder(true)} isPremium={isPremium} setShowPremiumGate={setShowPremiumGate} />}
-      {tab==="library"&&<LibraryTab library={library} setLibrary={setLibrary} progress={progress} upd={upd} settings={settings} />}
-      {tab==="practice"&&<PracticeTab progress={progress} upd={upd} settings={settings} library={library} practiceCount={practiceCount} setPracticeCount={setPracticeCount} />}
-      {tab==="settings"&&<SettingsTab settings={settings} updSettings={updSettings} isPremium={isPremium} setShowPremiumGate={setShowPremiumGate} />}
+      {tab==="home"&&<HomeTab profile={displayName} progress={progress} upd={upd} settings={settings} setTab={setTab} recentTopics={recentTopics} setRecentTopics={setRecentTopics} practiceCount={practiceCount} library={library} selUnit={selUnit} setSelUnit={setSelUnit} markReviewed={markReviewed} startPlaylist={startPlaylist} openPlBuilder={()=>setShowPlBuilder(true)} setAutoLaunch={setAutoLaunch} />}
+      {tab==="library"&&<LibraryTab library={library} setLibrary={setLibrary} progress={progress} upd={upd} settings={settings} startPlaylist={startPlaylist} />}
+      {tab==="practice"&&<PracticeTab progress={progress} upd={upd} settings={settings} library={library} practiceCount={practiceCount} setPracticeCount={setPracticeCount} autoLaunch={autoLaunch} />}
+      {tab==="settings"&&<SettingsTab settings={settings} updSettings={updSettings} />}
 
       {/* Playlist builder overlay */}
       {showPlBuilder && <PlaylistBuilder onClose={()=>setShowPlBuilder(false)} onPlay={(items,title)=>{setShowPlBuilder(false);startPlaylist(items,title);}} progress={progress} />}
@@ -1888,7 +1885,6 @@ function App() {
       </div>
 
       {popup&&<div className="comp-ov" onClick={()=>setPopup(null)}><div className="comp-em">{popup.e}</div><div className="comp-t">{popup.t}</div><div className="comp-s">{popup.s}</div><button className="comp-btn" onClick={()=>setPopup(null)}>Continue</button></div>}
-      {showPremiumGate&&<PremiumGate user={user} onClose={()=>setShowPremiumGate(false)} onUnlock={()=>{setIsPremium(true);setShowPremiumGate(false);setPopup({e:"🎉",t:"Welcome to Premium!",s:"All units and features are now unlocked."});}} />}
     </div>
   );
 }
@@ -1958,7 +1954,7 @@ function getAutoGloss(ph) {
   if (!ph || !ph.cn) return [];
   if (GLOSS_DATA[ph.cn]) return GLOSS_DATA[ph.cn];
   const cn = (ph.cn||"").replace(/[，。！？、「」]/g, "").trim();
-  const jy = (getRom(ph)||"").replace(/[，,]/g, " ").replace(/\s+/g," ").trim();
+  const jy = (ph.jyut||"").replace(/[，,]/g, " ").replace(/\s+/g," ").trim();
   const jyParts = jy.split(" ").filter(Boolean);
   const chars = [...cn].filter(c => c.trim());
   const result = [];
@@ -2068,7 +2064,12 @@ function LessonMode({ progress, upd, profile, settings, onComplete, onQuit }) {
     {emoji:"🧩", text:"Put it all together. Say the whole phrase out loud."},
   ];
 
-  const speedGaps = { slow:[4000,4500], normal:[2800,3200], fast:[1500,1800] };
+  // speedGaps computed dynamically per phrase — see usage below
+  const getSpeedGaps = (item) => {
+    const len = item ? (item.cn || "").length : 4;
+    const bonus = Math.max(0, (len - 4) * 400);
+    return { slow:[4000+bonus,5000+bonus], normal:[2800+bonus,3500+bonus], fast:[1500+bonus,2000+bonus] };
+  };
 
   useEffect(() => {
     const due = getDueItems(progress).slice(0, 10);
@@ -2092,7 +2093,7 @@ function LessonMode({ progress, upd, profile, settings, onComplete, onQuit }) {
   useEffect(() => {
     if (paused || lessonDone || showIntro || showTransition) return;
     timerRef.current = setInterval(() => {
-      setTimeLeft(t => { if(t<=1){setLessonDone(true);hapticLight();trackEvent('lesson_completed');sessionStorage.removeItem(`${LANG_CONFIG.id}-lesson`);return 0;} return t-1; });
+      setTimeLeft(t => { if(t<=1){setLessonDone(true);sessionStorage.removeItem(`${LANG_CONFIG.id}-lesson`);return 0;} return t-1; });
       setPhaseTimeLeft(t => { if(t<=1){advancePhase();return 0;} return t-1; });
     }, 1000);
     return () => clearInterval(timerRef.current);
@@ -2106,7 +2107,7 @@ function LessonMode({ progress, upd, profile, settings, onComplete, onQuit }) {
     const items = getPhaseItems();
     if (!items || items.length===0) return;
     const safeIdx = innerIdx % items.length;
-    const [playGap, shadowGap] = speedGaps[speed];
+    const [playGap, shadowGap] = getSpeedGaps(items[safeIdx])[speed];
 
     if (phase === 1) {
       if (shadowPhase === "play") {
@@ -2158,7 +2159,7 @@ function LessonMode({ progress, upd, profile, settings, onComplete, onQuit }) {
   }
 
   const advancePhase = useCallback(() => {
-    if (phase >= 5) { setLessonDone(true); hapticLight(); trackEvent('lesson_completed'); sessionStorage.removeItem(`${LANG_CONFIG.id}-lesson`); return; }
+    if (phase >= 5) { setLessonDone(true); sessionStorage.removeItem(`${LANG_CONFIG.id}-lesson`); return; }
     const next = phase + 1;
     // Show phase transition card
     setShowTransition(true);
@@ -2208,15 +2209,7 @@ function LessonMode({ progress, upd, profile, settings, onComplete, onQuit }) {
     if (blob && ph) {
       try {
         const result = await scorePronunciation(blob, ph.cn, LANG_CONFIG.id);
-        let chars = [];
-        if (result.expectedJyutping && result.transcribedJyutping) {
-          const expSyls = result.expectedJyutping.trim().split(/\s+/);
-          const yourSyls = result.transcribedJyutping.trim().split(/\s+/);
-          const cnChars = ph.cn.replace(/[，,。！？!?\s]/g, "").split("");
-          for (let i = 0; i < Math.max(expSyls.length, cnChars.length); i++) {
-            chars.push({ cn: cnChars[i] || "", e: expSyls[i] || "", y: yourSyls[i] || "", m: expSyls[i] === yourSyls[i] ? 1 : 0 });
-          }
-        }
+        const chars = parseScoreChars(result, ph.cn);
         setScoreResult({ score: result.score, passed: result.passed, chars, phrase: ph });
       } catch(e) {
         console.error("Quiz scoring error:", e);
@@ -2259,7 +2252,7 @@ function LessonMode({ progress, upd, profile, settings, onComplete, onQuit }) {
             ))}
           </div>
 
-          <button className="li-go" onClick={()=>{setShowIntro(false);trackEvent('lesson_started');setShowTransition(true);speakEnglish(phaseInfo[0].transDesc+" Remember, say it out loud!");setTimeout(()=>{setShowTransition(false);},3000);}}>Let's go 💪</button>
+          <button className="li-go" onClick={()=>{setShowIntro(false);setShowTransition(true);speakEnglish(phaseInfo[0].transDesc+" Remember, say it out loud!");setTimeout(()=>{setShowTransition(false);},3000);}}>Let's go 💪</button>
 
           <div className="li-tip">
             <span className="li-tip-emoji">💡</span>
@@ -2643,19 +2636,97 @@ function AddNewSection({ progress, upd }) {
   );
 }
 
+// ---- MASTERY CONFIRMATION HELPERS ----
+function ConfettiBurst() {
+  const colors = ["#C4F000","#7AAA00","#8F6AE8","#E8A040","#FF6B9D","#00C9DB"];
+  const [pieces] = useState(() => Array.from({length:30}, (_,i) => ({
+    id:i, left: Math.random()*100, delay: Math.random()*0.4, color: colors[i%colors.length],
+    size: 6+Math.random()*6, dur: 1+Math.random()*0.8
+  })));
+  return <div className="confetti-container">{pieces.map(p =>
+    <div key={p.id} className="confetti-piece" style={{left:p.left+"%",top:-10,width:p.size,height:p.size,background:p.color,animation:`confettiFall ${p.dur}s ease-out ${p.delay}s forwards`}} />
+  )}</div>;
+}
+
+function MasteryConfirmSheet({ phrase, onMastered, onCancel }) {
+  const [mode, setMode] = useState("ask");
+  const [revealed, setRevealed] = useState(false);
+  const romanization = phrase[LANG_CONFIG.romanizationKey] || phrase.jyut;
+
+  if (mode === "quiz") {
+    return <div className="mastery-overlay">
+      <div className="mastery-card" onClick={e=>e.stopPropagation()} style={{maxWidth:360}}>
+        <div style={{fontSize:".68rem",fontWeight:800,color:"var(--ink3)",letterSpacing:"0.08em",textTransform:"uppercase",marginBottom:12}}>SAY THIS IN {LANG_CONFIG.name.toUpperCase()}:</div>
+        <div style={{fontSize:"1.1rem",fontWeight:800,color:"var(--ink)",marginBottom:8}}>{phrase.en}</div>
+        <div style={{fontSize:".75rem",color:"var(--ink3)",marginBottom:16}}>Try to say it out loud first!</div>
+        {!revealed ? (
+          <button onClick={()=>setRevealed(true)} style={{width:"100%",padding:"14px",borderRadius:12,border:"none",background:"var(--lime)",color:"var(--for)",fontSize:".88rem",fontWeight:800,cursor:"pointer",minHeight:48}}>Reveal answer</button>
+        ) : (
+          <div>
+            <div style={{background:"var(--cream)",borderRadius:14,padding:"16px",marginBottom:16,display:"flex",alignItems:"center",gap:12}}>
+              <button onClick={()=>speak(phrase.cn)} style={{width:44,height:44,borderRadius:"50%",border:"none",background:"var(--for)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                <svg width="12" height="14" viewBox="0 0 10 12" fill="none"><path d="M0 0L10 6L0 12V0Z" fill="#C4F000"/></svg>
+              </button>
+              <div>
+                {romanization && <div style={{fontSize:".85rem",fontStyle:"italic",color:"var(--plum)",fontWeight:600,marginBottom:2}}>{romanization}</div>}
+                <div style={{fontFamily:LANG_CONFIG.fontFamily,fontSize:"1.1rem",fontWeight:800,color:"var(--ink)"}}>{phrase.cn}</div>
+              </div>
+            </div>
+            <div style={{fontSize:".78rem",fontWeight:700,color:"var(--ink2)",marginBottom:12}}>Did you get it right?</div>
+            <button onClick={onMastered} style={{width:"100%",padding:"14px",borderRadius:12,border:"none",background:"var(--lime)",color:"var(--for)",fontSize:".88rem",fontWeight:800,cursor:"pointer",marginBottom:8,minHeight:48}}>Yes, I nailed it!</button>
+            <button onClick={onCancel} style={{width:"100%",padding:"14px",borderRadius:12,border:"1.5px solid var(--st)",background:"var(--wh)",color:"var(--ink3)",fontSize:".82rem",fontWeight:700,cursor:"pointer",minHeight:48}}>Not quite yet</button>
+          </div>
+        )}
+      </div>
+    </div>;
+  }
+
+  return <div className="mastery-overlay" onClick={onCancel}>
+    <div className="mastery-card" onClick={e=>e.stopPropagation()}>
+      <div style={{fontSize:"2.5rem",marginBottom:8}}>🔥</div>
+      <div style={{fontSize:"1rem",fontWeight:900,color:"var(--ink)",marginBottom:4}}>Nice — let's lock it in!</div>
+      <div style={{fontSize:".78rem",color:"var(--ink3)",marginBottom:6,lineHeight:1.5}}><strong>{phrase.en}</strong></div>
+      <div style={{fontSize:".82rem",fontWeight:700,color:"var(--plum)",marginBottom:20}}>{phrase.cn}</div>
+      <button onClick={()=>setMode("quiz")} style={{width:"100%",padding:"14px",borderRadius:12,border:"none",background:"var(--for)",color:"#fff",fontSize:".84rem",fontWeight:800,cursor:"pointer",marginBottom:8,minHeight:48}}>🧠 Quick test to make it stick</button>
+      <button onClick={onMastered} style={{width:"100%",padding:"14px",borderRadius:12,border:"1.5px solid var(--st)",background:"var(--wh)",color:"var(--ink)",fontSize:".84rem",fontWeight:700,cursor:"pointer",minHeight:48}}>I've got this one — mark as mastered</button>
+    </div>
+  </div>;
+}
+
 // ---- HOME TAB (Phase 2a) ----
-function HomeTab({ profile, progress, upd, settings, setTab, recentTopics, setRecentTopics, practiceCount, library, selUnit, setSelUnit, markReviewed, startPlaylist, openPlBuilder, isPremium, setShowPremiumGate }) {
+function HomeTab({ profile, progress, upd, settings, setTab, recentTopics, setRecentTopics, practiceCount, library, selUnit, setSelUnit, markReviewed, startPlaylist, openPlBuilder, setAutoLaunch }) {
   const [shadow, setShadow] = useState(null);
   const [searchQ, setSearchQ] = useState("");
   const [readingMode, setReadingMode] = useState(false);
   const [expandedIdx, setExpandedIdx] = useState(null);
   const [actionBarScrolled, setActionBarScrolled] = useState(false);
   const [miniPlayer, setMiniPlayer] = useState(null);
+  const [masteryConfirm, setMasteryConfirm] = useState(null);
+  const [showConfetti, setShowConfetti] = useState(false);
+  const [toastMsg, setToastMsg] = useState(null);
   const miniTimer = useRef(null);
+
+  const showMasteryToast = (msg) => {
+    setShowConfetti(true); setToastMsg(msg);
+    setTimeout(() => setShowConfetti(false), 2000);
+    setTimeout(() => setToastMsg(null), 2200);
+  };
+
+  const handleMarkKnown = useCallback((ph) => {
+    const items = progress.unit10 || [];
+    if (!items.find(s => s.cn === ph.cn)) {
+      upd("unit10", [{ en: ph.en, jyut: ph.jyut, cn: ph.cn, tag: (UNITS.find(u => u.id === selUnit) || UNITS[0]).title, known: true, date: new Date().toLocaleDateString("en-GB", { day: "numeric", month: "short" }) }, ...items]);
+    } else {
+      upd("unit10", items.map(s => s.cn === ph.cn ? { ...s, known: true } : s));
+    }
+    upd("phrases", { ...(progress.phrases || {}), [`${selUnit}-${ph.origIdx}`]: true });
+    setMasteryConfirm(null);
+    showMasteryToast("Added to Mastered!");
+  }, [progress, upd, selUnit]);
 
   const playPhraseMini = (ph) => {
     clearTimeout(miniTimer.current);
-    setMiniPlayer({ en: ph.en, cn: ph.cn, jyut: getRom(ph), playing: true });
+    setMiniPlayer({ en: ph.en, cn: ph.cn, jyut: ph.jyut, playing: true });
     speak(ph.cn);
     miniTimer.current = setTimeout(() => setMiniPlayer(null), 6000);
   };
@@ -2685,14 +2756,7 @@ function HomeTab({ profile, progress, upd, settings, setTab, recentTopics, setRe
     if (!aDone && bDone) return -1;
     return a.id - b.id;
   });
-  const selectUnit = (id) => {
-    if (!isPremium && !FREE_UNIT_IDS.includes(id)) {
-      setShowPremiumGate(true);
-      return;
-    }
-    setSelUnit(id);
-    setTimeout(() => { if (phraseListRef.current) phraseListRef.current.scrollIntoView({ behavior: "smooth" }); }, 80);
-  };
+  const selectUnit = (id) => { setSelUnit(id); setTimeout(() => { if (phraseListRef.current) phraseListRef.current.scrollIntoView({ behavior: "smooth" }); }, 80); };
 
   // Gradient colors for topic cards (fallbacks)
   const TOPIC_GRADIENTS = [
@@ -2711,20 +2775,20 @@ function HomeTab({ profile, progress, upd, settings, setTab, recentTopics, setRe
     4: "https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=300&h=200&fit=crop",
     5: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=300&h=200&fit=crop",
     6: "https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=300&h=200&fit=crop",
-    7: "https://images.unsplash.com/photo-1523050854058-8df90110c9f1?w=300&h=200&fit=crop",
+    7: "https://images.unsplash.com/photo-1580582932707-520aed937b7b?w=300&h=200&fit=crop",
     8: "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=300&h=200&fit=crop",
     9: "https://images.unsplash.com/photo-1508739773434-c26b3d09e071?w=300&h=200&fit=crop",
     10: "https://images.unsplash.com/photo-1518199266791-5375a83190b7?w=300&h=200&fit=crop",
-    11: "https://images.unsplash.com/photo-1575037614876-c38a4ca44f42?w=300&h=200&fit=crop",
+    11: "https://images.unsplash.com/photo-1470337458703-46ad1756a187?w=300&h=200&fit=crop",
     12: "https://images.unsplash.com/photo-1501691223387-dd0500403074?w=300&h=200&fit=crop",
-    13: "https://images.unsplash.com/photo-1553729459-afe8f2e2ed65?w=300&h=200&fit=crop",
+    13: "https://images.unsplash.com/photo-1526304640581-d334cdbbf45e?w=300&h=200&fit=crop",
     14: "https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=300&h=200&fit=crop",
     15: "https://images.unsplash.com/photo-1544027993-37dbfe43562a?w=300&h=200&fit=crop",
     16: "https://images.unsplash.com/photo-1512941937669-90a1b58e7e9c?w=300&h=200&fit=crop",
     17: "https://images.unsplash.com/photo-1516483638261-f4dbaf036963?w=300&h=200&fit=crop",
-    18: "https://images.unsplash.com/photo-1466378284817-a6b7fd50cc5a?w=300&h=200&fit=crop",
+    18: "https://images.unsplash.com/photo-1611532736597-de2d4265fba3?w=300&h=200&fit=crop",
     19: "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=300&h=200&fit=crop",
-    20: "https://images.unsplash.com/photo-1462275646964-a0e3c11f18a6?w=300&h=200&fit=crop",
+    20: "https://images.unsplash.com/photo-1536599018102-9f803c140fc1?w=300&h=200&fit=crop",
   };
 
   // Search across ALL units + GLOSS_DATA
@@ -2737,24 +2801,32 @@ function HomeTab({ profile, progress, upd, settings, setTab, recentTopics, setRe
       u.phrases.forEach((ph, i) => {
         const matchEn = (ph.en || "").toLowerCase().includes(q);
         const matchCn = (ph.cn || "").toLowerCase().includes(q);
-        const matchJyut = (getRom(ph) || "").toLowerCase().includes(q);
+        const matchJyut = (ph.jyut || "").toLowerCase().includes(q);
         if (matchEn || matchCn || matchJyut) {
-          results.push({ type: "phrase", en: ph.en, cn: ph.cn, jyut: getRom(ph), unitId: u.id, unitTitle: u.title, idx: i });
+          results.push({ type: "phrase", en: ph.en, cn: ph.cn, jyut: ph.jyut, unitId: u.id, unitTitle: u.title, idx: i });
         }
       });
     });
-    // Search GLOSS_DATA keys
+    // Search GLOSS_DATA — match by key (jyutping), English, or Chinese
+    const seenWords = new Set();
     Object.keys(GLOSS_DATA || {}).forEach(key => {
-      if (key.toLowerCase().includes(q)) {
-        const g = GLOSS_DATA[key];
-        if (Array.isArray(g)) {
-          g.forEach(w => {
-            results.push({ type: "word", en: w.en || "", cn: w.cn || key, jyut: w.jy || "", unitId: null, unitTitle: null });
-          });
+      const g = GLOSS_DATA[key];
+      if (!Array.isArray(g)) return;
+      g.forEach(w => {
+        const matchKey = key.toLowerCase().includes(q);
+        const matchEn = (w.en || "").toLowerCase().includes(q);
+        const matchCn = (w.cn || "").toLowerCase().includes(q);
+        const matchJy = (w.jy || "").toLowerCase().includes(q);
+        if (matchKey || matchEn || matchCn || matchJy) {
+          const wordId = w.cn || key;
+          if (!seenWords.has(wordId)) {
+            seenWords.add(wordId);
+            results.push({ type: "word", en: w.en || "", cn: w.cn || key, jyut: w.jy || key, unitId: null, unitTitle: null });
+          }
         }
-      }
+      });
     });
-    return results.slice(0, 8);
+    return results.slice(0, 12);
   }, [searchQ]);
 
   // Continue practicing: in-progress topics (at least 1 known but not all)
@@ -2782,7 +2854,11 @@ function HomeTab({ profile, progress, upd, settings, setTab, recentTopics, setRe
 
   // Helper to update recent topics
   const updateRecent = (id) => {
-    setRecentTopics(prev => [id, ...(prev || []).filter(x => x !== id)].slice(0, 10));
+    setRecentTopics(prev => {
+      const updated = [id, ...(prev || []).filter(x => x !== id)].slice(0, 10);
+      localStorage.setItem(LANG_CONFIG.id + '-recent-topics', JSON.stringify(updated));
+      return updated;
+    });
   };
 
   // Resolve recent topics to units
@@ -2822,13 +2898,21 @@ function HomeTab({ profile, progress, upd, settings, setTab, recentTopics, setRe
         </div>
         <div className="ctrl-row">
           <button className="play-all-btn" onClick={()=>startPlaylist(items.map(p=>({en:p.en,cn:p.cn,jyut:p.jyut})),unit.title)}>
-            <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M4 2.5L15 9L4 15.5V2.5Z" fill="#fff"/></svg>
+            <svg width="14" height="14" viewBox="0 0 18 18" fill="none"><path d="M4 2.5L15 9L4 15.5V2.5Z" fill="#fff"/></svg>
+            Play All
           </button>
-          <button className="shuffle-btn" onClick={()=>setShadow("unit")}>Shuffle</button>
-          <span className="filter-chip" onClick={()=>setReadingMode(r=>!r)}>{readingMode?"Chinese first":"English first"}</span>
+          <button className="shuffle-btn" onClick={()=>setShadow("unit")}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/><line x1="4" y1="4" x2="9" y2="9"/></svg>
+            Shuffle
+          </button>
+          <span className="filter-chip" onClick={()=>setReadingMode(r=>!r)}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" style={{marginRight:4}}><path d="M4 6h16M4 12h16M4 18h10"/></svg>
+            {readingMode?"Chinese first":"English first"}
+          </span>
         </div>
         <div>
-          {sorted.map((ph,i) => {
+          {(() => { const notKnown = sorted.filter(p=>!p.known); const known = sorted.filter(p=>p.known); return <>
+            {notKnown.map((ph,i) => {
             const gloss = getAutoGloss(ph);
             const isExp = expandedIdx === ph.origIdx;
             return (
@@ -2841,13 +2925,13 @@ function HomeTab({ profile, progress, upd, settings, setTab, recentTopics, setRe
                     {readingMode ? (
                       <>
                         <div className="ph-chi" style={{fontSize:15,fontWeight:600,color:"var(--ink)",marginBottom:3,display:"flex",justifyContent:"space-between",alignItems:"center"}}>{ph.cn}<div className="ph-chev">&#9662;</div></div>
-                        <div className="ph-jyut">{getRom(ph)}</div>
+                        <div className="ph-jyut">{ph.jyut}</div>
                         <div style={{fontSize:13,color:"var(--ink2)"}}>{ph.en}</div>
                       </>
                     ) : (
                       <>
                         <div className="ph-eng">{ph.en}<div className="ph-chev">&#9662;</div></div>
-                        <div className="ph-jyut">{getRom(ph)}</div>
+                        <div className="ph-jyut">{ph.jyut}</div>
                         <div className="ph-chi">{ph.cn}</div>
                       </>
                     )}
@@ -2862,19 +2946,45 @@ function HomeTab({ profile, progress, upd, settings, setTab, recentTopics, setRe
                         <span className="gloss-jyut">{g.jy}</span>
                         {g.en && <span className="gloss-eng">{g.en}</span>}
                         <div className="gloss-actions">
-                          <span className="gloss-action" onClick={e=>{e.stopPropagation();const items=progress.unit10||[];if(!items.find(s=>s.cn===g.cn)){upd("unit10",[{en:g.en||"",jyut:g.jy||"",cn:g.cn,tag:unit.title,known:false,date:new Date().toLocaleDateString("en-GB",{day:"numeric",month:"short"})},...items]);setPopup({e:"📖",t:"Saved to library",s:g.cn});}}}>{(progress.unit10||[]).find(s=>s.cn===g.cn)?"\u2713":"+"}</span>
+                          <span className="gloss-action" onClick={e=>{e.stopPropagation();const items=progress.unit10||[];if(!items.find(s=>s.cn===g.cn)){upd("unit10",[{en:g.en||"",jyut:g.jy||"",cn:g.cn,tag:unit.title,known:false,date:new Date().toLocaleDateString("en-GB",{day:"numeric",month:"short"})},...items]);}}}>{(progress.unit10||[]).find(s=>s.cn===g.cn)?"\u2713":"+"}</span>
                         </div>
                       </div>
                     ))}
                   </div>}
                   <div className="ph-actions">
-                    <button className="ph-action-btn" onClick={e=>{e.stopPropagation();const items=progress.unit10||[];if(!items.find(s=>s.cn===ph.cn)){upd("unit10",[{en:ph.en,jyut:getRom(ph),cn:ph.cn,tag:unit.title,known:false,date:new Date().toLocaleDateString("en-GB",{day:"numeric",month:"short"})},...items]);setPopup({e:"📖",t:"Saved to library",s:ph.en});}}}>{(progress.unit10||[]).find(s=>s.cn===ph.cn)?"Saved":"Save to My Library"}</button>
-                    <button className="ph-action-btn shadow-btn" onClick={e=>{e.stopPropagation();setShadow(ph.origIdx);}}>Shadow</button>
+                    <button className={"ph-action-btn"+((progress.unit10||[]).find(s=>s.cn===ph.cn)?" saved-btn":"")} onClick={e=>{e.stopPropagation();const items=progress.unit10||[];if(!items.find(s=>s.cn===ph.cn)){upd("unit10",[{en:ph.en,jyut:ph.jyut,cn:ph.cn,tag:unit.title,known:false,date:new Date().toLocaleDateString("en-GB",{day:"numeric",month:"short"})},...items]);}}}>{(progress.unit10||[]).find(s=>s.cn===ph.cn)?"✓ Saved!":"Save to Library"}</button>
+                    <button className="ph-action-btn" onClick={e=>{e.stopPropagation();setShadow(ph.origIdx);}}><svg width="10" height="10" viewBox="0 0 10 12" fill="none"><path d="M0 0L10 6L0 12V0Z" fill="#fff"/></svg> Repeat</button>
+                    {!ph.known && <button className="ph-action-btn know-btn" onClick={e=>{e.stopPropagation();setMasteryConfirm(ph);}}>I know this!</button>}
                   </div>
                 </div>
               </div>
             );
           })}
+          {known.length > 0 && <div style={{margin:"20px 0 0",background:"linear-gradient(135deg, #1F3329 0%, #2a4a36 50%, #1F3329 100%)",borderRadius:16,overflow:"hidden"}}>
+            <div style={{padding:"16px 16px 12px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+              <div style={{display:"flex",alignItems:"center",gap:10}}>
+                <span style={{fontSize:"1.4rem"}}>🏆</span>
+                <div>
+                  <div style={{fontSize:".88rem",fontWeight:900,color:"#fff"}}>Trophy Cabinet</div>
+                  <div style={{fontSize:".68rem",color:"var(--lime)",fontWeight:600,marginTop:1}}>{known.length} phrase{known.length!==1?"s":""} conquered</div>
+                </div>
+              </div>
+              <div style={{fontSize:".68rem",color:"rgba(255,255,255,.4)",fontWeight:600}}>{Math.round(known.length/items.length*100)}% of unit</div>
+            </div>
+            {known.map((ph,i) => (
+              <div key={ph.origIdx} style={{padding:"10px 16px",borderTop:"1px solid rgba(255,255,255,.06)",display:"flex",alignItems:"center",gap:10,cursor:"pointer"}} onClick={()=>playPhraseMini(ph)}>
+                <button onClick={e=>{e.stopPropagation();playPhraseMini(ph);}} style={{width:32,height:32,borderRadius:"50%",border:"none",background:"rgba(196,240,0,.15)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                  <svg width="8" height="10" viewBox="0 0 10 12" fill="none"><path d="M0 0L10 6L0 12V0Z" fill="#C4F000"/></svg>
+                </button>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontSize:".78rem",fontWeight:600,color:"rgba(255,255,255,.85)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{ph.en}</div>
+                  <div style={{fontSize:".65rem",color:"var(--lime)",fontStyle:"italic"}}>{ph.jyut}</div>
+                </div>
+                <div style={{fontSize:".85rem",color:"rgba(255,255,255,.5)",flexShrink:0,fontWeight:600}}>{ph.cn}</div>
+              </div>
+            ))}
+          </div>}
+          </>; })()}
         </div>
 
         {/* Mini player — shows when a phrase is playing */}
@@ -2891,6 +3001,11 @@ function HomeTab({ profile, progress, upd, settings, setTab, recentTopics, setRe
             <button onClick={()=>{stopAudio();clearTimeout(miniTimer.current);setMiniPlayer(null);}} style={{background:"rgba(255,255,255,.08)",border:"1px solid rgba(255,255,255,.1)",borderRadius:"50%",width:36,height:36,display:"flex",alignItems:"center",justifyContent:"center",color:"rgba(255,255,255,.5)",fontSize:14,cursor:"pointer",flexShrink:0}}>x</button>
           </div>
         </div>}
+
+        {/* Mastery confirmation overlay */}
+        {masteryConfirm && <MasteryConfirmSheet phrase={masteryConfirm} onCancel={()=>setMasteryConfirm(null)} onMastered={()=>handleMarkKnown(masteryConfirm)} />}
+        {showConfetti && <ConfettiBurst />}
+        {toastMsg && <div className="mastery-toast">🎉 {toastMsg}</div>}
       </div>
     );
   }
@@ -2913,7 +3028,7 @@ function HomeTab({ profile, progress, upd, settings, setTab, recentTopics, setRe
               <div className="stat-label">Lessons Done</div>
             </div>
           </div>
-          <button className="start-btn" onClick={()=>setTab("practice")}>
+          <button className="start-btn" onClick={()=>{setAutoLaunch("daily");setTab("practice");}}>
             <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M4 2.5L15 9L4 15.5V2.5Z" fill="#111"/></svg>
             Start Today's Lesson
           </button>
@@ -2929,26 +3044,31 @@ function HomeTab({ profile, progress, upd, settings, setTab, recentTopics, setRe
         </div>
         {/* Search results dropdown */}
         {searchResults.length > 0 && <div className="search-results" style={{margin:"0 16px 12px"}}>
-          {searchResults.map((r, ri) => (
-            <div key={ri} className="search-result" style={{flexWrap:"wrap"}}>
-              <div style={{display:"flex",alignItems:"center",gap:10,width:"100%"}} onClick={() => {
-                if (r.unitId) { setSelUnit(r.unitId); updateRecent(r.unitId); setSearchQ(""); }
+          {searchResults.map((r, ri) => {
+            const inLib = (progress.unit10||[]).find(s=>s.cn===r.cn);
+            return (
+            <div key={ri} className="search-result">
+              <div className="sr-top" onClick={() => {
+                if (r.type === "word") { speak(r.cn); }
+                else if (r.unitId) { setSelUnit(r.unitId); updateRecent(r.unitId); setExpandedIdx(r.idx); setSearchQ(""); }
               }}>
                 <span className="search-badge" style={{ background: r.type === "phrase" ? "rgba(122,170,0,.15)" : "rgba(143,106,232,.15)", color: r.type === "phrase" ? "var(--ld)" : "var(--plum)" }}>
                   {r.type === "phrase" ? "PHRASE" : "WORD"}
                 </span>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: ".82rem", fontWeight: 700, color: "var(--ink)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.en}</div>
+                  <div style={{ fontSize: ".82rem", fontWeight: 700, color: "var(--ink)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.en || r.cn}</div>
                   <div style={{ fontSize: ".72rem", color: "var(--plum)", fontStyle: "italic" }}>{r.jyut}</div>
                 </div>
-                <div style={{ fontSize: ".82rem", color: "var(--ink3)", flexShrink: 0 }}>{r.cn}</div>
+                <span style={{ fontSize: ".95rem", fontWeight: 700, color: "var(--ink3)", flexShrink: 0 }}>{r.cn}</span>
               </div>
-              <div style={{display:"flex",gap:6,marginTop:6,paddingLeft:0,width:"100%"}}>
-                <button onClick={(e)=>{e.stopPropagation();if(r.unitId){setSelUnit(r.unitId);updateRecent(r.unitId);setSearchQ("");}}} style={{background:"var(--cream)",border:"1px solid var(--st)",borderRadius:999,padding:"6px 14px",fontSize:".72rem",fontWeight:700,color:"var(--ink2)",cursor:"pointer",minHeight:36}}>Go to unit ›</button>
-                <button onClick={(e)=>{e.stopPropagation();const items=progress.unit10||[];if(!items.find(s=>s.cn===r.cn)){upd("unit10",[{en:r.en,jyut:r.jyut,cn:r.cn,tag:r.unitTitle||"Search",known:false,date:new Date().toLocaleDateString("en-GB",{day:"numeric",month:"short"})},...items]);setPopup({e:"📖",t:"Saved to library",s:r.en});}}} style={{background:"var(--cream)",border:"1px solid var(--st)",borderRadius:999,padding:"6px 14px",fontSize:".72rem",fontWeight:700,color:"var(--ink2)",cursor:"pointer",minHeight:36}}>+ Add to library</button>
+              <div className="sr-bottom">
+                {r.type === "word" && <button className="sr-play" onClick={()=>speak(r.cn)}>&#9654; Play</button>}
+                {r.type === "phrase" && r.unitId && <button className="sr-goto" onClick={()=>{setSelUnit(r.unitId);updateRecent(r.unitId);setExpandedIdx(r.idx);setSearchQ("");}}>Go to unit &#8250;</button>}
+                <button className={"sr-add"+(inLib?" saved":"")} onClick={(e)=>{e.stopPropagation();if(!inLib){const items=progress.unit10||[];upd("unit10",[{en:r.en||"",jyut:r.jyut||"",cn:r.cn,tag:r.unitTitle||"Search",known:false,date:new Date().toLocaleDateString("en-GB",{day:"numeric",month:"short"})},...items]);}}}>{inLib?"\u2713 Saved":"+ Add to library"}</button>
               </div>
             </div>
-          ))}
+          );}
+          )}
         </div>}
 
         {/* My Library card */}
@@ -2999,31 +3119,57 @@ function HomeTab({ profile, progress, upd, settings, setTab, recentTopics, setRe
           </div>
         </>}
 
-        {/* All Topics - 2-row horizontal grid */}
+        {/* All Topics - 3-row horizontal grid, left-to-right reading order */}
         <div className="sec-hdr"><span className="sec-title">All Topics</span><span className="sec-link">{UNITS.length} topics</span></div>
-        <div className="topics-wrap">
-          <div className="topics-grid">
-            {UNITS.map((u,i) => (
-              <div className="t-card" key={u.id} onClick={()=>{setSelUnit(u.id);updateRecent(u.id);}}>
-                <div className="t-art">
-                  <img src={TOPIC_IMAGES[u.id] || TOPIC_IMAGES[1]} alt="" />
-                  <span className="t-num">#{i+1}</span>
-                </div>
-                <div className="t-info">
-                  <div className="t-name">{u.title}</div>
-                  <div className="t-meta">{u.phrases.length} phrases</div>
-                </div>
+        {(() => {
+          const rows = 3;
+          const cols = Math.ceil(UNITS.length / rows);
+          // Reorder: column-flow grid fills top-to-bottom, so remap for left-to-right reading
+          const reordered = [];
+          for (let c = 0; c < cols; c++) {
+            for (let r = 0; r < rows; r++) {
+              const idx = r * cols + c;
+              if (idx < UNITS.length) reordered.push(UNITS[idx]);
+            }
+          }
+          return <>
+            <div className="topics-wrap" ref={el => {
+              if (!el) return;
+              const bar = el.nextElementSibling;
+              if (!bar) return;
+              const fill = bar.firstChild;
+              const update = () => {
+                const pct = el.scrollWidth <= el.clientWidth ? 100 : Math.round((el.scrollLeft / (el.scrollWidth - el.clientWidth)) * 100);
+                if (fill) fill.style.width = pct + "%";
+              };
+              el.onscroll = update;
+              setTimeout(update, 100);
+            }}>
+              <div className="topics-grid">
+                {reordered.map((u) => (
+                  <div className="t-card" key={u.id} onClick={()=>{setSelUnit(u.id);updateRecent(u.id);}}>
+                    <div className="t-art">
+                      <img src={TOPIC_IMAGES[u.id] || TOPIC_IMAGES[1]} alt="" />
+                      <span className="t-num">#{u.id}</span>
+                    </div>
+                    <div className="t-info">
+                      <div className="t-name">{u.title}</div>
+                      <div className="t-meta">{u.phrases.length} phrases</div>
+                    </div>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-        </div>
+            </div>
+            <div className="topics-scrollbar"><div className="topics-scrollbar-fill" /></div>
+          </>;
+        })()}
       </div>
     </div>
   );
 }
 
 // ---- LIBRARY TAB (Phase 2a) ----
-function LibraryTab({ library, setLibrary, progress, upd, settings }) {
+function LibraryTab({ library, setLibrary, progress, upd, settings, startPlaylist }) {
   const [showAddForm, setShowAddForm] = useState(false);
   const [en, setEn] = useState("");
   const [rom, setRom] = useState("");
@@ -3057,237 +3203,234 @@ function LibraryTab({ library, setLibrary, progress, upd, settings }) {
   };
 
   const canSpeak = (s) => s.cn && s.cn !== "(add characters)" && s.cn.trim() !== "";
+  const [masteredOpen, setMasteredOpen] = useState(false);
+  const [libShadow, setLibShadow] = useState(null);
+  const [readingMode, setReadingMode] = useState(false);
+  const [masteryConfirm, setMasteryConfirm] = useState(null);
+  const [showConfetti, setShowConfetti] = useState(false);
+  const [toastMsg, setToastMsg] = useState(null);
+
+  const showMasteryToast = (msg) => {
+    setShowConfetti(true); setToastMsg(msg);
+    setTimeout(() => setShowConfetti(false), 2000);
+    setTimeout(() => setToastMsg(null), 2200);
+  };
+
+  const handleLibMastery = (idx) => {
+    const updated = items.map((s, i) => i === idx ? { ...s, known: true } : s);
+    upd("unit10", updated);
+    setMasteryConfirm(null);
+    showMasteryToast("Added to Mastered!");
+  };
+
+  // Separate phrases (3+ words) from vocab (1-2 words)
+  const isVocab = (s) => !s.en || s.en.split(/\s+/).length <= 2;
+  const slPhrases = stillLearning.filter(s => !isVocab(s));
+  const slVocab = stillLearning.filter(s => isVocab(s));
+
+  // Library shadow mode
+  if (libShadow !== null) {
+    const isSingle = typeof libShadow === "number";
+    if (isSingle) {
+      const s = items[libShadow];
+      return <ShadowMode unit={{title:"My Library",phrases:[{en:s.en||s.cn,cn:s.cn,jyut:s[romKey]||s.jyut||""}]}} progress={progress} upd={upd} settings={settings} onClose={()=>{releaseMicStream();setLibShadow(null);}} startIdx={0} single={true} />;
+    }
+    const shadowItems = stillLearning.length > 0 ? stillLearning : items;
+    return <ShadowMode unit={{title:"My Library",phrases:shadowItems.map(s=>({en:s.en||s.cn,cn:s.cn,jyut:s[romKey]||s.jyut||""}))}} progress={progress} upd={upd} settings={settings} onClose={()=>{releaseMicStream();setLibShadow(null);}} startIdx={0} single={false} />;
+  }
+
+  // Render a library item row
+  const renderItem = (s) => {
+    const idx = items.indexOf(s);
+    const isExp = expandedIdx === idx;
+    const gloss = canSpeak(s) ? getAutoGloss(s) : [];
+    return (
+      <div key={idx} className={"ph-item" + (isExp ? " expanded" : "")} onClick={() => setExpandedIdx(isExp ? null : idx)}>
+        <div className="ph-row">
+          <button className="ph-play" onClick={e => { e.stopPropagation(); if (canSpeak(s)) speak(s.cn); }}>
+            <svg width="10" height="12" viewBox="0 0 10 12" fill="none"><path d="M0 0L10 6L0 12V0Z" fill="#fff"/></svg>
+          </button>
+          <div className="ph-text">
+            {readingMode ? (<>
+              <div className="ph-chi" style={{fontSize:15,fontWeight:600,color:"var(--ink)",marginBottom:3,display:"flex",justifyContent:"space-between",alignItems:"center"}}>{s.cn || s.en}<div className="ph-chev">&#9662;</div></div>
+              {s[romKey] && s[romKey] !== `(add ${romLabel.toLowerCase()})` && <div className="ph-jyut">{s[romKey]}</div>}
+              {s.en && <div style={{fontSize:13,color:"var(--ink2)"}}>{s.en}</div>}
+            </>) : (<>
+              <div className="ph-eng">{s.en || s.cn}<div className="ph-chev">&#9662;</div></div>
+              {s[romKey] && s[romKey] !== `(add ${romLabel.toLowerCase()})` && <div className="ph-jyut">{s[romKey]}</div>}
+              {s.cn && s.cn.trim() !== "" && s.en && <div className="ph-chi">{s.cn}</div>}
+            </>)}
+          </div>
+        </div>
+        <div className="ph-detail">
+          {s.tag && <div className="ph-context">From: {s.tag}</div>}
+          {gloss.length > 0 && <div className="gloss-row">
+            {gloss.filter(g => g.cn).map((g, gi) => (
+              <div className="gloss-chip" key={gi} onClick={e => { e.stopPropagation(); speak(g.cn); }}>
+                <span className="gloss-chi">{g.cn}</span>
+                <span className="gloss-jyut">{g.jy}</span>
+                {g.en && <span className="gloss-eng">{g.en}</span>}
+                <div className="gloss-actions">
+                  <span className="gloss-action" onClick={e=>{e.stopPropagation();const lib=progress.unit10||[];if(!lib.find(x=>x.cn===g.cn)){upd("unit10",[{en:g.en||"",jyut:g.jy||"",cn:g.cn,tag:s.tag||"Library",known:false,date:new Date().toLocaleDateString("en-GB",{day:"numeric",month:"short"})},...lib]);}}}>{(progress.unit10||[]).find(x=>x.cn===g.cn)?"\u2713":"+"}</span>
+                </div>
+              </div>
+            ))}
+          </div>}
+          <div className="ph-actions">
+            <button className="ph-action-btn know-btn" onClick={e => { e.stopPropagation(); setMasteryConfirm({...s, _idx: idx}); }}>I know this!</button>
+            <button className="ph-action-btn" onClick={e => { e.stopPropagation(); setLibShadow(idx); }}><svg width="10" height="10" viewBox="0 0 10 12" fill="none"><path d="M0 0L10 6L0 12V0Z" fill="#fff"/></svg> Repeat</button>
+            <button className="ph-action-btn" onClick={e => { e.stopPropagation(); removeItem(idx); }} style={{background:"transparent",color:"#e74c3c",borderColor:"rgba(231,76,60,.25)"}}>Remove</button>
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   return (
-    <div className="mc">
-      {/* 1. Header */}
-      <div style={{ marginBottom: 4 }}>
-        <div className="pt" style={{ marginBottom: 2 }}>My Library</div>
-        <div style={{ fontSize: ".78rem", color: "var(--ink3)", fontWeight: 600 }}>
-          {mastered.length} mastered · {stillLearning.length} to learn
+    <div style={{paddingBottom:80}}>
+      {/* Header with gradient */}
+      <div style={{position:"relative",overflow:"hidden",padding:"40px 20px 20px"}}>
+        <div style={{position:"absolute",inset:0,background:"linear-gradient(135deg,#1F3329 0%,#2a5a3a 40%,#1A1F3D 100%)",opacity:.9}} />
+        <div style={{position:"absolute",inset:0,background:"radial-gradient(ellipse at 80% 20%,rgba(196,240,0,.12) 0%,transparent 50%)"}} />
+        <div style={{position:"relative",zIndex:1}}>
+          <div style={{fontSize:"1.2rem",fontWeight:900,color:"#fff",marginBottom:4}}>My Library</div>
+          <div style={{fontSize:".78rem",color:"rgba(255,255,255,.7)",lineHeight:1.5,marginBottom:12}}>
+            Your personal collection of words and phrases. Save anything you want to remember and practise.
+          </div>
+          <div style={{display:"flex",gap:12}}>
+            <div style={{flex:1,background:"rgba(255,255,255,.1)",borderRadius:12,padding:"10px 0",textAlign:"center"}}>
+              <div style={{fontSize:"1.1rem",fontWeight:900,color:"var(--lime)"}}>{stillLearning.length}</div>
+              <div style={{fontSize:".6rem",fontWeight:700,color:"rgba(255,255,255,.65)",textTransform:"uppercase",letterSpacing:".5px"}}>Learning</div>
+            </div>
+            <div style={{flex:1,background:"rgba(255,255,255,.1)",borderRadius:12,padding:"10px 0",textAlign:"center"}}>
+              <div style={{fontSize:"1.1rem",fontWeight:900,color:"var(--lime)"}}>{mastered.length}</div>
+              <div style={{fontSize:".6rem",fontWeight:700,color:"rgba(255,255,255,.65)",textTransform:"uppercase",letterSpacing:".5px"}}>Mastered</div>
+            </div>
+            <div style={{flex:1,background:"rgba(255,255,255,.1)",borderRadius:12,padding:"10px 0",textAlign:"center"}}>
+              <div style={{fontSize:"1.1rem",fontWeight:900,color:"var(--lime)"}}>{items.length}</div>
+              <div style={{fontSize:".6rem",fontWeight:700,color:"rgba(255,255,255,.65)",textTransform:"uppercase",letterSpacing:".5px"}}>Total</div>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* 2. Add your own button / form */}
-      {!showAddForm && !saved ? (
-        <button onClick={() => setShowAddForm(true)} style={{
-          width: "100%", padding: "14px 16px", background: "transparent",
-          border: "2px dashed var(--st)", borderRadius: 12, cursor: "pointer",
-          fontSize: ".84rem", fontWeight: 700, color: "var(--plum)",
-          marginBottom: 16, minHeight: 48, textAlign: "center"
-        }}>+ Add your own word or phrase</button>
-      ) : saved ? (
-        <div style={{
-          width: "100%", padding: "14px 16px", background: "rgba(196,240,0,.1)",
-          border: "2px solid var(--lime)", borderRadius: 12,
-          fontSize: ".84rem", fontWeight: 800, color: "var(--for)",
-          marginBottom: 16, textAlign: "center", minHeight: 48,
-          display: "flex", alignItems: "center", justifyContent: "center"
-        }}>Saved to your library!</div>
-      ) : (
-        <div style={{
-          background: "var(--wh)", borderRadius: 14, padding: 16,
-          border: "1.5px solid var(--st)", marginBottom: 16
-        }}>
-          <input style={{
-            width: "100%", background: "var(--cream)", border: "1.5px solid var(--st)",
-            borderRadius: 8, padding: "10px 12px", fontSize: ".82rem", color: "var(--ink)",
-            outline: "none", fontFamily: "inherit", marginBottom: 8, minHeight: 44,
-            boxSizing: "border-box"
-          }} placeholder="What do you want to say?" value={en} onChange={e => setEn(e.target.value)} />
-          <input style={{
-            width: "100%", background: "var(--cream)", border: "1.5px solid var(--st)",
-            borderRadius: 8, padding: "10px 12px", fontSize: ".82rem", color: "var(--ink)",
-            outline: "none", fontFamily: LANG_CONFIG.fontFamily, marginBottom: 8, minHeight: 44,
-            boxSizing: "border-box"
-          }} placeholder="Chinese characters" value={cn} onChange={e => setCn(e.target.value)} />
-          <input style={{
-            width: "100%", background: "var(--cream)", border: "1.5px solid var(--st)",
-            borderRadius: 8, padding: "10px 12px", fontSize: ".82rem", color: "var(--plum)",
-            fontStyle: "italic", outline: "none", fontFamily: "inherit", marginBottom: 12,
-            minHeight: 44, boxSizing: "border-box"
-          }} placeholder={romLabel} value={rom} onChange={e => setRom(e.target.value)} />
-          <div style={{ display: "flex", gap: 8 }}>
-            <button onClick={() => { setShowAddForm(false); setEn(""); setRom(""); setCn(""); }} style={{
-              flex: 1, background: "var(--cream)", color: "var(--ink3)", border: "1.5px solid var(--st)",
-              borderRadius: 10, padding: "10px 0", fontSize: ".82rem", fontWeight: 700,
-              cursor: "pointer", minHeight: 44
-            }}>Cancel</button>
-            <button onClick={handleSave} style={{
-              flex: 1, background: en.trim() ? "var(--lime)" : "var(--st)",
-              color: en.trim() ? "var(--for)" : "var(--ink3)", border: "none",
-              borderRadius: 10, padding: "10px 0", fontSize: ".82rem", fontWeight: 900,
-              cursor: en.trim() ? "pointer" : "default", minHeight: 44
-            }}>Save</button>
-          </div>
-        </div>
-      )}
-
-      {/* 3. Trophy Section — Mastered */}
-      {mastered.length > 0 && (
-        <div style={{
-          background: "linear-gradient(135deg, #1F3329 0%, #2a4a36 50%, #1F3329 100%)",
-          borderRadius: 16, padding: 16, marginBottom: 16
-        }}>
-          <div style={{
-            display: "flex", alignItems: "center", justifyContent: "space-between",
-            marginBottom: 12
-          }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <span style={{ fontSize: "1.2rem" }}>🏆</span>
-              <span style={{ color: "#fff", fontWeight: 800, fontSize: ".88rem" }}>Mastered</span>
+      <div style={{padding:"0 16px"}}>
+        {/* Add your own */}
+        {!showAddForm && !saved ? (
+          <button onClick={() => setShowAddForm(true)} style={{
+            width:"100%",padding:"14px 16px",background:"var(--lime)",
+            border:"none",borderRadius:12,cursor:"pointer",
+            fontSize:".84rem",fontWeight:800,color:"var(--for)",
+            marginTop:16,marginBottom:12,minHeight:48,textAlign:"center",
+            display:"flex",alignItems:"center",justifyContent:"center",gap:8,
+            boxShadow:"0 2px 8px rgba(196,240,0,.3)"
+          }}>✏️ Add your own word or phrase</button>
+        ) : saved ? (
+          <div style={{width:"100%",padding:"14px",background:"rgba(196,240,0,.1)",border:"2px solid var(--lime)",borderRadius:12,fontSize:".84rem",fontWeight:800,color:"var(--for)",marginTop:16,marginBottom:12,textAlign:"center",minHeight:48,display:"flex",alignItems:"center",justifyContent:"center"}}>Saved to your library!</div>
+        ) : (
+          <div style={{background:"var(--wh)",borderRadius:14,padding:16,border:"1.5px solid var(--st)",marginTop:16,marginBottom:12}}>
+            <input style={{width:"100%",background:"var(--cream)",border:"1.5px solid var(--st)",borderRadius:8,padding:"10px 12px",fontSize:".82rem",color:"var(--ink)",outline:"none",fontFamily:"inherit",marginBottom:8,minHeight:44,boxSizing:"border-box"}} placeholder="What do you want to say?" value={en} onChange={e => setEn(e.target.value)} />
+            <input style={{width:"100%",background:"var(--cream)",border:"1.5px solid var(--st)",borderRadius:8,padding:"10px 12px",fontSize:".82rem",color:"var(--ink)",outline:"none",fontFamily:LANG_CONFIG.fontFamily,marginBottom:8,minHeight:44,boxSizing:"border-box"}} placeholder="Chinese characters" value={cn} onChange={e => setCn(e.target.value)} />
+            <input style={{width:"100%",background:"var(--cream)",border:"1.5px solid var(--st)",borderRadius:8,padding:"10px 12px",fontSize:".82rem",color:"var(--plum)",fontStyle:"italic",outline:"none",fontFamily:"inherit",marginBottom:12,minHeight:44,boxSizing:"border-box"}} placeholder={romLabel} value={rom} onChange={e => setRom(e.target.value)} />
+            <div style={{display:"flex",gap:8}}>
+              <button onClick={()=>{setShowAddForm(false);setEn("");setRom("");setCn("");}} style={{flex:1,background:"var(--cream)",color:"var(--ink3)",border:"1.5px solid var(--st)",borderRadius:10,padding:"10px 0",fontSize:".82rem",fontWeight:700,cursor:"pointer",minHeight:44}}>Cancel</button>
+              <button onClick={handleSave} style={{flex:1,background:en.trim()?"var(--lime)":"var(--st)",color:en.trim()?"var(--for)":"var(--ink3)",border:"none",borderRadius:10,padding:"10px 0",fontSize:".82rem",fontWeight:900,cursor:en.trim()?"pointer":"default",minHeight:44}}>Save</button>
             </div>
-            <span style={{ color: "var(--lime)", fontSize: ".75rem", fontWeight: 700 }}>
-              {mastered.length} conquered
+          </div>
+        )}
+
+        {/* Mastered — collapsed toggle with trophy */}
+        {mastered.length > 0 && (
+          <div style={{background:"linear-gradient(135deg, #1F3329 0%, #2a4a36 50%, #1F3329 100%)",borderRadius:16,padding:"14px 16px",marginBottom:12,cursor:"pointer"}} onClick={()=>setMasteredOpen(o=>!o)}>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+              <div style={{display:"flex",alignItems:"center",gap:10}}>
+                <span style={{fontSize:"1.4rem"}}>🏆</span>
+                <div>
+                  <div style={{color:"#fff",fontWeight:800,fontSize:".88rem"}}>{mastered.length} Mastered!</div>
+                  <div style={{color:"var(--lime)",fontSize:".7rem",fontWeight:600,marginTop:1}}>You're crushing it — keep going!</div>
+                </div>
+              </div>
+              <span style={{color:"rgba(255,255,255,.5)",fontSize:"1.1rem",transition:"transform .2s",transform:masteredOpen?"rotate(180deg)":"rotate(0)"}}>&#9662;</span>
+            </div>
+            {masteredOpen && (
+              <div style={{marginTop:12}} onClick={e=>e.stopPropagation()}>
+                {mastered.map((s) => {
+                  const idx = items.indexOf(s);
+                  return (
+                    <div key={idx} style={{background:"rgba(255,255,255,.08)",borderRadius:10,padding:"10px 12px",marginBottom:6,display:"flex",alignItems:"center",gap:10}}>
+                      {canSpeak(s) && <button onClick={()=>speak(s.cn)} style={{width:32,height:32,borderRadius:"50%",border:"none",background:"rgba(196,240,0,.2)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontSize:".65rem",color:"var(--lime)",flexShrink:0}}>&#9654;</button>}
+                      <div style={{flex:1,minWidth:0}}>
+                        <div style={{fontSize:".78rem",fontWeight:700,color:"#fff",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{s.en||s.cn}</div>
+                        {s[romKey] && <div style={{fontSize:".65rem",color:"var(--lime)",fontStyle:"italic"}}>{s[romKey]}</div>}
+                        {s.cn && s.en && <div style={{fontSize:".72rem",color:"rgba(255,255,255,.5)"}}>{s.cn}</div>}
+                      </div>
+                      <button onClick={()=>toggleKnown(idx)} style={{background:"none",border:"1px solid rgba(255,255,255,.15)",color:"rgba(255,255,255,.5)",fontSize:".65rem",fontWeight:700,cursor:"pointer",padding:"6px 10px",borderRadius:8,flexShrink:0}}>Relearn</button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Control row — matches unit view ctrl-row */}
+        {stillLearning.length > 0 && (
+          <div className="ctrl-row">
+            <button className="play-all-btn" onClick={()=>startPlaylist(stillLearning.map(s=>({en:s.en||s.cn,cn:s.cn,jyut:s[romKey]||s.jyut||""})),"My Library")}>
+              <svg width="14" height="14" viewBox="0 0 18 18" fill="none"><path d="M4 2.5L15 9L4 15.5V2.5Z" fill="#fff"/></svg>
+              Play All
+            </button>
+            <button className="shuffle-btn" onClick={()=>{const shuffled=[...stillLearning].sort(()=>Math.random()-.5);startPlaylist(shuffled.map(s=>({en:s.en||s.cn,cn:s.cn,jyut:s[romKey]||s.jyut||""})),"My Library (Shuffled)");}}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/><line x1="4" y1="4" x2="9" y2="9"/></svg>
+              Shuffle
+            </button>
+            <span className="filter-chip" onClick={()=>setReadingMode(r=>!r)}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" style={{marginRight:4}}><path d="M4 6h16M4 12h16M4 18h10"/></svg>
+              {readingMode?"Chinese first":"English first"}
             </span>
           </div>
-          <div style={{
-            display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8
-          }}>
-            {mastered.map((s) => {
-              const idx = items.indexOf(s);
-              return (
-                <div key={idx} style={{
-                  background: "linear-gradient(135deg, #FAFFF0, #fff)",
-                  border: "2px solid rgba(122,170,0,.25)", borderRadius: 12,
-                  padding: 12, display: "flex", flexDirection: "column", gap: 4
-                }}>
-                  <div style={{
-                    display: "flex", alignItems: "center", justifyContent: "space-between"
-                  }}>
-                    <span style={{
-                      fontFamily: LANG_CONFIG.fontFamily, fontSize: "1rem",
-                      fontWeight: 700, color: "var(--ink)", lineHeight: 1.2
-                    }}>{s.cn || s.en}</span>
-                    {canSpeak(s) && (
-                      <button onClick={() => speak(s.cn)} style={{
-                        width: 36, height: 36, borderRadius: "50%", border: "none",
-                        background: "rgba(122,170,0,.15)", cursor: "pointer",
-                        display: "flex", alignItems: "center", justifyContent: "center",
-                        fontSize: ".7rem", color: "var(--for)", flexShrink: 0
-                      }}>&#9654;</button>
-                    )}
-                  </div>
-                  {s[romKey] && s[romKey] !== `(add ${romLabel.toLowerCase()})` && (
-                    <div style={{
-                      fontSize: ".72rem", color: "var(--plum)", fontStyle: "italic", fontWeight: 600
-                    }}>{s[romKey]}</div>
-                  )}
-                  <div style={{
-                    fontSize: ".68rem", color: "var(--ink3)", lineHeight: 1.3
-                  }}>{s.cn ? s.en : ""}</div>
-                  <button onClick={() => toggleKnown(idx)} style={{
-                    background: "none", border: "none", color: "var(--plum)",
-                    fontSize: ".72rem", fontWeight: 700, cursor: "pointer",
-                    padding: "8px 0", textAlign: "left", marginTop: 2, minHeight: 36
-                  }}>Relearn</button>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
+        )}
 
-      {/* 4. Shadow all bar — only when Still Learning items exist */}
-      {stillLearning.length > 0 && (
-        <div style={{
-          display: "flex", alignItems: "center", gap: 10, marginBottom: 12,
-          background: "var(--for)", borderRadius: 12, padding: "10px 14px"
-        }}>
-          <button onClick={() => {/* shadow all — future hook */}} style={{
-            width: 40, height: 40, borderRadius: "50%", background: "var(--lime)",
-            border: "none", cursor: "pointer", display: "flex", alignItems: "center",
-            justifyContent: "center", fontSize: ".9rem", color: "var(--for)",
-            fontWeight: 900, flexShrink: 0
-          }}>&#9654;</button>
-          <div style={{ flex: 1 }}>
-            <div style={{ color: "#fff", fontSize: ".78rem", fontWeight: 800 }}>Shadow all</div>
-            <div style={{ color: "rgba(255,255,255,.5)", fontSize: ".65rem" }}>
-              {stillLearning.length} phrase{stillLearning.length !== 1 ? "s" : ""}
+        {/* Phrases section */}
+        {slPhrases.length > 0 && <div style={{fontSize:".7rem",fontWeight:800,color:"var(--ink3)",letterSpacing:"1.5px",textTransform:"uppercase",marginBottom:8}}>PHRASES ({slPhrases.length})</div>}
+        {slPhrases.map(renderItem)}
+
+        {/* Vocabulary section */}
+        {slVocab.length > 0 && <div style={{fontSize:".7rem",fontWeight:800,color:"var(--ink3)",letterSpacing:"1.5px",textTransform:"uppercase",marginBottom:8,marginTop:slPhrases.length>0?16:0}}>VOCABULARY ({slVocab.length})</div>}
+        {slVocab.map(renderItem)}
+
+        {/* Empty state */}
+        {items.length === 0 && (
+          <div style={{textAlign:"center",padding:"48px 24px",color:"var(--ink3)"}}>
+            <div style={{fontSize:"2.5rem",marginBottom:12}}>📚</div>
+            <div style={{fontSize:".92rem",fontWeight:800,color:"var(--ink)",marginBottom:6}}>Your library is empty</div>
+            <div style={{fontSize:".78rem",lineHeight:1.6,marginBottom:20,maxWidth:260,margin:"0 auto 20px"}}>
+              Add words and phrases you hear in daily life. They'll become your top priority in practice.
             </div>
+            <button onClick={()=>setShowAddForm(true)} style={{background:"var(--lime)",color:"var(--for)",border:"none",borderRadius:12,padding:"12px 24px",fontSize:".84rem",fontWeight:900,cursor:"pointer",minHeight:48}}>+ Add your first phrase</button>
           </div>
-          <button onClick={() => {/* shuffle shadow — future hook */}} style={{
-            background: "rgba(255,255,255,.1)", border: "none", borderRadius: 999,
-            padding: "10px 14px", color: "rgba(255,255,255,.7)", fontSize: ".72rem",
-            fontWeight: 700, cursor: "pointer", minHeight: 44
-          }}>🔀 Shuffle</button>
-        </div>
-      )}
+        )}
+      </div>
 
-      {/* 5. Still Learning section header */}
-      {stillLearning.length > 0 && (
-        <div style={{
-          fontSize: ".7rem", fontWeight: 800, color: "var(--ink3)",
-          letterSpacing: "1.5px", textTransform: "uppercase", marginBottom: 8
-        }}>STILL LEARNING ({stillLearning.length})</div>
-      )}
-
-      {/* 6. Still Learning track list — expandable like lesson view */}
-      {stillLearning.map((s) => {
-        const idx = items.indexOf(s);
-        const isExp = expandedIdx === idx;
-        const gloss = canSpeak(s) ? getAutoGloss(s) : [];
-        return (
-          <div key={idx} className={"ph-item" + (isExp ? " expanded" : "")} onClick={() => setExpandedIdx(isExp ? null : idx)}>
-            <div className="ph-row">
-              <button className="ph-play" onClick={e => { e.stopPropagation(); if (canSpeak(s)) speak(s.cn); }}>
-                <svg width="10" height="12" viewBox="0 0 10 12" fill="none"><path d="M0 0L10 6L0 12V0Z" fill="#fff"/></svg>
-              </button>
-              <div className="ph-text">
-                <div className="ph-eng">{s.en}<div className="ph-chev">&#9662;</div></div>
-                {s[romKey] && s[romKey] !== `(add ${romLabel.toLowerCase()})` && (
-                  <div className="ph-jyut">{s[romKey]}</div>
-                )}
-                {s.cn && s.cn.trim() !== "" && (
-                  <div className="ph-chi">{s.cn}</div>
-                )}
-              </div>
-            </div>
-            <div className="ph-detail">
-              {s.tag && <div className="ph-context">From: {s.tag}</div>}
-              {gloss.length > 0 && <div className="gloss-row">
-                {gloss.filter(g => g.cn).map((g, gi) => (
-                  <div className="gloss-chip" key={gi} onClick={e => { e.stopPropagation(); speak(g.cn); }}>
-                    <span className="gloss-chi">{g.cn}</span>
-                    <span className="gloss-jyut">{g.jy}</span>
-                    {g.en && <span className="gloss-eng">{g.en}</span>}
-                  </div>
-                ))}
-              </div>}
-              <div className="ph-actions">
-                <button className="ph-action-btn" onClick={e => { e.stopPropagation(); toggleKnown(idx); }}>
-                  {s.known ? "Move to Still Learning" : "I know this!"}
-                </button>
-                <button className="ph-action-btn shadow-btn" onClick={e => { e.stopPropagation(); removeItem(idx); }}>Remove</button>
-              </div>
-            </div>
-          </div>
-        );
-      })}
-
-      {/* 7. Empty state */}
-      {items.length === 0 && (
-        <div style={{ textAlign: "center", padding: "48px 24px", color: "var(--ink3)" }}>
-          <div style={{ fontSize: "2.5rem", marginBottom: 12 }}>📚</div>
-          <div style={{ fontSize: ".92rem", fontWeight: 800, color: "var(--ink)", marginBottom: 6 }}>Your library is empty</div>
-          <div style={{ fontSize: ".78rem", lineHeight: 1.6, marginBottom: 20, maxWidth: 260, margin: "0 auto 20px" }}>
-            Add words and phrases you hear in daily life. They'll become your top priority in practice.
-          </div>
-          <button onClick={() => setShowAddForm(true)} style={{
-            background: "var(--lime)", color: "var(--for)", border: "none",
-            borderRadius: 12, padding: "12px 24px", fontSize: ".84rem",
-            fontWeight: 900, cursor: "pointer", minHeight: 48
-          }}>+ Add your first phrase</button>
-        </div>
-      )}
+      {/* Mastery confirmation + celebration */}
+      {masteryConfirm && <MasteryConfirmSheet phrase={masteryConfirm} onCancel={()=>setMasteryConfirm(null)} onMastered={()=>handleLibMastery(masteryConfirm._idx)} />}
+      {showConfetti && <ConfettiBurst />}
+      {toastMsg && <div className="mastery-toast">🎉 {toastMsg}</div>}
     </div>
   );
 }
 
 // ---- PRACTICE TAB (Phase 2f) ----
-function PracticeTab({ progress, upd, settings, library, practiceCount, setPracticeCount }) {
+function PracticeTab({ progress, upd, settings, library, practiceCount, setPracticeCount, autoLaunch }) {
   const [showQuiz, setShowQuiz] = useState(false);
+  const [showPronun, setShowPronun] = useState(false);
   const [showLaunch, setShowLaunch] = useState(false);
+  const [showLesson, setShowLesson] = useState(false);
+
+  // Auto-launch Daily Practice from "Start Today's Lesson"
+  useEffect(() => {
+    if (autoLaunch === "daily") setShowLaunch(true);
+  }, [autoLaunch]);
   const stats = useMemo(() => getStats(progress), [progress]);
   const mastered = Object.keys(progress.phrases || {}).filter(k => (progress.phrases || {})[k]).length;
   const totalPhrases = UNITS.reduce((s, u) => s + u.phrases.length, 0);
@@ -3318,7 +3461,15 @@ function PracticeTab({ progress, upd, settings, library, practiceCount, setPract
     return count;
   }, [progress]);
 
-  if (showQuiz) return <QuizTab progress={progress} upd={upd} />;
+  if (showLesson) return <LessonMode progress={progress} upd={upd} profile="" settings={settings} onComplete={() => {
+    const log = [...(progress.lessonLog||[]), {date:Date.now(), mins:30}];
+    upd("lessonLog", log);
+    setShowLesson(false);
+  }} onQuit={() => setShowLesson(false)} />;
+
+  if (showPronun) return <QuizTab progress={progress} upd={upd} startMode="pronunciation" onBack={()=>setShowPronun(false)} />;
+
+  if (showQuiz) return <QuizTab progress={progress} upd={upd} startMode="recall" onBack={()=>setShowQuiz(false)} />;
 
   // 6-phase Daily Practice launch screen
   if (showLaunch) {
@@ -3362,11 +3513,8 @@ function PracticeTab({ progress, upd, settings, library, practiceCount, setPract
 
         {/* Begin button */}
         <button onClick={() => {
-          const next = practiceCount + 1;
-          setPracticeCount(next);
-          localStorage.setItem(LANG_CONFIG.id + '-practice-count', next);
           setShowLaunch(false);
-          setShowQuiz(true);
+          setShowLesson(true);
         }} style={{ marginTop: 24, marginBottom: 40, background: "var(--lime)", color: "var(--for)", border: "none", borderRadius: 999, padding: "16px 48px", fontSize: ".92rem", fontWeight: 900, cursor: "pointer", minHeight: 56, boxShadow: "0 4px 20px rgba(196,240,0,.3)" }}>
           ▶ Begin practice
         </button>
@@ -3375,56 +3523,77 @@ function PracticeTab({ progress, upd, settings, library, practiceCount, setPract
   }
 
   return (
-    <div className="mc">
-      <div className="pt">Practice & Quiz</div>
-      <div className="ps">Build your skills with structured practice or test what you know.</div>
-
-      {/* Daily Practice card — dark green, recommended */}
-      <div style={{ background: "var(--for)", borderRadius: 16, padding: 20, marginBottom: 12, cursor: "pointer" }} onClick={() => setShowLaunch(true)}>
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <div style={{ fontSize: "2rem" }}>🎧</div>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontSize: ".92rem", fontWeight: 900, color: "#fff", marginBottom: 2 }}>Daily Practice</div>
-            <div style={{ fontSize: ".72rem", color: "rgba(255,255,255,.55)", lineHeight: 1.4 }}>A full 30-minute session with warm-up, new phrases, shadowing, review, and quiz.</div>
+    <div style={{paddingBottom:80}}>
+      {/* Header with gradient — matches Home */}
+      <div style={{position:"relative",overflow:"hidden",padding:"40px 20px 24px"}}>
+        <div style={{position:"absolute",inset:0,background:"linear-gradient(135deg,#1F3329 0%,#2a5a3a 40%,#1A1F3D 100%)",opacity:.9}} />
+        <div style={{position:"absolute",inset:0,background:"radial-gradient(ellipse at 80% 20%,rgba(196,240,0,.12) 0%,transparent 50%)"}} />
+        <div style={{position:"relative",zIndex:1}}>
+          <div style={{fontSize:"1.2rem",fontWeight:900,color:"#fff",marginBottom:4}}>Practice & Quiz</div>
+          <div style={{fontSize:".82rem",color:"rgba(255,255,255,.75)",lineHeight:1.4}}>Build your skills with structured practice.</div>
+          {/* Stats row */}
+          <div style={{display:"flex",gap:12,marginTop:16}}>
+            <div style={{flex:1,background:"rgba(255,255,255,.1)",borderRadius:12,padding:"12px 0",textAlign:"center"}}>
+              <div style={{fontSize:"1.2rem",fontWeight:900,color:"var(--lime)"}}>{mastered}</div>
+              <div style={{fontSize:".65rem",fontWeight:700,color:"rgba(255,255,255,.7)",textTransform:"uppercase",letterSpacing:".5px"}}>Mastered</div>
+            </div>
+            <div style={{flex:1,background:"rgba(255,255,255,.1)",borderRadius:12,padding:"12px 0",textAlign:"center"}}>
+              <div style={{fontSize:"1.2rem",fontWeight:900,color:"var(--lime)"}}>{practicing}</div>
+              <div style={{fontSize:".65rem",fontWeight:700,color:"rgba(255,255,255,.7)",textTransform:"uppercase",letterSpacing:".5px"}}>Practicing</div>
+            </div>
+            <div style={{flex:1,background:"rgba(255,255,255,.1)",borderRadius:12,padding:"12px 0",textAlign:"center"}}>
+              <div style={{fontSize:"1.2rem",fontWeight:900,color:"var(--lime)"}}>{new Set((progress.lessonLog||[]).map(l=>new Date(l.date).toDateString())).size}</div>
+              <div style={{fontSize:".65rem",fontWeight:700,color:"rgba(255,255,255,.7)",textTransform:"uppercase",letterSpacing:".5px"}}>Practice Days</div>
+            </div>
           </div>
-          <div style={{ fontSize: "1.2rem", color: "var(--lime)" }}>&#8250;</div>
-        </div>
-        <div style={{ display: "flex", gap: 6, marginTop: 10 }}>
-          <span style={{ fontSize: ".62rem", fontWeight: 700, background: "rgba(255,255,255,.12)", color: "rgba(255,255,255,.6)", padding: "3px 8px", borderRadius: 999 }}>30 min</span>
-          <span style={{ fontSize: ".62rem", fontWeight: 700, background: "rgba(196,240,0,.15)", color: "var(--lime)", padding: "3px 8px", borderRadius: 999 }}>Recommended</span>
-        </div>
-      </div>
-
-      {/* Quick Quiz card — white */}
-      <div style={{ background: "var(--wh)", borderRadius: 16, padding: 20, marginBottom: 12, border: "1.5px solid var(--st)", cursor: "pointer" }} onClick={() => setShowQuiz(true)}>
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <div style={{ fontSize: "2rem" }}>🧠</div>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontSize: ".92rem", fontWeight: 900, color: "var(--ink)", marginBottom: 2 }}>Quick Quiz</div>
-            <div style={{ fontSize: ".72rem", color: "var(--ink3)", lineHeight: 1.4 }}>Test your recall on 10 items from your library and learned phrases.</div>
-          </div>
-          <div style={{ fontSize: "1.2rem", color: "var(--ink3)" }}>&#8250;</div>
-        </div>
-        <div style={{ display: "flex", gap: 6, marginTop: 10 }}>
-          <span style={{ fontSize: ".62rem", fontWeight: 700, background: "var(--cream)", color: "var(--ink3)", padding: "3px 8px", borderRadius: 999 }}>5 min</span>
-          <span style={{ fontSize: ".62rem", fontWeight: 700, background: "var(--cream)", color: "var(--ink3)", padding: "3px 8px", borderRadius: 999 }}>{quizAvailable} items available</span>
         </div>
       </div>
 
-      {/* Stats bar — Mastered | Practicing | Sessions */}
-      <div style={{ background: "var(--cream)", borderRadius: 14, padding: 16, marginTop: 8 }}>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
-          <div style={{ textAlign: "center" }}>
-            <div style={{ fontSize: "1.3rem", fontWeight: 900, color: "var(--for)" }}>{mastered}</div>
-            <div style={{ fontSize: ".62rem", fontWeight: 700, color: "var(--ink3)" }}>Mastered</div>
+      <div style={{padding:"0 16px"}}>
+        {/* Daily Practice card */}
+        <div style={{ background:"var(--for)", borderRadius:16, padding:20, marginBottom:12, cursor:"pointer", marginTop:16 }} onClick={() => setShowLaunch(true)}>
+          <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+            <div style={{width:48,height:48,borderRadius:12,background:"rgba(196,240,0,.15)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1.5rem",flexShrink:0}}>🎧</div>
+            <div style={{ flex:1 }}>
+              <div style={{ fontSize:".92rem", fontWeight:900, color:"#fff", marginBottom:2 }}>Daily Practice</div>
+              <div style={{ fontSize:".76rem", color:"rgba(255,255,255,.75)", lineHeight:1.4 }}>Warm-up, new phrases, shadowing, review & quiz.</div>
+            </div>
+            <div style={{ fontSize:"1.2rem", color:"var(--lime)" }}>&#8250;</div>
           </div>
-          <div style={{ textAlign: "center" }}>
-            <div style={{ fontSize: "1.3rem", fontWeight: 900, color: "var(--for)" }}>{practicing}</div>
-            <div style={{ fontSize: ".62rem", fontWeight: 700, color: "var(--ink3)" }}>Practicing</div>
+          <div style={{ display:"flex", gap:6, marginTop:10 }}>
+            <span style={{ fontSize:".65rem", fontWeight:700, background:"rgba(255,255,255,.12)", color:"rgba(255,255,255,.8)", padding:"4px 10px", borderRadius:999 }}>30 min</span>
+            <span style={{ fontSize:".65rem", fontWeight:700, background:"rgba(196,240,0,.15)", color:"var(--lime)", padding:"4px 10px", borderRadius:999 }}>Recommended</span>
           </div>
-          <div style={{ textAlign: "center" }}>
-            <div style={{ fontSize: "1.3rem", fontWeight: 900, color: "var(--for)" }}>{practiceCount}</div>
-            <div style={{ fontSize: ".62rem", fontWeight: 700, color: "var(--ink3)" }}>Sessions</div>
+        </div>
+
+        {/* Pronunciation Practice card */}
+        <div style={{ background:"linear-gradient(135deg, #3D2A1A 0%, #2A1F15 100%)", borderRadius:16, padding:20, marginBottom:12, cursor:"pointer" }} onClick={() => setShowPronun(true)}>
+          <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+            <div style={{width:48,height:48,borderRadius:12,background:"rgba(232,160,64,.15)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1.5rem",flexShrink:0}}>🎙</div>
+            <div style={{ flex:1 }}>
+              <div style={{ fontSize:".92rem", fontWeight:900, color:"#fff", marginBottom:2 }}>Pronunciation Practice</div>
+              <div style={{ fontSize:".76rem", color:"rgba(255,255,255,.75)", lineHeight:1.4 }}>Practise saying phrases out loud and get AI scores.</div>
+            </div>
+            <div style={{ fontSize:"1.2rem", color:"rgba(255,200,120,.8)" }}>&#8250;</div>
+          </div>
+          <div style={{ display:"flex", gap:6, marginTop:10 }}>
+            <span style={{ fontSize:".65rem", fontWeight:700, background:"rgba(255,255,255,.1)", color:"rgba(255,255,255,.8)", padding:"4px 10px", borderRadius:999 }}>Pick any units</span>
+          </div>
+        </div>
+
+        {/* Quick Quiz card */}
+        <div style={{ background:quizAvailable>=3?"linear-gradient(135deg, #2D2545 0%, #1A1F3D 100%)":"#E8E5E0", borderRadius:16, padding:20, cursor:quizAvailable>=3?"pointer":"default", border:"none" }} onClick={() => { if(quizAvailable>=3) setShowQuiz(true); }}>
+          <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+            <div style={{width:48,height:48,borderRadius:12,background:quizAvailable>=3?"rgba(143,106,232,.2)":"rgba(0,0,0,.06)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1.5rem",flexShrink:0}}>{quizAvailable>=3?"🧠":"🔒"}</div>
+            <div style={{ flex:1 }}>
+              <div style={{ fontSize:".92rem", fontWeight:900, color:quizAvailable>=3?"#fff":"var(--ink)", marginBottom:2 }}>Quick Quiz</div>
+              <div style={{ fontSize:".76rem", color:quizAvailable>=3?"rgba(255,255,255,.75)":"var(--ink3)", lineHeight:1.4 }}>{quizAvailable>=3?"Test your recall on 10 items from your library.":"Mark at least 3 phrases as known to unlock."}</div>
+            </div>
+            {quizAvailable>=3 && <div style={{ fontSize:"1.2rem", color:"rgba(179,153,255,.8)" }}>&#8250;</div>}
+          </div>
+          <div style={{ display:"flex", gap:6, marginTop:10 }}>
+            <span style={{ fontSize:".65rem", fontWeight:700, background:quizAvailable>=3?"rgba(255,255,255,.1)":"rgba(0,0,0,.06)", color:quizAvailable>=3?"rgba(255,255,255,.8)":"var(--ink3)", padding:"4px 10px", borderRadius:999 }}>5 min</span>
+            <span style={{ fontSize:".65rem", fontWeight:700, background:quizAvailable>=3?"rgba(143,106,232,.2)":"rgba(0,0,0,.06)", color:quizAvailable>=3?"rgba(179,153,255,.9)":"var(--ink3)", padding:"4px 10px", borderRadius:999 }}>{quizAvailable>=3?quizAvailable+" items available":"🔒 "+quizAvailable+"/3 needed"}</span>
           </div>
         </div>
       </div>
@@ -3471,7 +3640,7 @@ function TodayTab({ profile, progress, upd, markReviewed, setTab, setSelUnit, st
       <div className="comp-s">This won't count toward your total.</div>
       <div style={{display:"flex",gap:8}}>
         <button className="comp-btn" style={{background:"rgba(255,255,255,.1)",color:"#fff"}} onClick={()=>setConfirmQuit(false)}>Keep going</button>
-        <button className="comp-btn" style={{background:"var(--cor)"}} onClick={()=>{setConfirmQuit(false);setInLesson(false);trackEvent('lesson_abandoned');}}>Quit lesson</button>
+        <button className="comp-btn" style={{background:"var(--cor)"}} onClick={()=>{setConfirmQuit(false);setInLesson(false);}}>Quit lesson</button>
       </div>
     </div>
   );
@@ -3811,8 +3980,8 @@ function PhrasesTab({ progress, upd, selUnit, setSelUnit, settings }) {
               opacity:isComplete&&!isActive?0.75:1
             }}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
-                <span style={{fontSize:"1.3rem"}}>{isComplete?"✅":(!isPremium&&!FREE_UNIT_IDS.includes(u.id))?"🔒":topicIcons[u.id]||"📖"}</span>
-                <span style={{fontSize:".72rem",fontWeight:800,color:isComplete?"var(--ld)":"var(--ink3)"}}>{isComplete?"Complete!":(!isPremium&&!FREE_UNIT_IDS.includes(u.id))?"Premium":` ${k}/${u.phrases.length}`}</span>
+                <span style={{fontSize:"1.3rem"}}>{isComplete?"✅":topicIcons[u.id]||"📖"}</span>
+                <span style={{fontSize:".72rem",fontWeight:800,color:isComplete?"var(--ld)":"var(--ink3)"}}>{isComplete?"Complete!":` ${k}/${u.phrases.length}`}</span>
               </div>
               <div style={{fontSize:".82rem",fontWeight:800,color:isComplete?"var(--ld)":"var(--ink)",lineHeight:1.2,marginBottom:5}}>{u.title}</div>
               <div style={{height:4,background:"var(--st)",borderRadius:2,overflow:"hidden"}}><div style={{height:"100%",width:pct+"%",background:isComplete?"var(--ld)":"var(--lime)",borderRadius:2,transition:"width .3s"}} /></div>
@@ -3910,8 +4079,8 @@ function Confetti({ count = 20 }) {
 }
 
 // ---- QUICK CHECK SHEET ----
-function QuickCheckSheet({ phrase, phraseKey, progress, upd, onClose }) {
-  const [step, setStep] = useState("prompt");
+function QuickCheckSheet({ phrase, phraseKey, progress, upd, onClose, skipPrompt }) {
+  const [step, setStep] = useState(skipPrompt ? "quiz" : "prompt");
   const [revealed, setRevealed] = useState(false);
   const closeTimer = useRef(null);
 
@@ -4034,13 +4203,13 @@ function PhraseCard({ ph, unit, upd, setShadow, readingMode, progress }) {
           {readingMode ? (
             <>
               <div style={{ fontSize: ".88rem", fontWeight: 700, color: "var(--ink)", lineHeight: 1.3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{ph.cn}</div>
-              <div style={{ fontSize: ".75rem", fontStyle: "italic", color: "var(--plum)", lineHeight: 1.3 }}><JyutpingTone text={getRom(ph)} /></div>
+              <div style={{ fontSize: ".75rem", fontStyle: "italic", color: "var(--plum)", lineHeight: 1.3 }}><JyutpingTone text={ph.jyut} /></div>
               <div style={{ fontSize: ".72rem", color: "var(--ink3)", lineHeight: 1.3 }}>{ph.en}</div>
             </>
           ) : (
             <>
               <div style={{ fontSize: ".85rem", fontWeight: 700, color: "var(--ink)", lineHeight: 1.3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{ph.en}</div>
-              <div style={{ fontSize: ".75rem", fontStyle: "italic", color: "var(--plum)", lineHeight: 1.3 }}><JyutpingTone text={getRom(ph)} /></div>
+              <div style={{ fontSize: ".75rem", fontStyle: "italic", color: "var(--plum)", lineHeight: 1.3 }}><JyutpingTone text={ph.jyut} /></div>
               <div style={{ fontSize: ".82rem", color: "var(--ink3)", lineHeight: 1.3 }}>{ph.cn}</div>
             </>
           )}
@@ -4095,7 +4264,7 @@ function PhraseCard({ ph, unit, upd, setShadow, readingMode, progress }) {
             {/* Preview */}
             <div style={{ marginBottom: 12, paddingBottom: 12, borderBottom: "1px solid var(--st)" }}>
               <div style={{ fontSize: ".85rem", fontWeight: 700, color: "var(--ink)", marginBottom: 2 }}>{ph.en}</div>
-              <div style={{ fontSize: ".75rem", fontStyle: "italic", color: "var(--plum)" }}><JyutpingTone text={getRom(ph)} /></div>
+              <div style={{ fontSize: ".75rem", fontStyle: "italic", color: "var(--plum)" }}><JyutpingTone text={ph.jyut} /></div>
             </div>
             <button className="bottom-sheet-opt" onClick={() => { setMenuOpen(false); setShadow(ph.origIdx); }}>🎙 Shadow this phrase</button>
             <button className="bottom-sheet-opt" onClick={() => { setMenuOpen(false); ph.known ? upd(`phrases.${unit.id}-${ph.origIdx}`, false) : setQuickCheck(true); }}>
@@ -4153,7 +4322,10 @@ function ShadowMode({ unit, progress, upd, settings, onClose, startIdx=0, single
   const realIdx = single ? startIdx : idx;
   const total = phrases.length;
   const isKn = (progress.phrases||{})[`${unit.id}-${realIdx}`];
-  const gaps = { slow: [4000,4500], normal: [2800,3200], fast: [1500,1800] };
+  // Scale gaps by phrase length — longer phrases get more time
+  const phraseLen = ph ? (ph.cn || "").length : 4;
+  const lenBonus = Math.max(0, (phraseLen - 4) * 400); // +400ms per char beyond 4
+  const gaps = { slow: [4000+lenBonus,5000+lenBonus], normal: [2800+lenBonus,3500+lenBonus], fast: [1500+lenBonus,2000+lenBonus] };
 
   const clear = () => { if(timer.current)clearTimeout(timer.current); };
   const playingRef = useRef(playing);
@@ -4198,21 +4370,7 @@ function ShadowMode({ unit, progress, upd, settings, onClose, startIdx=0, single
     if (blob && ph) {
       try {
         const result = await scorePronunciation(blob, ph.cn, LANG_CONFIG.id);
-        // Build chars array from API response
-        let chars = [];
-        if (result.expectedJyutping && result.transcribedJyutping) {
-          const expSyls = result.expectedJyutping.trim().split(/\s+/);
-          const yourSyls = result.transcribedJyutping.trim().split(/\s+/);
-          const cnChars = ph.cn.replace(/[，,。！？!?\s]/g, "").split("");
-          for (let i = 0; i < Math.max(expSyls.length, cnChars.length); i++) {
-            chars.push({
-              cn: cnChars[i] || "",
-              e: expSyls[i] || "",
-              y: yourSyls[i] || "",
-              m: expSyls[i] === yourSyls[i] ? 1 : 0
-            });
-          }
-        }
+        const chars = parseScoreChars(result, ph.cn);
         setScoreResult({ score: result.score, passed: result.passed, chars, phrase: ph });
       } catch(e) {
         console.error("Scoring error:", e);
@@ -4265,12 +4423,12 @@ function ShadowMode({ unit, progress, upd, settings, onClose, startIdx=0, single
 
         {/* Chinese + Jyutping with eye toggle */}
         {showCn ? (<>
-          <div className="sh-jy"><JyutpingTone text={getRom(ph)} /></div>
+          <div className="sh-jy"><JyutpingTone text={ph.jyut} /></div>
           <div className="sh-cn">{ph.cn}</div>
         </>) : (
           <div className="sh-peek" onClick={doPeek}>
             {peeking ? (<>
-              <div className="sh-jy" style={{marginBottom:4}}><JyutpingTone text={getRom(ph)} /></div>
+              <div className="sh-jy" style={{marginBottom:4}}><JyutpingTone text={ph.jyut} /></div>
               <div className="sh-cn" style={{marginBottom:0}}>{ph.cn}</div>
             </>) : (
               <div className="sh-peek-text">Tap to peek</div>
@@ -4375,7 +4533,7 @@ function VocabTab({ progress, upd, startPlaylist }) {
             <div className={`acc-hd ${isOpen?"open":""}`} onClick={()=>setOpenCat(isOpen?null:cat.id)}>
               <div><span className="acc-ti">{cat.label}</span></div>
               <div style={{display:"flex",alignItems:"center",gap:8}}>
-                <button style={{background:"var(--for)",color:"var(--lime)",border:"none",borderRadius:999,padding:"10px 16px",fontSize:".72rem",fontWeight:800,cursor:"pointer",minHeight:44,minWidth:44,display:"flex",alignItems:"center",gap:4}} onClick={e=>{e.stopPropagation();playCategory(cat)}}>▶ Listen</button>
+                <button style={{background:"var(--for)",color:"var(--lime)",border:"none",borderRadius:999,padding:"6px 12px",fontSize:".72rem",fontWeight:800,cursor:"pointer",minHeight:32,display:"flex",alignItems:"center",gap:4}} onClick={e=>{e.stopPropagation();playCategory(cat)}}>▶ Listen</button>
                 <span className="acc-ct">{kn}/{words.length}</span>
                 <span className={`acc-chv ${isOpen?"open":""}`}>▼</span>
               </div>
@@ -4392,7 +4550,7 @@ function VocabTab({ progress, upd, startPlaylist }) {
                       <div className="wc-ft">
                         <div style={{display:"flex",alignItems:"center",gap:4}}>
                           <button className="wc-pl" onClick={()=>speak(w.cn)}>▶</button>
-                          <button className="wc-pl" style={{width:"auto",borderRadius:999,padding:"10px 14px",fontSize:".65rem",fontWeight:700,minHeight:44}} onClick={()=>{speak(w.cn);setTimeout(()=>speak(w.cn),2000);setTimeout(()=>speak(w.cn),4000)}}>▶▶▶</button>
+                          <button className="wc-pl" style={{width:"auto",borderRadius:999,padding:"4px 10px",fontSize:".65rem",fontWeight:700}} onClick={()=>{speak(w.cn);setTimeout(()=>speak(w.cn),2000);setTimeout(()=>speak(w.cn),4000)}}>▶▶▶</button>
                         </div>
                         <button className={`wc-ik ${ik?"kn":"un"}`} onClick={()=>upd(`vocab.${w.jyut}`,!ik)}>{ik?"✓":"I know this!"}</button>
                       </div>
@@ -4696,6 +4854,7 @@ function PronunciationScore({ score, chars, phrase, onRetry, onNext, onClose }) 
       <div style={{width:"100%",maxWidth:420,background:"var(--wh)",borderRadius:24,overflow:"hidden",boxShadow:"0 8px 40px rgba(0,0,0,.15)"}}>
         <div style={{padding:"24px 20px 18px",textAlign:"center",position:"relative",overflow:"hidden",
           background:type==="perfect"?"var(--for)":type==="good"?"#1a3a2a":"#3a2020"}}>
+          <button onClick={onClose} style={{position:"absolute",top:12,right:12,width:36,height:36,borderRadius:"50%",border:"none",background:"rgba(255,255,255,.15)",color:"#fff",fontSize:"1.1rem",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1}}>✕</button>
           <div style={{width:110,height:110,margin:"0 auto 10px",position:"relative"}}>
             <svg viewBox="0 0 140 140" style={{width:"100%",height:"100%"}}>
               <circle cx="70" cy="70" r="58" fill="none" stroke="rgba(255,255,255,.1)" strokeWidth="8" />
@@ -4716,7 +4875,7 @@ function PronunciationScore({ score, chars, phrase, onRetry, onNext, onClose }) 
 
         <div style={{padding:"16px 20px 8px"}}>
           <div style={{fontFamily:"${LANG_CONFIG.fontFamily.replace(/'/g, '')}",fontSize:"1.3rem",fontWeight:900,color:"var(--ink)",marginBottom:2}}>{phrase?.cn}</div>
-          <div style={{fontSize:".75rem",color:"var(--plum)",fontWeight:600,fontStyle:"italic",marginBottom:2}}>{phrase?.jyut || phrase?.jy}</div>
+          <div style={{fontSize:".75rem",color:"var(--plum)",fontWeight:600,fontStyle:"italic",marginBottom:2}}>{phrase?.[LANG_CONFIG.romanizationKey] || phrase?.jyut || phrase?.jy}</div>
           <div style={{fontSize:".7rem",color:"var(--ink3)",marginBottom:12}}>{phrase?.en}</div>
 
           {chars && chars.length > 0 && <>
@@ -4725,11 +4884,11 @@ function PronunciationScore({ score, chars, phrase, onRetry, onNext, onClose }) 
               <div key={ci} style={{marginBottom:8}}>
                 <div style={{display:"flex",gap:2}}>
                   <div style={{width:28}}></div>
-                  {ch.map((c,i) => <div key={i} style={{flex:1,textAlign:"center",fontFamily:"${LANG_CONFIG.fontFamily.replace(/'/g, '')}",fontSize:"1.1rem",fontWeight:900,color:"var(--ink)",cursor:"pointer",padding:"2px 0"}} onClick={()=>googleTTS(c.cn,"yue-HK")}>{c.cn}</div>)}
+                  {ch.map((c,i) => <div key={i} style={{flex:1,textAlign:"center",fontFamily:"${LANG_CONFIG.fontFamily.replace(/'/g, '')}",fontSize:"1.1rem",fontWeight:900,color:"var(--ink)",cursor:"pointer",padding:"2px 0"}} onClick={()=>googleTTS(c.cn,LANG_CONFIG.id==="mandarin"?"zh-CN":"yue-HK")}>{c.cn}</div>)}
                 </div>
                 <div style={{display:"flex",gap:2,marginTop:2}}>
                   <div style={{width:28,fontSize:".42rem",fontWeight:700,color:"var(--ink3)",display:"flex",alignItems:"center"}}>EXP</div>
-                  {ch.map((c,i) => <div key={i} style={{flex:1,textAlign:"center"}}><span style={{display:"inline-block",fontSize:".58rem",fontWeight:700,padding:"3px 5px",borderRadius:6,background:"rgba(143,106,232,.08)",color:"var(--plum)",cursor:"pointer"}} onClick={()=>googleTTS(c.cn,"yue-HK")}>{c.expected || c.e}</span></div>)}
+                  {ch.map((c,i) => <div key={i} style={{flex:1,textAlign:"center"}}><span style={{display:"inline-block",fontSize:".58rem",fontWeight:700,padding:"3px 5px",borderRadius:6,background:"rgba(143,106,232,.08)",color:"var(--plum)",cursor:"pointer"}} onClick={()=>googleTTS(c.cn,LANG_CONFIG.id==="mandarin"?"zh-CN":"yue-HK")}>{c.expected || c.e}</span></div>)}
                 </div>
                 <div style={{display:"flex",gap:2,marginTop:2}}>
                   <div style={{width:28,fontSize:".42rem",fontWeight:700,color:"var(--ink3)",display:"flex",alignItems:"center"}}>YOU</div>
@@ -4739,7 +4898,7 @@ function PronunciationScore({ score, chars, phrase, onRetry, onNext, onClose }) 
                       background:match?"rgba(196,240,0,.12)":"rgba(240,90,58,.1)",
                       color:match?"var(--ld)":"var(--cor)",
                       border:match?"1.5px solid rgba(196,240,0,.3)":"1.5px solid rgba(240,90,58,.25)"
-                    }} onClick={()=>googleTTS(c.cn,"yue-HK")}>{c.yours || c.y}</span></div>;
+                    }} onClick={()=>googleTTS(c.cn,LANG_CONFIG.id==="mandarin"?"zh-CN":"yue-HK")}>{c.yours || c.y}</span></div>;
                   })}
                 </div>
                 <div style={{display:"flex",gap:2,marginTop:2}}>
@@ -4835,7 +4994,7 @@ function VoiceOnboarding({ onComplete }) {
 }
 
 // ---- SETTINGS (redesigned) ----
-function SettingsTab({ settings, updSettings, isPremium, setShowPremiumGate }) {
+function SettingsTab({ settings, updSettings }) {
   const [playing, setPlaying] = useState(null);
   const [confirmReset, setConfirmReset] = useState(false);
   const [dlState, setDlState] = useState(() => localStorage.getItem(LANG_CONFIG.audioDownloadedKey) === "true" ? "done" : "idle");
@@ -4927,7 +5086,7 @@ function SettingsTab({ settings, updSettings, isPremium, setShowPremiumGate }) {
               <div style={{flex:1}}>
                 <div style={{fontSize:".75rem",fontWeight:700,color:"var(--ink)"}}>{v.label}</div>
               </div>
-              <button onClick={(e)=>{e.stopPropagation();previewEnVoice(v.id);}} style={{background:"var(--for)",color:"var(--lime)",border:"none",borderRadius:999,padding:"12px 16px",fontSize:".68rem",fontWeight:700,cursor:"pointer",minWidth:44,minHeight:44,display:"flex",alignItems:"center",justifyContent:"center"}}>{playing===v.id?"...":"▶"}</button>
+              <button onClick={(e)=>{e.stopPropagation();previewEnVoice(v.id);}} style={{background:"var(--for)",color:"var(--lime)",border:"none",borderRadius:999,padding:"6px 12px",fontSize:".62rem",fontWeight:700,cursor:"pointer"}}>{playing===v.id?"...":"▶"}</button>
             </div>
           ))}
         </div>
@@ -4944,7 +5103,7 @@ function SettingsTab({ settings, updSettings, isPremium, setShowPremiumGate }) {
               <div style={{flex:1}}>
                 <div style={{fontSize:".75rem",fontWeight:700,color:"var(--ink)"}}>{v.label}</div>
               </div>
-              <button onClick={(e)=>{e.stopPropagation();previewCnVoice(v.id);}} style={{background:"var(--for)",color:"var(--lime)",border:"none",borderRadius:999,padding:"12px 16px",fontSize:".68rem",fontWeight:700,cursor:"pointer",minWidth:44,minHeight:44,display:"flex",alignItems:"center",justifyContent:"center"}}>{playing===v.id?"...":"▶"}</button>
+              <button onClick={(e)=>{e.stopPropagation();previewCnVoice(v.id);}} style={{background:"var(--for)",color:"var(--lime)",border:"none",borderRadius:999,padding:"6px 12px",fontSize:".62rem",fontWeight:700,cursor:"pointer"}}>{playing===v.id?"...":"▶"}</button>
             </div>
           ))}
         </div>
@@ -4971,20 +5130,10 @@ function SettingsTab({ settings, updSettings, isPremium, setShowPremiumGate }) {
         {dlState==="error"&&<div><div style={{fontSize:".72rem",fontWeight:700,color:"#e74c3c",marginBottom:6}}>Download failed. Make sure you're online and try again.</div><button onClick={()=>{setDlState("idle");}} style={{padding:"8px 16px",borderRadius:10,border:"1.5px solid var(--st)",background:"var(--wh)",fontSize:".72rem",fontWeight:700,color:"var(--ink)",cursor:"pointer"}}>Retry</button></div>}
       </div>
 
-      {/* ShadowSpeak Premium */}
-      <div className="set-card">
-        <div className="set-lb">ShadowSpeak Premium</div>
-        {isPremium ? (
-          <div style={{fontSize:".72rem",fontWeight:700,color:"#27ae60"}}>Premium active. All content unlocked.</div>
-        ) : (
-          <button onClick={()=>setShowPremiumGate(true)} style={{width:"100%",padding:"12px",borderRadius:12,border:"none",background:"var(--for)",cursor:"pointer",fontSize:".78rem",fontWeight:700,color:"var(--lime)",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>Unlock Premium</button>
-        )}
-      </div>
-
       {/* Switch language */}
       <div className="set-card">
         <div className="set-lb">Switch language</div>
-        <button onClick={()=>{localStorage.setItem('shadowspeak-lang', LANG_CONFIG.switchTo.lang); window.location.reload();}} style={{width:"100%",padding:"12px",borderRadius:12,border:"1.5px solid var(--st)",background:"var(--wh)",cursor:"pointer",fontSize:".78rem",fontWeight:700,color:"var(--ink)",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>{LANG_CONFIG.switchTo.flag} {LANG_CONFIG.switchTo.label}</button>
+        <button onClick={()=>window.location.href="app.html?lang=" + LANG_CONFIG.switchTo.lang} style={{width:"100%",padding:"12px",borderRadius:12,border:"1.5px solid var(--st)",background:"var(--wh)",cursor:"pointer",fontSize:".78rem",fontWeight:700,color:"var(--ink)",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>{LANG_CONFIG.switchTo.flag} {LANG_CONFIG.switchTo.label}</button>
       </div>
 
       {/* Reset progress */}
@@ -5013,7 +5162,7 @@ function SettingsTab({ settings, updSettings, isPremium, setShowPremiumGate }) {
       {/* About */}
       <div className="set-card">
         <div className="set-lb">About</div>
-        <div style={{fontSize:".68rem",color:"var(--ink2)",lineHeight:1.5}}>ShadowSpeak {LANG_CONFIG.name} v3.9.2. Shadowing method + spaced repetition. {ALL_WORDS.length} vocabulary words across {VOCAB_CATS.length} categories. {UNITS.reduce((s,u)=>s+u.phrases.length,0)} phrases across {UNITS.length} units.</div>
+        <div style={{fontSize:".68rem",color:"var(--ink2)",lineHeight:1.5}}>ShadowSpeak {LANG_CONFIG.name} v3.9.6. Shadowing method + spaced repetition. {ALL_WORDS.length} vocabulary words across {VOCAB_CATS.length} categories. {UNITS.reduce((s,u)=>s+u.phrases.length,0)} phrases across {UNITS.length} units.</div>
         <button onClick={()=>window.location.href="index.html"} style={{marginTop:8,background:"none",border:"none",cursor:"pointer",fontSize:".68rem",fontWeight:600,color:"var(--lime)",padding:0}}>← Back to landing page</button>
       </div>
     </div>

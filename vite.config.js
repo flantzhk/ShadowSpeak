@@ -15,7 +15,6 @@ export default defineConfig({
       input: {
         main: resolve(__dirname, 'src/index.html'),
         app: resolve(__dirname, 'src/app.html'),
-        admin: resolve(__dirname, 'src/admin.html'),
       },
     },
   },

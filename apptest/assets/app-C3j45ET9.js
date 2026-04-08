@@ -42016,6 +42016,19 @@ if (_up.has("lang")) {
         }
       })();
     }, [user]);
+    const offlineUser = reactExports.useMemo(() => {
+      if (user) return null;
+      try {
+        const keys = Object.keys(localStorage);
+        const progressKey = keys.find((k2) => k2.startsWith(LANG_CONFIG.localStoragePrefix) && k2 !== LANG_CONFIG.localStoragePrefix);
+        if (progressKey) {
+          const uid = progressKey.replace(LANG_CONFIG.localStoragePrefix, "");
+          return { uid, displayName: "Learner", photoURL: null, email: "" };
+        }
+      } catch (e) {
+      }
+      return null;
+    }, [user]);
     reactExports.useEffect(() => {
       if (user || !offlineUser) return;
       const localRaw = localStorage.getItem(`${LANG_CONFIG.localStoragePrefix}${offlineUser.uid}`);
@@ -42107,19 +42120,6 @@ if (_up.has("lang")) {
     const startPlaylist = reactExports.useCallback((items, title) => {
       setPlaylist({ items, title, idx: 0, playing: true, speed: "normal" });
     }, []);
-    const offlineUser = reactExports.useMemo(() => {
-      if (user) return null;
-      try {
-        const keys = Object.keys(localStorage);
-        const progressKey = keys.find((k2) => k2.startsWith(LANG_CONFIG.localStoragePrefix) && k2 !== LANG_CONFIG.localStoragePrefix);
-        if (progressKey) {
-          const uid = progressKey.replace(LANG_CONFIG.localStoragePrefix, "");
-          return { uid, displayName: "Learner", photoURL: null, email: "" };
-        }
-      } catch (e) {
-      }
-      return null;
-    }, [user]);
     const activeUser = user || offlineUser;
     if (authLoading && !offlineUser) return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "ca", children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "pkr", children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { color: "var(--lime)", fontSize: "1rem", fontWeight: 900 }, children: "Loading..." }) }) });
     if (!activeUser) {
@@ -44614,4 +44614,4 @@ if (_up.has("lang")) {
   const root = client.createRoot(document.getElementById("root"));
   root.render(React.createElement(ErrorBoundary, null, React.createElement(App)));
 })();
-//# sourceMappingURL=app-BO8LySih.js.map
+//# sourceMappingURL=app-C3j45ET9.js.map

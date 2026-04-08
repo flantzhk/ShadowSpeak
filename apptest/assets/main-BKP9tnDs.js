@@ -1,4 +1,4 @@
-import{f as c,a as l}from"./firebase-3qFE9irF.js";import{c as v,e as g}from"./profile-Cqn7mR3x.js";v();const p='<svg width="18" height="18" viewBox="0 0 24 24"><path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/><path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>',o=p.replace(/currentColor/g,"#1F3329");let i=null,e=null;"serviceWorker"in navigator&&window.addEventListener("load",()=>{navigator.serviceWorker.register("sw.js").then(a=>{console.log("SW registered:",a.scope)}).catch(a=>console.warn("SW registration failed:",a))});function h(){const a=document.getElementById("app"),s=!!i,n=(i==null?void 0:i.photoURL)||"",r=((i==null?void 0:i.displayName)||"Learner").split(" ")[0],t=localStorage.getItem("shadowspeak-last-lang"),d=t==="canto"?"Cantonese":t==="mandarin"?"Mandarin":null;a.innerHTML=`
+import{f as c,a as o}from"./firebase-3qFE9irF.js";import{c as v,e as g}from"./profile-Cqn7mR3x.js";v();const p='<svg width="18" height="18" viewBox="0 0 24 24"><path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/><path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>',t=p.replace(/currentColor/g,"#1F3329");let i=null,n=null;"serviceWorker"in navigator&&window.addEventListener("load",()=>{navigator.serviceWorker.register("sw.js").then(a=>{console.log("SW registered:",a.scope)}).catch(a=>console.warn("SW registration failed:",a))});function h(){const a=document.getElementById("app"),s=!!i,l=(i==null?void 0:i.photoURL)||"",r=((i==null?void 0:i.displayName)||"Learner").split(" ")[0],e=localStorage.getItem("shadowspeak-last-lang"),d=e==="canto"?"Cantonese":e==="mandarin"?"Mandarin":null;a.innerHTML=`
     <div class="nav">
       <div class="nav-logo">
         <span class="nav-logo-icon">🗣</span>
@@ -6,12 +6,12 @@ import{f as c,a as l}from"./firebase-3qFE9irF.js";import{c as v,e as g}from"./pr
       </div>
       <div class="nav-right">
         ${s?`
-          <img class="user-avatar" src="${n}" alt="" referrerpolicy="no-referrer" style="width:32px;height:32px;" />
+          <img class="user-avatar" src="${l}" alt="" referrerpolicy="no-referrer" style="width:32px;height:32px;" />
           <button class="nav-login" onclick="doSignOut()">Sign out</button>
         `:`
           <button class="nav-login" onclick="doSignIn()">Log in</button>
           <button class="nav-signup" onclick="doSignIn()">
-            <span style="color:var(--for);display:flex">${o}</span>
+            <span style="color:var(--for);display:flex">${t}</span>
             <span>Sign up</span>
           </button>
         `}
@@ -21,12 +21,12 @@ import{f as c,a as l}from"./firebase-3qFE9irF.js";import{c as v,e as g}from"./pr
     <div class="hero">
       ${s?`
         <div class="user-bar">
-          <img class="user-avatar" src="${n}" alt="" referrerpolicy="no-referrer" />
+          <img class="user-avatar" src="${l}" alt="" referrerpolicy="no-referrer" />
           <span class="user-name">Welcome back, ${r}</span>
         </div>
         ${d?`
           <div style="margin-bottom:20px;">
-            <button class="cta-btn" onclick="goTo('${t}')">
+            <button class="cta-btn" onclick="goTo('${e}')">
               <span>Continue ${d} →</span>
             </button>
           </div>
@@ -39,7 +39,7 @@ import{f as c,a as l}from"./firebase-3qFE9irF.js";import{c as v,e as g}from"./pr
       <div class="hero-sub">You don't learn a language by reading it.<br/>You learn it by <strong>hearing it and saying it back.</strong></div>
       ${s?"":`
         <button class="cta-btn" onclick="doSignIn()">
-          <span style="color:var(--for);display:flex">${o}</span>
+          <span style="color:var(--for);display:flex">${t}</span>
           <span>Get started free</span>
         </button>
         <div class="hero-sync">Progress syncs across all your devices.</div>
@@ -111,7 +111,7 @@ import{f as c,a as l}from"./firebase-3qFE9irF.js";import{c as v,e as g}from"./pr
           <div class="bottom-cta-desc">That's all it takes. One lesson a day rewires your brain for a new language. Shadowing does more in 30 minutes than most apps do in an hour.</div>
           ${s?"":`
             <button class="cta-btn small" onclick="doSignIn()">
-              <span style="color:var(--for);display:flex">${o}</span>
+              <span style="color:var(--for);display:flex">${t}</span>
               <span>Start learning now</span>
             </button>
             <div class="bottom-login">
@@ -124,4 +124,4 @@ import{f as c,a as l}from"./firebase-3qFE9irF.js";import{c as v,e as g}from"./pr
         <div class="footer">Built in Hong Kong.</div>
       </div>
     </div>
-  `}window.doSignIn=function(){const a=new c.auth.GoogleAuthProvider;l.signInWithPopup(a).catch(s=>{console.error("Sign-in error:",s)})};window.doSignOut=function(){l.signOut()};window.pickLang=function(a){i?window.goTo(a):(e=a,window.doSignIn())};window.goTo=function(a){localStorage.setItem("shadowspeak-lang",a),localStorage.setItem("shadowspeak-last-lang",a),window.location.href="app.html"};l.onAuthStateChanged(a=>{const s=!i;if(i=a,a&&g(a),h(),a&&s&&e){const n=e;e=null,window.goTo(n)}});
+  `}window.doSignIn=function(){const a=new c.auth.GoogleAuthProvider;o.signInWithPopup(a).catch(s=>{console.error("Sign-in error:",s)})};window.doSignOut=function(){o.signOut()};window.pickLang=function(a){i?window.goTo(a):(n=a,window.doSignIn())};window.goTo=function(a){localStorage.setItem("shadowspeak-lang",a),localStorage.setItem("shadowspeak-last-lang",a),window.location.href="app.html"};o.onAuthStateChanged(a=>{if(i=a,a&&g(a),a){if(n){const s=n;n=null,window.goTo(s)}else window.location.href="app.html";return}h()});

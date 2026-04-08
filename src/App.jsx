@@ -5157,4 +5157,25 @@ function SettingsTab({ settings, updSettings }) {
 
 
 
-export default App;
+// Error boundary to catch and display crashes
+class ErrorBoundary extends React.Component {
+  constructor(props) { super(props); this.state = { error: null }; }
+  static getDerivedStateFromError(error) { return { error }; }
+  componentDidCatch(error, info) { console.error('App crash:', error, info); }
+  render() {
+    if (this.state.error) {
+      return React.createElement('div', { style: { padding: 40, fontFamily: 'monospace', color: 'red', background: '#fff', minHeight: '100vh' } },
+        React.createElement('h2', null, 'App Error'),
+        React.createElement('pre', { style: { whiteSpace: 'pre-wrap', fontSize: 14 } }, this.state.error.toString()),
+        React.createElement('pre', { style: { whiteSpace: 'pre-wrap', fontSize: 12, color: '#666', marginTop: 10 } }, this.state.error.stack)
+      );
+    }
+    return this.props.children;
+  }
+}
+
+function AppWithBoundary() {
+  return React.createElement(ErrorBoundary, null, React.createElement(App));
+}
+
+export default AppWithBoundary;

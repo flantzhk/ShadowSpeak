@@ -133,6 +133,12 @@ async function saveSettingsToFirestore(uid, data) {
 
 const UNITS = LANG_CONFIG.UNITS;
 
+// Helper: get romanization from a phrase (jyut for Cantonese, pinyin for Mandarin)
+function getRom(ph) {
+  if (!ph) return "";
+  return ph[LANG_CONFIG.romanizationKey] || ph.jyut || ph.pinyin || "";
+}
+
 
 const GLOSS_DATA = LANG_CONFIG.GLOSS_DATA;
 
@@ -1815,7 +1821,7 @@ function App() {
           </div>
           <div>
             <div className="ht">Shadow<span style={{color:"var(--lime)"}}>Speak</span></div>
-            <div style={{fontSize:".58rem",fontWeight:700,color:"rgba(255,255,255,.5)",letterSpacing:".5px",marginTop:-1}}>CANTONESE</div>
+            <div style={{fontSize:".62rem",fontWeight:800,color:"var(--lime)",letterSpacing:".5px",marginTop:-1}}>{LANG_CONFIG.flag} {LANG_CONFIG.name.toUpperCase()}</div>
           </div>
           <div className="tn">
             {[{id:"home",icon:"🏠",l:"Home"},{id:"library",icon:"📚",l:"My Library"},{id:"practice",icon:"🧠",l:"Practice"}].map(t=>
@@ -1952,7 +1958,7 @@ function getAutoGloss(ph) {
   if (!ph || !ph.cn) return [];
   if (GLOSS_DATA[ph.cn]) return GLOSS_DATA[ph.cn];
   const cn = (ph.cn||"").replace(/[，。！？、「」]/g, "").trim();
-  const jy = (ph.jyut||"").replace(/[，,]/g, " ").replace(/\s+/g," ").trim();
+  const jy = (getRom(ph)||"").replace(/[，,]/g, " ").replace(/\s+/g," ").trim();
   const jyParts = jy.split(" ").filter(Boolean);
   const chars = [...cn].filter(c => c.trim());
   const result = [];
@@ -2649,7 +2655,7 @@ function HomeTab({ profile, progress, upd, settings, setTab, recentTopics, setRe
 
   const playPhraseMini = (ph) => {
     clearTimeout(miniTimer.current);
-    setMiniPlayer({ en: ph.en, cn: ph.cn, jyut: ph.jyut, playing: true });
+    setMiniPlayer({ en: ph.en, cn: ph.cn, jyut: getRom(ph), playing: true });
     speak(ph.cn);
     miniTimer.current = setTimeout(() => setMiniPlayer(null), 6000);
   };
@@ -2731,9 +2737,9 @@ function HomeTab({ profile, progress, upd, settings, setTab, recentTopics, setRe
       u.phrases.forEach((ph, i) => {
         const matchEn = (ph.en || "").toLowerCase().includes(q);
         const matchCn = (ph.cn || "").toLowerCase().includes(q);
-        const matchJyut = (ph.jyut || "").toLowerCase().includes(q);
+        const matchJyut = (getRom(ph) || "").toLowerCase().includes(q);
         if (matchEn || matchCn || matchJyut) {
-          results.push({ type: "phrase", en: ph.en, cn: ph.cn, jyut: ph.jyut, unitId: u.id, unitTitle: u.title, idx: i });
+          results.push({ type: "phrase", en: ph.en, cn: ph.cn, jyut: getRom(ph), unitId: u.id, unitTitle: u.title, idx: i });
         }
       });
     });
@@ -2835,13 +2841,13 @@ function HomeTab({ profile, progress, upd, settings, setTab, recentTopics, setRe
                     {readingMode ? (
                       <>
                         <div className="ph-chi" style={{fontSize:15,fontWeight:600,color:"var(--ink)",marginBottom:3,display:"flex",justifyContent:"space-between",alignItems:"center"}}>{ph.cn}<div className="ph-chev">&#9662;</div></div>
-                        <div className="ph-jyut">{ph.jyut}</div>
+                        <div className="ph-jyut">{getRom(ph)}</div>
                         <div style={{fontSize:13,color:"var(--ink2)"}}>{ph.en}</div>
                       </>
                     ) : (
                       <>
                         <div className="ph-eng">{ph.en}<div className="ph-chev">&#9662;</div></div>
-                        <div className="ph-jyut">{ph.jyut}</div>
+                        <div className="ph-jyut">{getRom(ph)}</div>
                         <div className="ph-chi">{ph.cn}</div>
                       </>
                     )}
@@ -2862,7 +2868,7 @@ function HomeTab({ profile, progress, upd, settings, setTab, recentTopics, setRe
                     ))}
                   </div>}
                   <div className="ph-actions">
-                    <button className="ph-action-btn" onClick={e=>{e.stopPropagation();const items=progress.unit10||[];if(!items.find(s=>s.cn===ph.cn)){upd("unit10",[{en:ph.en,jyut:ph.jyut,cn:ph.cn,tag:unit.title,known:false,date:new Date().toLocaleDateString("en-GB",{day:"numeric",month:"short"})},...items]);setPopup({e:"📖",t:"Saved to library",s:ph.en});}}}>{(progress.unit10||[]).find(s=>s.cn===ph.cn)?"Saved":"Save to My Library"}</button>
+                    <button className="ph-action-btn" onClick={e=>{e.stopPropagation();const items=progress.unit10||[];if(!items.find(s=>s.cn===ph.cn)){upd("unit10",[{en:ph.en,jyut:getRom(ph),cn:ph.cn,tag:unit.title,known:false,date:new Date().toLocaleDateString("en-GB",{day:"numeric",month:"short"})},...items]);setPopup({e:"📖",t:"Saved to library",s:ph.en});}}}>{(progress.unit10||[]).find(s=>s.cn===ph.cn)?"Saved":"Save to My Library"}</button>
                     <button className="ph-action-btn shadow-btn" onClick={e=>{e.stopPropagation();setShadow(ph.origIdx);}}>Shadow</button>
                   </div>
                 </div>
@@ -4022,13 +4028,13 @@ function PhraseCard({ ph, unit, upd, setShadow, readingMode, progress }) {
           {readingMode ? (
             <>
               <div style={{ fontSize: ".88rem", fontWeight: 700, color: "var(--ink)", lineHeight: 1.3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{ph.cn}</div>
-              <div style={{ fontSize: ".75rem", fontStyle: "italic", color: "var(--plum)", lineHeight: 1.3 }}><JyutpingTone text={ph.jyut} /></div>
+              <div style={{ fontSize: ".75rem", fontStyle: "italic", color: "var(--plum)", lineHeight: 1.3 }}><JyutpingTone text={getRom(ph)} /></div>
               <div style={{ fontSize: ".72rem", color: "var(--ink3)", lineHeight: 1.3 }}>{ph.en}</div>
             </>
           ) : (
             <>
               <div style={{ fontSize: ".85rem", fontWeight: 700, color: "var(--ink)", lineHeight: 1.3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{ph.en}</div>
-              <div style={{ fontSize: ".75rem", fontStyle: "italic", color: "var(--plum)", lineHeight: 1.3 }}><JyutpingTone text={ph.jyut} /></div>
+              <div style={{ fontSize: ".75rem", fontStyle: "italic", color: "var(--plum)", lineHeight: 1.3 }}><JyutpingTone text={getRom(ph)} /></div>
               <div style={{ fontSize: ".82rem", color: "var(--ink3)", lineHeight: 1.3 }}>{ph.cn}</div>
             </>
           )}
@@ -4083,7 +4089,7 @@ function PhraseCard({ ph, unit, upd, setShadow, readingMode, progress }) {
             {/* Preview */}
             <div style={{ marginBottom: 12, paddingBottom: 12, borderBottom: "1px solid var(--st)" }}>
               <div style={{ fontSize: ".85rem", fontWeight: 700, color: "var(--ink)", marginBottom: 2 }}>{ph.en}</div>
-              <div style={{ fontSize: ".75rem", fontStyle: "italic", color: "var(--plum)" }}><JyutpingTone text={ph.jyut} /></div>
+              <div style={{ fontSize: ".75rem", fontStyle: "italic", color: "var(--plum)" }}><JyutpingTone text={getRom(ph)} /></div>
             </div>
             <button className="bottom-sheet-opt" onClick={() => { setMenuOpen(false); setShadow(ph.origIdx); }}>🎙 Shadow this phrase</button>
             <button className="bottom-sheet-opt" onClick={() => { setMenuOpen(false); ph.known ? upd(`phrases.${unit.id}-${ph.origIdx}`, false) : setQuickCheck(true); }}>
@@ -4253,12 +4259,12 @@ function ShadowMode({ unit, progress, upd, settings, onClose, startIdx=0, single
 
         {/* Chinese + Jyutping with eye toggle */}
         {showCn ? (<>
-          <div className="sh-jy"><JyutpingTone text={ph.jyut} /></div>
+          <div className="sh-jy"><JyutpingTone text={getRom(ph)} /></div>
           <div className="sh-cn">{ph.cn}</div>
         </>) : (
           <div className="sh-peek" onClick={doPeek}>
             {peeking ? (<>
-              <div className="sh-jy" style={{marginBottom:4}}><JyutpingTone text={ph.jyut} /></div>
+              <div className="sh-jy" style={{marginBottom:4}}><JyutpingTone text={getRom(ph)} /></div>
               <div className="sh-cn" style={{marginBottom:0}}>{ph.cn}</div>
             </>) : (
               <div className="sh-peek-text">Tap to peek</div>

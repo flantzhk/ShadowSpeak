@@ -1253,7 +1253,7 @@ function QuizTab({ progress, upd }) {
     const blob = await stopRecording(); const ph = quizItems[idx];
     if (blob && ph) {
       try {
-        const result = await scorePronunciation(blob, ph.cn, LANG_CONFIG.id === "mandarin" ? "mandarin" : "cantonese");
+        const result = await scorePronunciation(blob, ph.cn, LANG_CONFIG.id);
         let chars = [];
         if (result.expectedJyutping && result.transcribedJyutping) {
           const expSyls = result.expectedJyutping.trim().split(/\s+/); const yourSyls = result.transcribedJyutping.trim().split(/\s+/); const cnChars = ph.cn.replace(/[，,。！？!?\s]/g, "").split("");
@@ -2207,7 +2207,7 @@ function LessonMode({ progress, upd, profile, settings, onComplete, onQuit }) {
     const ph = items?.[safeIdx];
     if (blob && ph) {
       try {
-        const result = await scorePronunciation(blob, ph.cn, LANG_CONFIG.id === "mandarin" ? "mandarin" : "cantonese");
+        const result = await scorePronunciation(blob, ph.cn, LANG_CONFIG.id);
         let chars = [];
         if (result.expectedJyutping && result.transcribedJyutping) {
           const expSyls = result.expectedJyutping.trim().split(/\s+/);
@@ -2930,17 +2930,23 @@ function HomeTab({ profile, progress, upd, settings, setTab, recentTopics, setRe
         {/* Search results dropdown */}
         {searchResults.length > 0 && <div className="search-results" style={{margin:"0 16px 12px"}}>
           {searchResults.map((r, ri) => (
-            <div key={ri} className="search-result" onClick={() => {
-              if (r.unitId) { setSelUnit(r.unitId); updateRecent(r.unitId); setSearchQ(""); }
-            }}>
-              <span className="search-badge" style={{ background: r.type === "phrase" ? "rgba(122,170,0,.15)" : "rgba(143,106,232,.15)", color: r.type === "phrase" ? "var(--ld)" : "var(--plum)" }}>
-                {r.type === "phrase" ? "PHRASE" : "WORD"}
-              </span>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: ".82rem", fontWeight: 700, color: "var(--ink)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.en}</div>
-                <div style={{ fontSize: ".72rem", color: "var(--plum)", fontStyle: "italic" }}>{r.jyut}</div>
+            <div key={ri} className="search-result" style={{flexWrap:"wrap"}}>
+              <div style={{display:"flex",alignItems:"center",gap:10,width:"100%"}} onClick={() => {
+                if (r.unitId) { setSelUnit(r.unitId); updateRecent(r.unitId); setSearchQ(""); }
+              }}>
+                <span className="search-badge" style={{ background: r.type === "phrase" ? "rgba(122,170,0,.15)" : "rgba(143,106,232,.15)", color: r.type === "phrase" ? "var(--ld)" : "var(--plum)" }}>
+                  {r.type === "phrase" ? "PHRASE" : "WORD"}
+                </span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: ".82rem", fontWeight: 700, color: "var(--ink)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.en}</div>
+                  <div style={{ fontSize: ".72rem", color: "var(--plum)", fontStyle: "italic" }}>{r.jyut}</div>
+                </div>
+                <div style={{ fontSize: ".82rem", color: "var(--ink3)", flexShrink: 0 }}>{r.cn}</div>
               </div>
-              <div style={{ fontSize: ".82rem", color: "var(--ink3)", flexShrink: 0 }}>{r.cn}</div>
+              <div style={{display:"flex",gap:6,marginTop:6,paddingLeft:0,width:"100%"}}>
+                <button onClick={(e)=>{e.stopPropagation();if(r.unitId){setSelUnit(r.unitId);updateRecent(r.unitId);setSearchQ("");}}} style={{background:"var(--cream)",border:"1px solid var(--st)",borderRadius:999,padding:"6px 14px",fontSize:".72rem",fontWeight:700,color:"var(--ink2)",cursor:"pointer",minHeight:36}}>Go to unit ›</button>
+                <button onClick={(e)=>{e.stopPropagation();const items=progress.unit10||[];if(!items.find(s=>s.cn===r.cn)){upd("unit10",[{en:r.en,jyut:r.jyut,cn:r.cn,tag:r.unitTitle||"Search",known:false,date:new Date().toLocaleDateString("en-GB",{day:"numeric",month:"short"})},...items]);setPopup({e:"📖",t:"Saved to library",s:r.en});}}} style={{background:"var(--cream)",border:"1px solid var(--st)",borderRadius:999,padding:"6px 14px",fontSize:".72rem",fontWeight:700,color:"var(--ink2)",cursor:"pointer",minHeight:36}}>+ Add to library</button>
+              </div>
             </div>
           ))}
         </div>}
@@ -4191,7 +4197,7 @@ function ShadowMode({ unit, progress, upd, settings, onClose, startIdx=0, single
     const blob = await stopRecording();
     if (blob && ph) {
       try {
-        const result = await scorePronunciation(blob, ph.cn, LANG_CONFIG.id === "mandarin" ? "mandarin" : "cantonese");
+        const result = await scorePronunciation(blob, ph.cn, LANG_CONFIG.id);
         // Build chars array from API response
         let chars = [];
         if (result.expectedJyutping && result.transcribedJyutping) {

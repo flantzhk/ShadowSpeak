@@ -16,13 +16,8 @@ function hapticLight() {
   }
 }
 
-// LANG_CONFIG is set by main.jsx before this module loads
-let LANG_CONFIG = window.LANG_CONFIG;
-
-export function setLangConfig(config) {
-  LANG_CONFIG = config;
-  window.LANG_CONFIG = config;
-}
+// LANG_CONFIG is set on window by main.jsx before this module is imported
+const LANG_CONFIG = window.LANG_CONFIG;
 
 // Free units — accessible without premium
 const FREE_UNIT_IDS = [1, 2, 5];

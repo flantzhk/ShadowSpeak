@@ -102,9 +102,9 @@ async function loadApp() {
   // Set global for compatibility with existing code
   window.LANG_CONFIG = LANG_CONFIG;
 
-  // Now import and mount the app (after LANG_CONFIG is set)
-  const { default: App, setLangConfig } = await import('./App.jsx');
-  setLangConfig(LANG_CONFIG);
+  // Now import and mount the app
+  // LANG_CONFIG is already on window — App.jsx reads it at module init
+  const { default: App } = await import('./App.jsx');
 
   root.render(React.createElement(App));
 }

@@ -10,7 +10,8 @@ export default defineConfig({
   build: {
     outDir: resolve(__dirname, 'apptest'),
     emptyOutDir: true,
-    sourcemap: false,
+    sourcemap: true,
+    minify: false,
     rollupOptions: {
       input: {
         app: resolve(__dirname, 'src/app.html'),

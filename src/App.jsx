@@ -1668,6 +1668,20 @@ function App() {
     })();
   }, [user]);
 
+  // Offline fallback: if no Firebase user but we have cached data, create a fake user
+  const offlineUser = useMemo(() => {
+    if (user) return null;
+    try {
+      const keys = Object.keys(localStorage);
+      const progressKey = keys.find(k => k.startsWith(LANG_CONFIG.localStoragePrefix) && k !== LANG_CONFIG.localStoragePrefix);
+      if (progressKey) {
+        const uid = progressKey.replace(LANG_CONFIG.localStoragePrefix, "");
+        return { uid, displayName: "Learner", photoURL: null, email: "" };
+      }
+    } catch(e) {}
+    return null;
+  }, [user]);
+
   // Offline fallback: load from localStorage when no Firebase user
   useEffect(() => {
     if (user || !offlineUser) return;
@@ -1752,20 +1766,6 @@ function App() {
   const startPlaylist = useCallback((items, title) => {
     setPlaylist({ items, title, idx: 0, playing: true, speed: "normal" });
   }, []);
-
-  // Offline fallback: if no Firebase user but we have cached data, create a fake user
-  const offlineUser = useMemo(() => {
-    if (user) return null;
-    try {
-      const keys = Object.keys(localStorage);
-      const progressKey = keys.find(k => k.startsWith(LANG_CONFIG.localStoragePrefix) && k !== LANG_CONFIG.localStoragePrefix);
-      if (progressKey) {
-        const uid = progressKey.replace(LANG_CONFIG.localStoragePrefix, "");
-        return { uid, displayName: "Learner", photoURL: null, email: "" };
-      }
-    } catch(e) {}
-    return null;
-  }, [user]);
 
   const activeUser = user || offlineUser;
 

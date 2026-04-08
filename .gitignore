@@ -1,0 +1,5 @@
+node_modules/
+dist/
+.DS_Store
+*.log
+# Note: apptest/ is NOT ignored — it's the built output committed for testing

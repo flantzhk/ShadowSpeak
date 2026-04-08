@@ -13,7 +13,6 @@ export default defineConfig({
     sourcemap: false,
     rollupOptions: {
       input: {
-        main: resolve(__dirname, 'src/index.html'),
         app: resolve(__dirname, 'src/app.html'),
       },
     },

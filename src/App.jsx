@@ -1253,7 +1253,7 @@ function QuizTab({ progress, upd }) {
     const blob = await stopRecording(); const ph = quizItems[idx];
     if (blob && ph) {
       try {
-        const result = await scorePronunciation(blob, ph.cn, "cantonese");
+        const result = await scorePronunciation(blob, ph.cn, LANG_CONFIG.id === "mandarin" ? "mandarin" : "cantonese");
         let chars = [];
         if (result.expectedJyutping && result.transcribedJyutping) {
           const expSyls = result.expectedJyutping.trim().split(/\s+/); const yourSyls = result.transcribedJyutping.trim().split(/\s+/); const cnChars = ph.cn.replace(/[，,。！？!?\s]/g, "").split("");
@@ -2207,7 +2207,7 @@ function LessonMode({ progress, upd, profile, settings, onComplete, onQuit }) {
     const ph = items?.[safeIdx];
     if (blob && ph) {
       try {
-        const result = await scorePronunciation(blob, ph.cn, "cantonese");
+        const result = await scorePronunciation(blob, ph.cn, LANG_CONFIG.id === "mandarin" ? "mandarin" : "cantonese");
         let chars = [];
         if (result.expectedJyutping && result.transcribedJyutping) {
           const expSyls = result.expectedJyutping.trim().split(/\s+/);
@@ -4191,7 +4191,7 @@ function ShadowMode({ unit, progress, upd, settings, onClose, startIdx=0, single
     const blob = await stopRecording();
     if (blob && ph) {
       try {
-        const result = await scorePronunciation(blob, ph.cn, "cantonese");
+        const result = await scorePronunciation(blob, ph.cn, LANG_CONFIG.id === "mandarin" ? "mandarin" : "cantonese");
         // Build chars array from API response
         let chars = [];
         if (result.expectedJyutping && result.transcribedJyutping) {

@@ -1,30 +1,29 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { firebase, fbAuth, fbDb } from './firebase.js';
-import { ensureUserProfile } from './profile.js';
-import { Capacitor } from '@capacitor/core';
-import { Haptics, ImpactStyle } from '@capacitor/haptics';
-import { StatusBar, Style as StatusBarStyle } from '@capacitor/status-bar';
-import { trackEvent } from './analytics.js';
+import firebase from 'firebase/compat/app';
+import 'firebase/compat/auth';
+import 'firebase/compat/firestore';
 
-// ---- CAPACITOR SETUP ----
-if (Capacitor.isNativePlatform()) {
-  StatusBar.setStyle({ style: StatusBarStyle.Dark }).catch(() => {});
-}
-function hapticLight() {
-  if (Capacitor.isNativePlatform()) {
-    Haptics.impact({ style: ImpactStyle.Light }).catch(() => {});
-  }
-}
+// Firebase config
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyBl8PRFr84XLNZNxfSg7LpVekjh5lvBWRI",
+  authDomain: "shadowspeak-22f04.firebaseapp.com",
+  projectId: "shadowspeak-22f04",
+  storageBucket: "shadowspeak-22f04.firebasestorage.app",
+  messagingSenderId: "332784610142",
+  appId: "1:332784610142:web:0dfaf945993e735ef03dcf"
+};
 
-// LANG_CONFIG is set on window by main.jsx before this module is imported
+if (!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
+const fbAuth = firebase.auth();
+const fbDb = firebase.firestore();
+
+fbDb.enablePersistence({ synchronizeTabs: true }).catch(err => {
+  if (err.code === 'failed-precondition') console.warn("Firestore persistence: multiple tabs open");
+  else if (err.code === 'unimplemented') console.warn("Firestore persistence: not supported in this browser");
+});
+
+// LANG_CONFIG set on window by main.jsx before this module loads
 const LANG_CONFIG = window.LANG_CONFIG;
-
-// Free units — accessible without premium
-const FREE_UNIT_IDS = [1, 2, 5];
-
-// ============================================================
-// SHADOWSPEAK — v3.9.5 with Firebase Auth + Firestore Sync
-// ============================================================
 
 // ---- OFFLINE DETECTION ----
 let _isOnline = navigator.onLine;
@@ -36,8 +35,8 @@ window.addEventListener("offline", () => { _isOnline = false; _onlineListeners.f
 // ---- SERVICE WORKER REGISTRATION ----
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
-    const swBase = import.meta.env.BASE_URL || '/ShadowSpeak/';
-    navigator.serviceWorker.register(swBase + "sw.js").then(reg => {
+    const _base = (typeof import.meta !== 'undefined' && import.meta.env?.BASE_URL) || '/ShadowSpeak/';
+    navigator.serviceWorker.register(_base + "sw.js").then(reg => {
       console.log("SW registered:", reg.scope);
     }).catch(err => console.warn("SW registration failed:", err));
   });
@@ -57,8 +56,8 @@ async function loadAudioManifest() {
   }
   _audioManifestLoading = true;
   try {
-    const base = import.meta.env.BASE_URL || '/ShadowSpeak/';
-    const res = await fetch(base + "audio/manifest.json");
+    const _audioBase = (typeof import.meta !== 'undefined' && import.meta.env?.BASE_URL) || '/ShadowSpeak/';
+    const res = await fetch(_audioBase + "audio/manifest.json");
     if (res.ok) {
       _audioManifest = await res.json();
       console.log("Audio manifest loaded");
@@ -91,9 +90,9 @@ async function tryLocalAudio(text, section) {
   const [app, lang] = section.split(".");
   const path = manifest?.[app]?.[lang]?.[text];
   if (!path) return false;
-  const audioBase = import.meta.env.BASE_URL || '/ShadowSpeak/';
+  const _pb = (typeof import.meta !== 'undefined' && import.meta.env?.BASE_URL) || '/ShadowSpeak/';
   try {
-    await playLocalAudio(audioBase + path);
+    await playLocalAudio(_pb + path);
     return true;
   } catch(e) {
     console.warn("Local audio playback failed, falling back to API:", e.message);
@@ -1584,15 +1583,12 @@ function App() {
   const [practiceCount, setPracticeCount] = useState(parseInt(localStorage.getItem(LANG_CONFIG.id + '-practice-count') || '0'));
   const [recentTopics, setRecentTopics] = useState(JSON.parse(localStorage.getItem(LANG_CONFIG.id + '-recent-topics') || '[]'));
   const [autoLaunch, setAutoLaunch] = useState(null);
-  const [isPremium, setIsPremium] = useState(false);
-  const [showPremiumGate, setShowPremiumGate] = useState(false);
   const saveTimer = useRef(null);
 
   // Inject CSS
   useEffect(() => {
     const s = document.createElement("style"); s.textContent = CSS + QUIZ_CSS; document.head.appendChild(s);
-    localStorage.setItem('shadowspeak-last-lang', LANG_CONFIG.id);
-    trackEvent('app_open');
+    localStorage.setItem('shadowspeak-last-lang', 'app.html?lang=' + LANG_CONFIG.id);
     return () => document.head.removeChild(s);
   }, []);
 
@@ -1600,7 +1596,6 @@ function App() {
   useEffect(() => {
     const unsub = fbAuth.onAuthStateChanged(u => {
       setUser(u);
-      window._ssUser = u;
       setAuthLoading(false);
     });
     return unsub;
@@ -1610,10 +1605,6 @@ function App() {
   useEffect(() => {
     if (!user) return;
     (async () => {
-      // Ensure user profile exists and update lastActiveAt
-      const profile = await ensureUserProfile(user);
-      if (profile?.isPremium) setIsPremium(true);
-
       // Try Firestore first, fall back to localStorage
       const cloud = await loadFromFirestore(user.uid);
       // Also load from localStorage (current key format)
@@ -1666,20 +1657,6 @@ function App() {
         _activeCnVoiceId = DEFAULT_CN_VOICE;
       }
     })();
-  }, [user]);
-
-  // Offline fallback: if no Firebase user but we have cached data, create a fake user
-  const offlineUser = useMemo(() => {
-    if (user) return null;
-    try {
-      const keys = Object.keys(localStorage);
-      const progressKey = keys.find(k => k.startsWith(LANG_CONFIG.localStoragePrefix) && k !== LANG_CONFIG.localStoragePrefix);
-      if (progressKey) {
-        const uid = progressKey.replace(LANG_CONFIG.localStoragePrefix, "");
-        return { uid, displayName: "Learner", photoURL: null, email: "" };
-      }
-    } catch(e) {}
-    return null;
   }, [user]);
 
   // Offline fallback: load from localStorage when no Firebase user
@@ -1766,6 +1743,20 @@ function App() {
   const startPlaylist = useCallback((items, title) => {
     setPlaylist({ items, title, idx: 0, playing: true, speed: "normal" });
   }, []);
+
+  // Offline fallback: if no Firebase user but we have cached data, create a fake user
+  const offlineUser = useMemo(() => {
+    if (user) return null;
+    try {
+      const keys = Object.keys(localStorage);
+      const progressKey = keys.find(k => k.startsWith(LANG_CONFIG.localStoragePrefix) && k !== LANG_CONFIG.localStoragePrefix);
+      if (progressKey) {
+        const uid = progressKey.replace(LANG_CONFIG.localStoragePrefix, "");
+        return { uid, displayName: "Learner", photoURL: null, email: "" };
+      }
+    } catch(e) {}
+    return null;
+  }, [user]);
 
   const activeUser = user || offlineUser;
 

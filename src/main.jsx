@@ -1661,7 +1661,61 @@ function App() {
   const [practiceCount, setPracticeCount] = useState(parseInt(localStorage.getItem(LANG_CONFIG.id + '-practice-count') || '0'));
   const [recentTopics, setRecentTopics] = useState(JSON.parse(localStorage.getItem(LANG_CONFIG.id + '-recent-topics') || '[]'));
   const [autoLaunch, setAutoLaunch] = useState(null);
+  const [isPremium, setIsPremium] = useState(false);
+  const [showPremiumGate, setShowPremiumGate] = useState(false);
+  const [promoInput, setPromoInput] = useState("");
+  const [promoStatus, setPromoStatus] = useState(null); // null | "checking" | "success" | "invalid"
   const saveTimer = useRef(null);
+
+  // Free units — accessible without premium
+  const FREE_UNIT_IDS = [1, 2, 5];
+
+  // Wrap setSelUnit to check premium gate
+  const selectUnitGated = (id) => {
+    if (!isPremium && !FREE_UNIT_IDS.includes(id)) {
+      setShowPremiumGate(true);
+      return;
+    }
+    setSelUnit(id);
+  };
+
+  // Promo code validation
+  const submitPromoCode = async () => {
+    if (!promoInput.trim()) return;
+    setPromoStatus("checking");
+    try {
+      const doc = await fbDb.collection("config").doc("promoCodes").get();
+      if (doc.exists) {
+        const codes = doc.data().codes || [];
+        const match = codes.find(c => c.code.toUpperCase() === promoInput.trim().toUpperCase() && c.active);
+        if (match) {
+          // Valid code — unlock premium
+          const uid = user?.uid;
+          if (uid) {
+            await fbDb.collection("users").doc(uid).update({
+              isPremium: true,
+              premiumSince: new Date(),
+              premiumTier: "promo",
+              promoCodeUsed: match.code,
+            });
+          }
+          setIsPremium(true);
+          setPromoStatus("success");
+          setShowPremiumGate(false);
+          setPopup({ e: "🎉", t: "Unlocked!", s: "Welcome to ShadowSpeak Premium." });
+          setPromoInput("");
+          setTimeout(() => setPromoStatus(null), 2000);
+          return;
+        }
+      }
+      setPromoStatus("invalid");
+      setTimeout(() => setPromoStatus(null), 3000);
+    } catch (e) {
+      console.warn("Promo code check failed:", e);
+      setPromoStatus("invalid");
+      setTimeout(() => setPromoStatus(null), 3000);
+    }
+  };
 
   // Inject CSS
   useEffect(() => {
@@ -1687,7 +1741,9 @@ function App() {
       try {
         const doc = await profileRef.get();
         if (doc.exists) {
-          // Returning user — update lastActiveAt
+          // Returning user — update lastActiveAt and read premium status
+          const profileData = doc.data();
+          if (profileData.isPremium) setIsPremium(true);
           await profileRef.update({
             lastActiveAt: new Date(),
             email: user.email || null,
@@ -1957,10 +2013,10 @@ function App() {
         </div>
       </div>
 
-      {tab==="home"&&<HomeTab profile={displayName} progress={progress} upd={upd} settings={settings} setTab={setTab} recentTopics={recentTopics} setRecentTopics={setRecentTopics} practiceCount={practiceCount} library={library} selUnit={selUnit} setSelUnit={setSelUnit} markReviewed={markReviewed} startPlaylist={startPlaylist} openPlBuilder={()=>setShowPlBuilder(true)} setAutoLaunch={setAutoLaunch} />}
+      {tab==="home"&&<HomeTab profile={displayName} progress={progress} upd={upd} settings={settings} setTab={setTab} recentTopics={recentTopics} setRecentTopics={setRecentTopics} practiceCount={practiceCount} library={library} selUnit={selUnit} setSelUnit={selectUnitGated} markReviewed={markReviewed} startPlaylist={startPlaylist} openPlBuilder={()=>setShowPlBuilder(true)} setAutoLaunch={setAutoLaunch} isPremium={isPremium} freeUnitIds={FREE_UNIT_IDS} />}
       {tab==="library"&&<LibraryTab library={library} setLibrary={setLibrary} progress={progress} upd={upd} settings={settings} startPlaylist={startPlaylist} />}
       {tab==="practice"&&<PracticeTab progress={progress} upd={upd} settings={settings} library={library} practiceCount={practiceCount} setPracticeCount={setPracticeCount} autoLaunch={autoLaunch} />}
-      {tab==="settings"&&<SettingsTab settings={settings} updSettings={updSettings} />}
+      {tab==="settings"&&<SettingsTab settings={settings} updSettings={updSettings} isPremium={isPremium} setShowPremiumGate={setShowPremiumGate} />}
 
       {/* Playlist builder overlay */}
       {showPlBuilder && <PlaylistBuilder onClose={()=>setShowPlBuilder(false)} onPlay={(items,title)=>{setShowPlBuilder(false);startPlaylist(items,title);}} progress={progress} />}
@@ -1990,6 +2046,58 @@ function App() {
         )}
       </div>
 
+      {/* Premium Gate */}
+      {showPremiumGate && <div style={{position:"fixed",inset:0,zIndex:2000,background:"rgba(0,0,0,.7)",display:"flex",alignItems:"center",justifyContent:"center",padding:16}} onClick={()=>{setShowPremiumGate(false);setPromoInput("");setPromoStatus(null);}}>
+        <div style={{background:"#fff",borderRadius:24,padding:"32px 24px",maxWidth:420,width:"100%",maxHeight:"90vh",overflow:"auto",position:"relative"}} onClick={e=>e.stopPropagation()}>
+          <button onClick={()=>{setShowPremiumGate(false);setPromoInput("");setPromoStatus(null);}} style={{position:"absolute",top:16,right:16,background:"none",border:"none",fontSize:20,cursor:"pointer",color:"var(--ink3)",padding:8}}>✕</button>
+          <div style={{textAlign:"center",marginBottom:24}}>
+            <div style={{fontSize:32,marginBottom:8}}>🔓</div>
+            <div style={{fontSize:22,fontWeight:900,color:"var(--for)",marginBottom:8}}>Unlock ShadowSpeak Premium</div>
+            <div style={{fontSize:14,color:"var(--ink2)",lineHeight:1.5}}>Get access to all {UNITS.length} units, every language pack, and pronunciation scoring.</div>
+          </div>
+          {/* Pricing cards */}
+          <div style={{display:"flex",flexDirection:"column",gap:10,marginBottom:20}}>
+            <button onClick={()=>{console.log("[Payment] Monthly selected");setPopup({e:"🔜",t:"Coming soon",s:"Payment integration coming soon."});setShowPremiumGate(false);}} style={{padding:"16px 20px",borderRadius:14,border:"1.5px solid var(--st)",background:"var(--wh)",cursor:"pointer",textAlign:"left",fontFamily:"inherit"}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                <div><div style={{fontSize:15,fontWeight:800,color:"var(--for)"}}>Monthly</div><div style={{fontSize:12,color:"var(--ink2)"}}>Cancel anytime</div></div>
+                <div style={{fontSize:18,fontWeight:900,color:"var(--for)"}}>HKD 98<span style={{fontSize:12,fontWeight:500,color:"var(--ink3)"}}>/mo</span></div>
+              </div>
+            </button>
+            <button onClick={()=>{console.log("[Payment] Annual selected");setPopup({e:"🔜",t:"Coming soon",s:"Payment integration coming soon."});setShowPremiumGate(false);}} style={{padding:"16px 20px",borderRadius:14,border:"2.5px solid var(--lime)",background:"rgba(196,240,0,.06)",cursor:"pointer",textAlign:"left",fontFamily:"inherit",position:"relative"}}>
+              <div style={{position:"absolute",top:-10,right:16,background:"var(--lime)",color:"var(--for)",fontSize:11,fontWeight:900,padding:"3px 10px",borderRadius:999}}>Best value — Save 49%</div>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                <div><div style={{fontSize:15,fontWeight:800,color:"var(--for)"}}>Annual</div><div style={{fontSize:12,color:"var(--ink2)"}}>Billed yearly</div></div>
+                <div style={{fontSize:18,fontWeight:900,color:"var(--for)"}}>HKD 598<span style={{fontSize:12,fontWeight:500,color:"var(--ink3)"}}>/yr</span></div>
+              </div>
+            </button>
+            <button onClick={()=>{console.log("[Payment] Lifetime selected");setPopup({e:"🔜",t:"Coming soon",s:"Payment integration coming soon."});setShowPremiumGate(false);}} style={{padding:"16px 20px",borderRadius:14,border:"1.5px solid var(--st)",background:"var(--wh)",cursor:"pointer",textAlign:"left",fontFamily:"inherit"}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                <div><div style={{fontSize:15,fontWeight:800,color:"var(--for)"}}>Lifetime</div><div style={{fontSize:12,color:"var(--ink2)"}}>Pay once, learn forever</div></div>
+                <div style={{fontSize:18,fontWeight:900,color:"var(--for)"}}>HKD 1,280</div>
+              </div>
+            </button>
+          </div>
+          {/* Promo code */}
+          <details style={{marginBottom:20}}>
+            <summary style={{fontSize:13,fontWeight:700,color:"var(--plum)",cursor:"pointer",marginBottom:8}}>Have a promo code?</summary>
+            <div style={{display:"flex",gap:8}}>
+              <input value={promoInput} onChange={e=>setPromoInput(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")submitPromoCode();}} placeholder="Enter code" style={{flex:1,padding:"10px 14px",borderRadius:10,border:"1.5px solid var(--st)",fontSize:14,fontFamily:"inherit",outline:"none"}} />
+              <button onClick={submitPromoCode} disabled={promoStatus==="checking"} style={{padding:"10px 20px",borderRadius:10,border:"none",background:"var(--for)",color:"var(--lime)",fontSize:13,fontWeight:800,cursor:"pointer",fontFamily:"inherit",minWidth:80}}>{promoStatus==="checking"?"...":"Apply"}</button>
+            </div>
+            {promoStatus==="invalid"&&<div style={{fontSize:12,color:"#e74c3c",marginTop:6,fontWeight:600}}>Code not recognised.</div>}
+            {promoStatus==="success"&&<div style={{fontSize:12,color:"#27ae60",marginTop:6,fontWeight:600}}>Unlocked! Welcome to ShadowSpeak Premium.</div>}
+          </details>
+          {/* Coming soon */}
+          <div style={{textAlign:"center",paddingTop:16,borderTop:"1px solid var(--st)"}}>
+            <div style={{fontSize:12,fontWeight:700,color:"var(--ink3)",marginBottom:8}}>More languages coming to ShadowSpeak Premium</div>
+            <div style={{display:"flex",justifyContent:"center",gap:12}}>
+              <span style={{fontSize:13,color:"var(--ink3)",opacity:.5}}>🇯🇵 Japanese</span>
+              <span style={{fontSize:13,color:"var(--ink3)",opacity:.5}}>🇰🇷 Korean</span>
+              <span style={{fontSize:13,color:"var(--ink3)",opacity:.5}}>🇹🇭 Thai</span>
+            </div>
+          </div>
+        </div>
+      </div>}
       {popup&&<div className="comp-ov" onClick={()=>setPopup(null)}><div className="comp-em">{popup.e}</div><div className="comp-t">{popup.t}</div><div className="comp-s">{popup.s}</div><button className="comp-btn" onClick={()=>setPopup(null)}>Continue</button></div>}
     </div>
   );
@@ -2800,7 +2908,7 @@ function MasteryConfirmSheet({ phrase, onMastered, onCancel }) {
 }
 
 // ---- HOME TAB (Phase 2a) ----
-function HomeTab({ profile, progress, upd, settings, setTab, recentTopics, setRecentTopics, practiceCount, library, selUnit, setSelUnit, markReviewed, startPlaylist, openPlBuilder, setAutoLaunch }) {
+function HomeTab({ profile, progress, upd, settings, setTab, recentTopics, setRecentTopics, practiceCount, library, selUnit, setSelUnit, markReviewed, startPlaylist, openPlBuilder, setAutoLaunch, isPremium, freeUnitIds }) {
   const [shadow, setShadow] = useState(null);
   const [searchQ, setSearchQ] = useState("");
   const [readingMode, setReadingMode] = useState(false);
@@ -3252,10 +3360,13 @@ function HomeTab({ profile, progress, upd, settings, setTab, recentTopics, setRe
               setTimeout(update, 100);
             }}>
               <div className="topics-grid">
-                {reordered.map((u) => (
-                  <div className="t-card" key={u.id} onClick={()=>{setSelUnit(u.id);updateRecent(u.id);}}>
+                {reordered.map((u) => {
+                  const isLocked = !isPremium && freeUnitIds && !freeUnitIds.includes(u.id);
+                  return (
+                  <div className="t-card" key={u.id} onClick={()=>{setSelUnit(u.id);updateRecent(u.id);}} style={isLocked?{opacity:.7}:{}}>
                     <div className="t-art">
                       <img src={TOPIC_IMAGES[u.id] || TOPIC_IMAGES[1]} alt="" />
+                      {isLocked && <span style={{position:"absolute",top:6,right:6,background:"rgba(0,0,0,.6)",borderRadius:999,padding:"3px 7px",fontSize:11}}>🔒</span>}
                       <span className="t-num">#{u.id}</span>
                     </div>
                     <div className="t-info">
@@ -3263,7 +3374,7 @@ function HomeTab({ profile, progress, upd, settings, setTab, recentTopics, setRe
                       <div className="t-meta">{u.phrases.length} phrases</div>
                     </div>
                   </div>
-                ))}
+                )})}
               </div>
             </div>
             <div className="topics-scrollbar"><div className="topics-scrollbar-fill" /></div>
@@ -5100,7 +5211,7 @@ function VoiceOnboarding({ onComplete }) {
 }
 
 // ---- SETTINGS (redesigned) ----
-function SettingsTab({ settings, updSettings }) {
+function SettingsTab({ settings, updSettings, isPremium, setShowPremiumGate }) {
   const [playing, setPlaying] = useState(null);
   const [confirmReset, setConfirmReset] = useState(false);
   const [dlState, setDlState] = useState(() => localStorage.getItem(LANG_CONFIG.audioDownloadedKey) === "true" ? "done" : "idle");
@@ -5234,6 +5345,19 @@ function SettingsTab({ settings, updSettings }) {
         {dlState==="loading"&&<div><div style={{fontSize:".72rem",fontWeight:700,color:"var(--ink)",marginBottom:6}}>Downloading... {dlProgress.done}/{dlProgress.total}</div><div style={{width:"100%",height:8,borderRadius:4,background:"var(--st)",overflow:"hidden"}}><div style={{width:`${dlProgress.total?((dlProgress.done/dlProgress.total)*100):0}%`,height:"100%",background:"var(--lime)",borderRadius:4,transition:"width .3s"}}></div></div></div>}
         {dlState==="done"&&<div style={{fontSize:".72rem",fontWeight:700,color:"#27ae60"}}>All audio downloaded! You can now use the app offline.</div>}
         {dlState==="error"&&<div><div style={{fontSize:".72rem",fontWeight:700,color:"#e74c3c",marginBottom:6}}>Download failed. Make sure you're online and try again.</div><button onClick={()=>{setDlState("idle");}} style={{padding:"8px 16px",borderRadius:10,border:"1.5px solid var(--st)",background:"var(--wh)",fontSize:".72rem",fontWeight:700,color:"var(--ink)",cursor:"pointer"}}>Retry</button></div>}
+      </div>
+
+      {/* ShadowSpeak Premium */}
+      <div className="set-card">
+        <div className="set-lb">ShadowSpeak Premium</div>
+        {isPremium ? (
+          <div style={{fontSize:".78rem",fontWeight:700,color:"#27ae60",display:"flex",alignItems:"center",gap:6}}>✓ Premium active</div>
+        ) : (
+          <div>
+            <div style={{fontSize:".68rem",color:"var(--ink2)",lineHeight:1.5,marginBottom:10}}>Unlock all units, language packs, and pronunciation scoring.</div>
+            <button onClick={()=>setShowPremiumGate(true)} style={{width:"100%",padding:"12px",borderRadius:12,border:"none",background:"var(--for)",cursor:"pointer",fontSize:".78rem",fontWeight:700,color:"var(--lime)",marginBottom:8}}>View Premium Plans</button>
+          </div>
+        )}
       </div>
 
       {/* Switch language */}

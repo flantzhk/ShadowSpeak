@@ -1987,19 +1987,8 @@ function App() {
     })();
   }, [user]);
 
-  // Offline fallback: if no Firebase user but we have cached data, create a fake user
-  const offlineUser = useMemo(() => {
-    if (user) return null;
-    try {
-      const keys = Object.keys(localStorage);
-      const progressKey = keys.find(k => k.startsWith(LANG_CONFIG.localStoragePrefix) && k !== LANG_CONFIG.localStoragePrefix);
-      if (progressKey) {
-        const uid = progressKey.replace(LANG_CONFIG.localStoragePrefix, "");
-        return { uid, displayName: "Learner", photoURL: null, email: "" };
-      }
-    } catch(e) {}
-    return null;
-  }, [user]);
+  // No offline fallback — sign-in is required to use the app
+  const offlineUser = null;
 
   // Offline fallback: load from localStorage when no Firebase user
   useEffect(() => {
@@ -2097,8 +2086,8 @@ function App() {
   // Loading state
   if (authLoading && !offlineUser) return <div className="ca"><div className="pkr"><div style={{color:"var(--lime)",fontSize:"1rem",fontWeight:900}}>Loading...</div></div></div>;
 
-  // Not signed in and no offline data: redirect to landing page
-  if (!activeUser) { window.location.href = "index.html"; return null; }
+  // Not signed in: redirect to landing page (requires sign-in)
+  if (!activeUser) { window.location.href = "/ShadowSpeak/index.html"; return null; }
 
   const profile = activeUser.uid;
   const displayName = activeUser.displayName || (activeUser.email ? activeUser.email.split("@")[0].replace(/[._]/g, " ").replace(/\b\w/g, c => c.toUpperCase()) : "Learner");
@@ -2164,7 +2153,7 @@ function App() {
                 <button onClick={()=>{setProfileMenu(false);setTab("settings");}} style={{width:"100%",padding:"14px 16px",background:"none",border:"none",cursor:"pointer",fontSize:".82rem",fontWeight:700,color:"var(--ink)",textAlign:"left",display:"flex",alignItems:"center",gap:10,minHeight:48}}>⚙️ Settings</button>
                 <button onClick={()=>{setProfileMenu(false);window.location.href="index.html";}} style={{width:"100%",padding:"14px 16px",background:"none",border:"none",cursor:"pointer",fontSize:".82rem",fontWeight:700,color:"var(--ink)",textAlign:"left",display:"flex",alignItems:"center",gap:10,minHeight:48}}>🏠 Back to home</button>
                 <div style={{borderTop:"1px solid var(--st)",margin:"2px 0"}} />
-                <button onClick={()=>{fbAuth.signOut();window.location.href="index.html";}} style={{width:"100%",padding:"14px 16px",background:"none",border:"none",cursor:"pointer",fontSize:".82rem",fontWeight:700,color:"#e74c3c",textAlign:"left",display:"flex",alignItems:"center",gap:10,minHeight:48}}>🚪 Sign out</button>
+                <button onClick={()=>{fbAuth.signOut();window.location.href="/ShadowSpeak/index.html";}} style={{width:"100%",padding:"14px 16px",background:"none",border:"none",cursor:"pointer",fontSize:".82rem",fontWeight:700,color:"#e74c3c",textAlign:"left",display:"flex",alignItems:"center",gap:10,minHeight:48}}>🚪 Sign out</button>
               </div>
             </>}
           </div>

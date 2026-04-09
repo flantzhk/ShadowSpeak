@@ -42316,32 +42316,9 @@ if (!_lang) {
           }
         })();
       }, [user]);
-      const offlineUser = reactExports.useMemo(() => {
-        if (user) return null;
-        try {
-          const keys = Object.keys(localStorage);
-          const progressKey = keys.find((k2) => k2.startsWith(LANG_CONFIG.localStoragePrefix) && k2 !== LANG_CONFIG.localStoragePrefix);
-          if (progressKey) {
-            const uid = progressKey.replace(LANG_CONFIG.localStoragePrefix, "");
-            return { uid, displayName: "Learner", photoURL: null, email: "" };
-          }
-        } catch (e) {
-        }
-        return null;
-      }, [user]);
+      const offlineUser = null;
       reactExports.useEffect(() => {
-        if (user || !offlineUser) return;
-        const localRaw = localStorage.getItem(`${LANG_CONFIG.localStoragePrefix}${offlineUser.uid}`);
-        if (localRaw) {
-          const d = JSON.parse(localRaw);
-          setProgress({ phrases: d.phrases || {}, vocab: d.vocab || {}, unit10: d.unit10 || [], phraseTs: d.phraseTs || {}, lastReview: d.lastReview || {}, lessonLog: d.lessonLog || [], quizCount: d.quizCount || 0 });
-        }
-        const ls = JSON.parse(localStorage.getItem(LANG_CONFIG.localStorageSettingsKey) || "{}");
-        if (ls.onboardingDone) {
-          setSettings(ls);
-          _activeEnVoiceId = ls.enVoice || DEFAULT_EN_VOICE;
-          _activeCnVoiceId = ls.cnVoice || DEFAULT_CN_VOICE;
-        }
+        return;
       }, [offlineUser, user]);
       const save = reactExports.useCallback((updated) => {
         const uid = (user == null ? void 0 : user.uid) || (offlineUser == null ? void 0 : offlineUser.uid);
@@ -42429,7 +42406,7 @@ if (!_lang) {
       const activeUser = user || offlineUser;
       if (authLoading && !offlineUser) return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "ca", children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "pkr", children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { color: "var(--lime)", fontSize: "1rem", fontWeight: 900 }, children: "Loading..." }) }) });
       if (!activeUser) {
-        window.location.href = "index.html";
+        window.location.href = "/ShadowSpeak/index.html";
         return null;
       }
       activeUser.uid;
@@ -42505,7 +42482,7 @@ if (!_lang) {
                 /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { borderTop: "1px solid var(--st)", margin: "2px 0" } }),
                 /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => {
                   fbAuth.signOut();
-                  window.location.href = "index.html";
+                  window.location.href = "/ShadowSpeak/index.html";
                 }, style: { width: "100%", padding: "14px 16px", background: "none", border: "none", cursor: "pointer", fontSize: ".82rem", fontWeight: 700, color: "#e74c3c", textAlign: "left", display: "flex", alignItems: "center", gap: 10, minHeight: 48 }, children: "🚪 Sign out" })
               ] })
             ] })
@@ -45058,4 +45035,4 @@ if (!_lang) {
     root.render(React.createElement(ErrorBoundary, null, React.createElement(App)));
   })();
 }
-//# sourceMappingURL=app-a3_zjL-0.js.map
+//# sourceMappingURL=app-BwJaVnt7.js.map

@@ -40222,6 +40222,17 @@ if (_refParam) {
   _cleanRef.searchParams.delete("ref");
   window.history.replaceState({}, "", _cleanRef.pathname + _cleanRef.search + _cleanRef.hash);
 }
+const APP_VERSION = "4.0.0";
+function trackEvent(name2, props = {}) {
+  var _a;
+  const uid = ((_a = window._ssUser) == null ? void 0 : _a.uid) || null;
+  const lang = localStorage.getItem("shadowspeak-lang") || null;
+  const premium = window._ssIsPremium || false;
+  const platform = typeof navigator !== "undefined" && /capacitor/i.test(navigator.userAgent) ? "ios" : "web";
+  const payload = { ...props, uid, language: lang, isPremium: premium, appVersion: APP_VERSION, platform };
+  console.log(`[Analytics] ${name2}`, payload);
+}
+window.trackEvent = trackEvent;
 const _up = new URLSearchParams(window.location.search);
 let _lang = _up.get("lang") || localStorage.getItem("shadowspeak-lang") || null;
 if (_up.has("lang")) {
@@ -42033,12 +42044,14 @@ if (!_lang) {
       const selectUnitGated = (id2) => {
         if (!isPremium && !FREE_UNIT_IDS.includes(id2)) {
           setShowPremiumGate(true);
+          trackEvent("paywall_shown", { unitId: id2 });
           return;
         }
         setSelUnit(id2);
       };
       const submitPromoCode = async () => {
         if (!promoInput.trim()) return;
+        trackEvent("promo_code_entered", { code: promoInput.trim() });
         setPromoStatus("checking");
         try {
           const doc2 = await fbDb.collection("config").doc("promoCodes").get();
@@ -42056,6 +42069,8 @@ if (!_lang) {
                 });
               }
               setIsPremium(true);
+              window._ssIsPremium = true;
+              trackEvent("promo_code_redeemed", { code: match.code });
               setPromoStatus("success");
               setShowPremiumGate(false);
               setPopup2({ e: "🎉", t: "Unlocked!", s: "Welcome to ShadowSpeak Premium." });
@@ -42076,7 +42091,8 @@ if (!_lang) {
         const s = document.createElement("style");
         s.textContent = CSS + QUIZ_CSS;
         document.head.appendChild(s);
-        localStorage.setItem("shadowspeak-last-lang", "app.html?lang=" + LANG_CONFIG.id);
+        localStorage.setItem("shadowspeak-last-lang", LANG_CONFIG.id);
+        trackEvent("app_open");
         return () => document.head.removeChild(s);
       }, []);
       reactExports.useEffect(() => {
@@ -42408,11 +42424,13 @@ if (!_lang) {
           setShowPremiumGate(false);
           setPromoInput("");
           setPromoStatus(null);
+          trackEvent("paywall_dismissed");
         }, children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { background: "#fff", borderRadius: 24, padding: "32px 24px", maxWidth: 420, width: "100%", maxHeight: "90vh", overflow: "auto", position: "relative" }, onClick: (e) => e.stopPropagation(), children: [
           /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => {
             setShowPremiumGate(false);
             setPromoInput("");
             setPromoStatus(null);
+            trackEvent("paywall_dismissed");
           }, style: { position: "absolute", top: 16, right: 16, background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--ink3)", padding: 8 }, children: "✕" }),
           /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { textAlign: "center", marginBottom: 24 }, children: [
             /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 32, marginBottom: 8 }, children: "🔓" }),
@@ -44875,4 +44893,4 @@ if (!_lang) {
     root.render(React.createElement(ErrorBoundary, null, React.createElement(App)));
   })();
 }
-//# sourceMappingURL=app-BgwFYEWf.js.map
+//# sourceMappingURL=app-UiQssFpo.js.map

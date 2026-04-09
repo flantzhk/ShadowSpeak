@@ -40222,7 +40222,7 @@ if (_refParam) {
   _cleanRef.searchParams.delete("ref");
   window.history.replaceState({}, "", _cleanRef.pathname + _cleanRef.search + _cleanRef.hash);
 }
-const APP_VERSION = "4.3.0";
+const APP_VERSION = "4.4.0";
 function trackEvent(name2, props = {}) {
   var _a;
   const uid = ((_a = window._ssUser) == null ? void 0 : _a.uid) || null;
@@ -41089,11 +41089,68 @@ if (!_lang) {
       }));
     }
     const CSS = `
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;0,9..40,900;1,9..40,400&family=Noto+Sans+HK:wght@400;700;900&display=swap');
-:root{--cream:#F5F2EE;--wh:#fff;--st:#EDE8E0;--st2:#E0DAD0;--ink:#2C2C2C;--ink2:#5A554F;--ink3:#7A756E;--lime:#C4F000;--ld:#7AAA00;--for:#1F3329;--navy:#1A1F3D;--navy-l:#242B52;--cor:#F05A3A;--plum:#8F6AE8;}
+@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;0,9..40,900;1,9..40,400&family=DM+Serif+Display&family=Noto+Sans+HK:wght@400;700;900&family=Noto+Sans+SC:wght@400;700;900&display=swap');
+:root{--cream:#F5F2EE;--wh:#fff;--st:#EDE8E0;--st2:#E0DAD0;--ink:#2C2C2C;--ink2:#5A554F;--ink3:#7A756E;--lime:#C4F000;--ld:#7AAA00;--for:#1F3329;--navy:#1A1F3D;--navy-l:#242B52;--cor:#F05A3A;--plum:#8F6AE8;--bg-err:#2d1e1e;--bg-ok:#1e2d1e;--cta-text:#162010;--txt-dark:#e8f0e4;--txt-muted:#7a9970;--txt-hint:#4a6a4a;--correct-green:#90d870;--err-red:#f08080;}
 *{box-sizing:border-box;margin:0;padding:0}body,button,input,select,textarea{font-family:'DM Sans',-apple-system,sans-serif}
 .ca{background:var(--cream);min-height:100vh;color:var(--ink);-webkit-font-smoothing:antialiased}
 @keyframes slideDown{from{transform:translateY(-100%);opacity:0}to{transform:translateY(0);opacity:1}}
+@keyframes waveBar{0%,100%{height:6px}50%{height:22px}}
+@keyframes pulseRing{0%,100%{border-color:rgba(200,240,96,.3);transform:scale(1)}50%{border-color:rgba(200,240,96,.8);transform:scale(1.08)}}
+@keyframes fadeInUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+
+/* Pronunciation practice — 4 inline states */
+.pron-screen{position:fixed;inset:0;background:var(--for);z-index:200;display:flex;flex-direction:column;overflow-y:auto}
+.pron-topbar{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;flex-shrink:0}
+.pron-topbar-end{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);border-radius:999px;padding:8px 14px;color:rgba(255,255,255,.6);font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;min-height:36px}
+.pron-topbar-label{font-family:'DM Sans',sans-serif;font-size:11px;font-weight:500;color:var(--lime);letter-spacing:.04em}
+.pron-topbar-count{font-size:11px;color:var(--txt-hint)}
+.pron-progress{height:2px;margin:0 28px;background:rgba(200,240,96,.1);border-radius:1px;flex-shrink:0}
+.pron-progress-fill{height:100%;background:var(--lime);border-radius:1px;transition:width .3s}
+.pron-phrase{text-align:center;padding:32px 14px 16px;flex-shrink:0}
+.pron-phrase-en{font-family:'DM Sans',sans-serif;font-weight:300;font-size:11px;color:var(--txt-hint);margin-bottom:6px}
+.pron-phrase-cn{font-size:14px;font-weight:500;color:#8aaa84;margin-bottom:4px}
+.pron-phrase-rom{font-size:11px;font-style:italic;color:var(--plum);font-weight:500}
+.pron-bottom{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0 24px 40px;animation:fadeInUp .3s ease}
+.pron-instruction{font-family:'DM Sans',sans-serif;font-size:11px;font-weight:500;margin-bottom:20px}
+
+/* Waveform pill */
+.wave-pill{display:flex;align-items:center;gap:3px;background:rgba(200,240,96,.1);border:1px solid rgba(200,240,96,.2);border-radius:20px;padding:14px 24px;margin-bottom:12px}
+.wave-pill .bar{width:3px;border-radius:2px;background:var(--lime)}
+
+/* Recording ring */
+.pron-ring{width:80px;height:80px;border-radius:50%;border:2px solid rgba(200,240,96,.3);display:flex;align-items:center;justify-content:center;animation:pulseRing 1.2s ease-in-out infinite;margin-bottom:8px;cursor:pointer}
+.pron-ring-dot{width:14px;height:14px;border-radius:50%;background:var(--lime)}
+.pron-listening{font-family:'DM Mono',monospace;font-size:10px;font-weight:500;color:var(--lime);letter-spacing:.06em;margin-bottom:16px}
+
+/* Inline score results */
+.pron-score-row{display:flex;align-items:center;justify-content:space-between;width:100%;padding:0 14px;margin-bottom:16px}
+.pron-score-num{font-family:'DM Sans',sans-serif;font-size:28px;font-weight:600;color:var(--lime)}
+.pron-score-pct{font-size:12px;font-weight:400;color:var(--txt-muted)}
+.pron-score-desc{font-size:11px;color:#8aaa84;margin-top:2px}
+.pron-tones-correct{font-size:10px;color:var(--txt-hint);text-align:right}
+
+/* Tone grid — redesigned */
+.tone-grid{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;width:100%;padding:0 14px;margin-bottom:16px}
+.tone-correct{display:flex;flex-direction:column;align-items:center;min-width:36px;padding:5px 4px}
+.tone-correct-char{font-size:16px;font-weight:500;color:var(--correct-green)}
+.tone-correct-tick{font-size:11px;color:#5aaa40;margin:2px 0}
+.tone-correct-label{font-family:'DM Mono',monospace;font-size:9px;font-weight:500;color:#4a7a40}
+.tone-wrong{border-radius:10px;border:1.5px solid rgba(240,130,130,.4);background:var(--bg-err);overflow:hidden;min-width:52px;cursor:pointer}
+.tone-wrong-char{font-size:17px;font-weight:500;color:#f0a8a8;padding:7px 8px 5px;text-align:center;background:var(--bg-err)}
+.tone-wrong-divider{height:1px;background:rgba(255,255,255,.08)}
+.tone-wrong-pills{display:flex}
+.tone-pill{flex:1;padding:7px 4px 6px;text-align:center;cursor:pointer;min-height:40px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;transition:border-color .2s}
+.tone-pill-correct{background:var(--bg-ok);color:var(--correct-green);border-right:1px solid rgba(255,255,255,.07)}
+.tone-pill-yours{background:var(--bg-err);color:var(--err-red)}
+.tone-pill-label{font-family:'DM Sans',sans-serif;font-size:10px;font-weight:600}
+.tone-pill-sub{font-family:'DM Sans',sans-serif;font-size:8px;font-weight:400;opacity:.6}
+.tone-pill-play{width:0;height:0;border-left:5px solid currentColor;border-top:3px solid transparent;border-bottom:3px solid transparent;margin-bottom:1px}
+
+/* Sentence listen button */
+.pron-listen-btn{width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:9px 14px;color:var(--txt-muted);font-size:11px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif;display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:12px}
+
+/* Tone toast */
+.tone-toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:rgba(255,255,255,.07);border-radius:6px;padding:4px 10px;font-size:9px;color:#8aaa84;text-align:center;min-height:18px;transition:opacity .2s;z-index:210}
 
 /* Bottom nav — mobile only */
 .bn{position:fixed;bottom:0;left:0;right:0;background:var(--wh);border-top:1px solid var(--st2);display:flex;z-index:100;padding-bottom:env(safe-area-inset-bottom)}
@@ -41702,6 +41759,9 @@ if (!_lang) {
       const [picking, setPicking] = reactExports.useState(startMode === "pronunciation");
       const [autoStarted, setAutoStarted] = reactExports.useState(false);
       const [selectedUnits, setSelectedUnits] = reactExports.useState(/* @__PURE__ */ new Set());
+      const [pronState, setPronState] = reactExports.useState("listen");
+      const [toneToast, setToneToast] = reactExports.useState(null);
+      const toneToastTimer = reactExports.useRef(null);
       const [source, setSource] = reactExports.useState("known");
       const [pronScores, setPronScores] = reactExports.useState([]);
       const exitQuiz = () => {
@@ -41763,6 +41823,7 @@ if (!_lang) {
         setScoreResult(null);
         setIsRecording(false);
         setScoring(false);
+        setPronState("listen");
         if (idx + 1 >= quizItems.length) setDone(true);
         else setIdx((i) => i + 1);
       };
@@ -41771,6 +41832,7 @@ if (!_lang) {
         setScoreResult(null);
         setIsRecording(false);
         setScoring(false);
+        setPronState("listen");
         if (idx + 1 >= quizItems.length) setDone(true);
         else setIdx((i) => i + 1);
       };
@@ -41781,32 +41843,6 @@ if (!_lang) {
           else next.add(id2);
           return next;
         });
-      };
-      const qStartTest = async () => {
-        stopAudio();
-        try {
-          const ok2 = await startRecording();
-          if (ok2) setIsRecording(true);
-        } catch (e) {
-          console.warn("Mic error:", e);
-        }
-      };
-      const qStopTest = async () => {
-        setIsRecording(false);
-        setScoring(true);
-        const blob = await stopRecording();
-        const ph2 = quizItems[idx];
-        if (blob && ph2) {
-          try {
-            const result = await scorePronunciation(blob, ph2.cn, LANG_CONFIG.id);
-            const chars = parseScoreChars(result, ph2.cn);
-            setScoreResult({ score: result.score, passed: result.passed, chars, phrase: ph2 });
-          } catch (e) {
-            console.error("Scoring error:", e);
-            setScoreResult({ error: e.message });
-          }
-        }
-        setScoring(false);
       };
       if (picking) {
         const unitCount = selectedUnits.size;
@@ -41964,54 +42000,154 @@ if (!_lang) {
       }
       const item = quizItems[idx];
       if (mode === "pronunciation") {
-        return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "quiz-ov", children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "quiz-hd", children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "quiz-cl", onClick: () => {
+        const scoreDesc = scoreResult ? scoreResult.score >= 100 ? "Perfect" : scoreResult.score >= 90 ? "Great pronunciation" : scoreResult.score >= 75 ? "Keep practising" : scoreResult.score >= 60 ? "Almost there" : "Try again" : "";
+        const tonesCorrect = (scoreResult == null ? void 0 : scoreResult.chars) ? scoreResult.chars.filter((c) => c.match || c.m).length : 0;
+        const tonesTotal = (scoreResult == null ? void 0 : scoreResult.chars) ? scoreResult.chars.length : 0;
+        const showToast = (msg) => {
+          clearTimeout(toneToastTimer.current);
+          setToneToast(msg);
+          toneToastTimer.current = setTimeout(() => setToneToast(null), 1800);
+        };
+        const handlePillTap = (c, toneValue, type) => {
+          googleTTS(c.cn, LANG_CONFIG.id === "mandarin" ? "zh-CN" : "yue-HK");
+          showToast(`${type}: ${toneValue}`);
+        };
+        const startListening = async () => {
+          setPronState("listen");
+          try {
+            await speak(item.cn);
+          } catch (e) {
+          }
+          setTimeout(() => setPronState("ready"), 600);
+        };
+        const doPronRecord = async () => {
+          setPronState("recording");
+          stopAudio();
+          try {
+            const ok2 = await startRecording();
+            if (ok2) setIsRecording(true);
+          } catch (e) {
+            console.warn("Mic error:", e);
+            setPronState("ready");
+          }
+        };
+        const doPronStop = async () => {
+          setIsRecording(false);
+          setScoring(true);
+          const blob = await stopRecording();
+          const ph2 = quizItems[idx];
+          if (blob && ph2) {
+            try {
+              const result = await scorePronunciation(blob, ph2.cn, LANG_CONFIG.id);
+              const chars = parseScoreChars(result, ph2.cn);
+              setScoreResult({ score: result.score, passed: result.passed, chars, phrase: ph2 });
+              setPronState("results");
+            } catch (e) {
+              console.error("Scoring error:", e);
+              setScoreResult({ error: e.message });
+              setPronState("results");
+            }
+          } else {
+            setPronState("ready");
+          }
+          setScoring(false);
+        };
+        reactExports.useEffect(() => {
+          if (mode === "pronunciation" && pronState === "listen") {
+            startListening();
+          }
+        }, [idx, mode]);
+        return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "pron-screen", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "pron-topbar", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "pron-topbar-end", onClick: () => {
               exitQuiz();
               setScoreResult(null);
+              setPronState("listen");
             }, children: "✕ End" }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "quiz-ti", children: "🎙 Pronunciation" }),
-            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { fontSize: ".65rem", color: "rgba(255,255,255,.4)" }, children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "pron-topbar-label", children: "Pronunciation" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "pron-topbar-count", children: [
               idx + 1,
-              "/",
+              " / ",
               quizItems.length
             ] })
           ] }),
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "quiz-body", style: { justifyContent: "center", gap: 0 }, children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "quiz-sub", style: { marginBottom: 12, fontSize: ".82rem" }, children: [
-              "Say this out loud in ",
-              LANG_CONFIG.name,
-              ":"
-            ] }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "quiz-prompt", style: { marginBottom: 16, fontSize: "1.4rem" }, children: item.en }),
-            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { marginBottom: 20, textAlign: "center" }, children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: "1rem", fontStyle: "italic", color: "var(--plum)", fontWeight: 600, marginBottom: 6 }, children: /* @__PURE__ */ jsxRuntimeExports.jsx(JyutpingTone, { text: item.jyut }) }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontFamily: `${LANG_CONFIG.fontFamily.replace(/'/g, "")}`, fontSize: "1.1rem", color: "var(--ink)", fontWeight: 700 }, children: item.cn })
-            ] }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("button", { style: { marginBottom: 24, background: "var(--for)", border: "none", borderRadius: 999, padding: "12px 24px", fontSize: ".78rem", cursor: "pointer", color: "var(--lime)", fontWeight: 700, minHeight: 44 }, onClick: () => speak(item.cn), children: "▶ Listen first" }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { width: "100%", maxWidth: 440 }, children: !isRecording && !scoring && !scoreResult ? /* @__PURE__ */ jsxRuntimeExports.jsx(RecordBtn, { onClick: qStartTest, label: "🎙 Record yourself" }) : scoring ? /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { width: "100%", padding: "16px", borderRadius: 14, background: "rgba(0,0,0,.04)", textAlign: "center" }, children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".82rem", fontWeight: 700, color: "var(--ink2)" }, children: "Scoring..." }) }) : isRecording ? /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: qStopTest, style: { width: "100%", padding: "16px", borderRadius: 14, border: "none", background: "#e74c3c", color: "#fff", fontSize: ".88rem", fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 10, animation: "pulse 1s ease-in-out infinite" }, children: "⏹ Stop and score" }) : null }),
-            !scoreResult && !isRecording && !scoring && /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: pronSkip, style: { marginTop: 16, background: "none", border: "none", cursor: "pointer", fontSize: ".78rem", fontWeight: 600, color: "var(--ink3)", minHeight: 44, padding: "8px 16px" }, children: "Skip →" }),
-            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { fontSize: ".65rem", color: "var(--ink3)", marginTop: 10 }, children: [
-              idx + 1,
-              " of ",
-              quizItems.length
-            ] })
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "pron-progress", children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "pron-progress-fill", style: { width: (idx + 1) / quizItems.length * 100 + "%" } }) }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "pron-phrase", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "pron-phrase-en", children: item.en }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "pron-phrase-cn", style: { fontFamily: LANG_CONFIG.fontFamily.replace(/'/g, "") }, children: item.cn }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "pron-phrase-rom", children: /* @__PURE__ */ jsxRuntimeExports.jsx(JyutpingTone, { text: item.jyut }) })
           ] }),
-          scoreResult && (scoreResult.error ? /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,.6)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }, children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { background: "var(--wh)", borderRadius: 20, padding: 24, maxWidth: 360, textAlign: "center" }, children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: "2rem", marginBottom: 8 }, children: "😕" }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".88rem", fontWeight: 800, color: "var(--ink)", marginBottom: 6 }, children: "Scoring failed" }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".72rem", color: "var(--ink3)", marginBottom: 16, lineHeight: 1.5 }, children: scoreResult.error }),
-            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", gap: 8 }, children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => {
-                setScoreResult(null);
-                qStartTest();
-              }, style: { flex: 1, padding: 12, borderRadius: 12, border: "none", background: "var(--lime)", color: "var(--for)", fontWeight: 800, fontSize: ".78rem", cursor: "pointer" }, children: "Try again" }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: pronNext, style: { flex: 1, padding: 12, borderRadius: 12, border: "1.5px solid var(--st)", background: "var(--wh)", color: "var(--ink)", fontWeight: 700, fontSize: ".78rem", cursor: "pointer" }, children: "Skip" })
-            ] })
-          ] }) }) : /* @__PURE__ */ jsxRuntimeExports.jsx(PronunciationScore, { score: scoreResult.score, chars: scoreResult.chars, phrase: scoreResult.phrase, onRetry: () => {
-            setScoreResult(null);
-            qStartTest();
-          }, onNext: pronNext, onClose: pronNext }))
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "pron-bottom", children: [
+            pronState === "listen" && /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "pron-instruction", style: { color: "#5a7a54" }, children: "Listen carefully" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx(WaveformPill, { label: "Playing..." }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => speak(item.cn), style: { background: "none", border: "none", color: "var(--txt-hint)", fontSize: 10, cursor: "pointer", textDecoration: "underline", minHeight: 44, padding: 8 }, children: "play again" })
+            ] }),
+            pronState === "ready" && /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "pron-instruction", style: { color: "#a0b89a" }, children: "Now say it out loud" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { background: "rgba(200,240,96,.08)", border: "1px solid rgba(200,240,96,.18)", borderRadius: 12, padding: "10px 16px", width: "100%", maxWidth: 380, textAlign: "center" }, children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 11, color: "#a0b89a", marginBottom: 6 }, children: "Tap when you're ready" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { onClick: doPronRecord, style: { width: "100%", background: "var(--lime)", color: "var(--cta-text)", border: "none", borderRadius: 10, padding: "11px", fontSize: 13, fontWeight: 600, cursor: "pointer", minHeight: 44, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }, children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsxs("svg", { width: "14", height: "14", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2.5", children: [
+                    /* @__PURE__ */ jsxRuntimeExports.jsx("path", { d: "M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" }),
+                    /* @__PURE__ */ jsxRuntimeExports.jsx("path", { d: "M19 10v2a7 7 0 0 1-14 0v-2" }),
+                    /* @__PURE__ */ jsxRuntimeExports.jsx("line", { x1: "12", y1: "19", x2: "12", y2: "23" })
+                  ] }),
+                  "Record yourself"
+                ] })
+              ] }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: pronSkip, style: { marginTop: 12, background: "none", border: "none", color: "#3a5a3a", fontSize: 10, cursor: "pointer", textDecoration: "underline", minHeight: 44, padding: 8 }, children: "skip →" })
+            ] }),
+            pronState === "recording" && /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "pron-instruction", style: { color: "var(--lime)" }, children: "Speaking..." }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "pron-ring", onClick: doPronStop, children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "pron-ring-dot" }) }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "pron-listening", children: "LISTENING" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx(WaveformPill, { label: "Recording..." }),
+              scoring && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 11, color: "rgba(255,255,255,.4)", marginTop: 8 }, children: "Analysing..." })
+            ] }),
+            pronState === "results" && scoreResult && /* @__PURE__ */ jsxRuntimeExports.jsx(jsxRuntimeExports.Fragment, { children: scoreResult.error ? /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: "2rem", marginBottom: 8 }, children: "😕" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 13, fontWeight: 800, color: "var(--txt-dark)", marginBottom: 6 }, children: "Scoring failed" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 11, color: "var(--txt-muted)", marginBottom: 16, lineHeight: 1.7, textAlign: "center" }, children: scoreResult.error }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", gap: 8, width: "100%", maxWidth: 300 }, children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => {
+                  setScoreResult(null);
+                  startListening();
+                }, style: { flex: 1, padding: 13, borderRadius: 12, border: "none", background: "var(--lime)", color: "var(--cta-text)", fontWeight: 600, fontSize: 13, cursor: "pointer", minHeight: 44 }, children: "Try again" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: pronNext, style: { flex: 1, padding: 11, borderRadius: 12, border: "1.5px solid rgba(255,255,255,.15)", background: "rgba(255,255,255,.08)", color: "#c8e8b8", fontWeight: 500, fontSize: 12, cursor: "pointer", minHeight: 44 }, children: "Skip" })
+              ] })
+            ] }) : /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "pron-instruction", style: { color: "var(--txt-muted)" }, children: "Done — here's how you did" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "pron-score-row", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+                    /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "pron-score-num", children: scoreResult.score }),
+                    /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "pron-score-pct", children: "%" })
+                  ] }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "pron-score-desc", children: scoreDesc })
+                ] }),
+                /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "pron-tones-correct", children: [
+                  tonesCorrect,
+                  " of ",
+                  tonesTotal,
+                  " tones correct"
+                ] })
+              ] }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx(ToneGridInline, { chars: scoreResult.chars, onPillTap: handlePillTap }),
+              toneToast && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "tone-toast", style: { opacity: 1 }, children: toneToast }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { className: "pron-listen-btn", onClick: () => speak(item.cn), children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("svg", { width: "14", height: "14", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", children: /* @__PURE__ */ jsxRuntimeExports.jsx("polygon", { points: "5 3 19 12 5 21 5 3" }) }),
+                "Listen to full sentence"
+              ] }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", gap: 8, width: "100%", maxWidth: 380 }, children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: pronNext, style: { flex: 1, padding: 13, borderRadius: 12, border: "none", background: "var(--lime)", color: "var(--cta-text)", fontWeight: 600, fontSize: 13, cursor: "pointer", minHeight: 44 }, children: "Next phrase" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => {
+                  setScoreResult(null);
+                  startListening();
+                }, style: { flex: 1, padding: 11, borderRadius: 12, border: "1.5px solid rgba(255,255,255,.15)", background: "rgba(255,255,255,.08)", color: "#c8e8b8", fontWeight: 500, fontSize: 12, cursor: "pointer", minHeight: 44 }, children: "Try again" })
+              ] })
+            ] }) })
+          ] }, pronState + "-" + idx)
         ] });
       }
       if (mode === "speaking") {
@@ -42126,6 +42262,47 @@ if (!_lang) {
         /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { width: 6, height: 6, borderRadius: "50%", background: "#F05A3A", flexShrink: 0 } }),
         /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { fontSize: ".68rem", fontWeight: 700, color: "rgba(255,255,255,.8)", letterSpacing: ".3px" }, children: "Offline mode" })
       ] });
+    }
+    function WaveformPill({ label }) {
+      return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "wave-pill", children: [
+        [0, 1, 2, 3, 4].map((i) => /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "bar", style: { height: 8, animation: `waveBar .8s ease-in-out ${i * 0.12}s infinite` } }, i)),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { marginLeft: 10, fontFamily: "'DM Sans',sans-serif", fontSize: 11, fontWeight: 500, color: "var(--lime)" }, children: label || "Playing..." })
+      ] });
+    }
+    function ToneGridInline({ chars, onPillTap }) {
+      if (!chars || !chars.length) return null;
+      return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "tone-grid", children: chars.map((c, i) => {
+        const match = c.match || c.m;
+        if (match) {
+          return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "tone-correct", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "tone-correct-char", children: c.cn }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "tone-correct-tick", children: "✓" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "tone-correct-label", children: c.expected || c.e })
+          ] }, i);
+        }
+        return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "tone-wrong", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "tone-wrong-char", children: c.cn }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "tone-wrong-divider" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "tone-wrong-pills", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "tone-pill tone-pill-correct", onClick: (e) => {
+              e.stopPropagation();
+              onPillTap && onPillTap(c, c.expected || c.e, "Correct tone");
+            }, children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "tone-pill-play" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "tone-pill-label", children: c.expected || c.e }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "tone-pill-sub", children: "correct" })
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "tone-pill tone-pill-yours", onClick: (e) => {
+              e.stopPropagation();
+              onPillTap && onPillTap(c, c.yours || c.y, "You said");
+            }, children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "tone-pill-play" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "tone-pill-label", children: c.yours || c.y }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "tone-pill-sub", children: "you said" })
+            ] })
+          ] })
+        ] }, i);
+      }) });
     }
     function RecordBtn({ onClick, label, style }) {
       const isOnline = useIsOnline();
@@ -45059,4 +45236,4 @@ if (!_lang) {
     root.render(React.createElement(ErrorBoundary, null, React.createElement(App)));
   })();
 }
-//# sourceMappingURL=app-Oca2ypla.js.map
+//# sourceMappingURL=app-JaHEqpkW.js.map

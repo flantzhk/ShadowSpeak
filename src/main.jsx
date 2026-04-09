@@ -17,7 +17,7 @@ if (_refParam) {
 }
 
 // ---- ANALYTICS ----
-const APP_VERSION = "4.3.0";
+const APP_VERSION = "4.4.0";
 let _analyticsClient = null;
 function trackEvent(name, props = {}) {
   const uid = window._ssUser?.uid || null;
@@ -810,11 +810,68 @@ function JyutpingTone({ text, className, style }) {
 
 // ---- STYLES ----
 const CSS = `
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;0,9..40,900;1,9..40,400&family=Noto+Sans+HK:wght@400;700;900&display=swap');
-:root{--cream:#F5F2EE;--wh:#fff;--st:#EDE8E0;--st2:#E0DAD0;--ink:#2C2C2C;--ink2:#5A554F;--ink3:#7A756E;--lime:#C4F000;--ld:#7AAA00;--for:#1F3329;--navy:#1A1F3D;--navy-l:#242B52;--cor:#F05A3A;--plum:#8F6AE8;}
+@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;0,9..40,900;1,9..40,400&family=DM+Serif+Display&family=Noto+Sans+HK:wght@400;700;900&family=Noto+Sans+SC:wght@400;700;900&display=swap');
+:root{--cream:#F5F2EE;--wh:#fff;--st:#EDE8E0;--st2:#E0DAD0;--ink:#2C2C2C;--ink2:#5A554F;--ink3:#7A756E;--lime:#C4F000;--ld:#7AAA00;--for:#1F3329;--navy:#1A1F3D;--navy-l:#242B52;--cor:#F05A3A;--plum:#8F6AE8;--bg-err:#2d1e1e;--bg-ok:#1e2d1e;--cta-text:#162010;--txt-dark:#e8f0e4;--txt-muted:#7a9970;--txt-hint:#4a6a4a;--correct-green:#90d870;--err-red:#f08080;}
 *{box-sizing:border-box;margin:0;padding:0}body,button,input,select,textarea{font-family:'DM Sans',-apple-system,sans-serif}
 .ca{background:var(--cream);min-height:100vh;color:var(--ink);-webkit-font-smoothing:antialiased}
 @keyframes slideDown{from{transform:translateY(-100%);opacity:0}to{transform:translateY(0);opacity:1}}
+@keyframes waveBar{0%,100%{height:6px}50%{height:22px}}
+@keyframes pulseRing{0%,100%{border-color:rgba(200,240,96,.3);transform:scale(1)}50%{border-color:rgba(200,240,96,.8);transform:scale(1.08)}}
+@keyframes fadeInUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+
+/* Pronunciation practice — 4 inline states */
+.pron-screen{position:fixed;inset:0;background:var(--for);z-index:200;display:flex;flex-direction:column;overflow-y:auto}
+.pron-topbar{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;flex-shrink:0}
+.pron-topbar-end{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);border-radius:999px;padding:8px 14px;color:rgba(255,255,255,.6);font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;min-height:36px}
+.pron-topbar-label{font-family:'DM Sans',sans-serif;font-size:11px;font-weight:500;color:var(--lime);letter-spacing:.04em}
+.pron-topbar-count{font-size:11px;color:var(--txt-hint)}
+.pron-progress{height:2px;margin:0 28px;background:rgba(200,240,96,.1);border-radius:1px;flex-shrink:0}
+.pron-progress-fill{height:100%;background:var(--lime);border-radius:1px;transition:width .3s}
+.pron-phrase{text-align:center;padding:32px 14px 16px;flex-shrink:0}
+.pron-phrase-en{font-family:'DM Sans',sans-serif;font-weight:300;font-size:11px;color:var(--txt-hint);margin-bottom:6px}
+.pron-phrase-cn{font-size:14px;font-weight:500;color:#8aaa84;margin-bottom:4px}
+.pron-phrase-rom{font-size:11px;font-style:italic;color:var(--plum);font-weight:500}
+.pron-bottom{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0 24px 40px;animation:fadeInUp .3s ease}
+.pron-instruction{font-family:'DM Sans',sans-serif;font-size:11px;font-weight:500;margin-bottom:20px}
+
+/* Waveform pill */
+.wave-pill{display:flex;align-items:center;gap:3px;background:rgba(200,240,96,.1);border:1px solid rgba(200,240,96,.2);border-radius:20px;padding:14px 24px;margin-bottom:12px}
+.wave-pill .bar{width:3px;border-radius:2px;background:var(--lime)}
+
+/* Recording ring */
+.pron-ring{width:80px;height:80px;border-radius:50%;border:2px solid rgba(200,240,96,.3);display:flex;align-items:center;justify-content:center;animation:pulseRing 1.2s ease-in-out infinite;margin-bottom:8px;cursor:pointer}
+.pron-ring-dot{width:14px;height:14px;border-radius:50%;background:var(--lime)}
+.pron-listening{font-family:'DM Mono',monospace;font-size:10px;font-weight:500;color:var(--lime);letter-spacing:.06em;margin-bottom:16px}
+
+/* Inline score results */
+.pron-score-row{display:flex;align-items:center;justify-content:space-between;width:100%;padding:0 14px;margin-bottom:16px}
+.pron-score-num{font-family:'DM Sans',sans-serif;font-size:28px;font-weight:600;color:var(--lime)}
+.pron-score-pct{font-size:12px;font-weight:400;color:var(--txt-muted)}
+.pron-score-desc{font-size:11px;color:#8aaa84;margin-top:2px}
+.pron-tones-correct{font-size:10px;color:var(--txt-hint);text-align:right}
+
+/* Tone grid — redesigned */
+.tone-grid{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;width:100%;padding:0 14px;margin-bottom:16px}
+.tone-correct{display:flex;flex-direction:column;align-items:center;min-width:36px;padding:5px 4px}
+.tone-correct-char{font-size:16px;font-weight:500;color:var(--correct-green)}
+.tone-correct-tick{font-size:11px;color:#5aaa40;margin:2px 0}
+.tone-correct-label{font-family:'DM Mono',monospace;font-size:9px;font-weight:500;color:#4a7a40}
+.tone-wrong{border-radius:10px;border:1.5px solid rgba(240,130,130,.4);background:var(--bg-err);overflow:hidden;min-width:52px;cursor:pointer}
+.tone-wrong-char{font-size:17px;font-weight:500;color:#f0a8a8;padding:7px 8px 5px;text-align:center;background:var(--bg-err)}
+.tone-wrong-divider{height:1px;background:rgba(255,255,255,.08)}
+.tone-wrong-pills{display:flex}
+.tone-pill{flex:1;padding:7px 4px 6px;text-align:center;cursor:pointer;min-height:40px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;transition:border-color .2s}
+.tone-pill-correct{background:var(--bg-ok);color:var(--correct-green);border-right:1px solid rgba(255,255,255,.07)}
+.tone-pill-yours{background:var(--bg-err);color:var(--err-red)}
+.tone-pill-label{font-family:'DM Sans',sans-serif;font-size:10px;font-weight:600}
+.tone-pill-sub{font-family:'DM Sans',sans-serif;font-size:8px;font-weight:400;opacity:.6}
+.tone-pill-play{width:0;height:0;border-left:5px solid currentColor;border-top:3px solid transparent;border-bottom:3px solid transparent;margin-bottom:1px}
+
+/* Sentence listen button */
+.pron-listen-btn{width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:9px 14px;color:var(--txt-muted);font-size:11px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif;display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:12px}
+
+/* Tone toast */
+.tone-toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:rgba(255,255,255,.07);border-radius:6px;padding:4px 10px;font-size:9px;color:#8aaa84;text-align:center;min-height:18px;transition:opacity .2s;z-index:210}
 
 /* Bottom nav — mobile only */
 .bn{position:fixed;bottom:0;left:0;right:0;background:var(--wh);border-top:1px solid var(--st2);display:flex;z-index:100;padding-bottom:env(safe-area-inset-bottom)}
@@ -1446,6 +1503,9 @@ function QuizTab({ progress, upd, startMode, onBack }) {
   const [picking, setPicking] = useState(startMode === "pronunciation");
   const [autoStarted, setAutoStarted] = useState(false);
   const [selectedUnits, setSelectedUnits] = useState(new Set());
+  const [pronState, setPronState] = useState("listen"); // listen | ready | recording | results
+  const [toneToast, setToneToast] = useState(null);
+  const toneToastTimer = useRef(null);
   const [source, setSource] = useState("known");
   const [pronScores, setPronScores] = useState([]);
   const exitQuiz = () => { if (onBack) onBack(); else setMode(null); };
@@ -1489,12 +1549,12 @@ function QuizTab({ progress, upd, startMode, onBack }) {
 
   const pronNext = () => {
     if (scoreResult) setPronScores(prev => [...prev, scoreResult.score]);
-    setScoreResult(null); setIsRecording(false); setScoring(false);
+    setScoreResult(null); setIsRecording(false); setScoring(false); setPronState("listen");
     if (idx + 1 >= quizItems.length) setDone(true); else setIdx(i => i + 1);
   };
   const pronSkip = () => {
     setPronScores(prev => [...prev, null]);
-    setScoreResult(null); setIsRecording(false); setScoring(false);
+    setScoreResult(null); setIsRecording(false); setScoring(false); setPronState("listen");
     if (idx + 1 >= quizItems.length) setDone(true); else setIdx(i => i + 1);
   };
 
@@ -1639,45 +1699,151 @@ function QuizTab({ progress, upd, startMode, onBack }) {
   const item = quizItems[idx];
 
   if (mode === "pronunciation") {
-    return (<div className="quiz-ov">
-      <div className="quiz-hd">
-        <button className="quiz-cl" onClick={()=>{exitQuiz();setScoreResult(null);}}>✕ End</button>
-        <div className="quiz-ti">🎙 Pronunciation</div>
-        <div style={{fontSize:".65rem",color:"rgba(255,255,255,.4)"}}>{idx+1}/{quizItems.length}</div>
+    const scoreDesc = scoreResult ? (scoreResult.score >= 100 ? "Perfect" : scoreResult.score >= 90 ? "Great pronunciation" : scoreResult.score >= 75 ? "Keep practising" : scoreResult.score >= 60 ? "Almost there" : "Try again") : "";
+    const tonesCorrect = scoreResult?.chars ? scoreResult.chars.filter(c => c.match || c.m).length : 0;
+    const tonesTotal = scoreResult?.chars ? scoreResult.chars.length : 0;
+    const showToast = (msg) => { clearTimeout(toneToastTimer.current); setToneToast(msg); toneToastTimer.current = setTimeout(() => setToneToast(null), 1800); };
+    const handlePillTap = (c, toneValue, type) => {
+      googleTTS(c.cn, LANG_CONFIG.id === "mandarin" ? "zh-CN" : "yue-HK");
+      showToast(`${type}: ${toneValue}`);
+    };
+
+    // Auto-play TTS and transition listen → ready
+    const startListening = async () => {
+      setPronState("listen");
+      try { await speak(item.cn); } catch(e) {}
+      setTimeout(() => setPronState("ready"), 600);
+    };
+
+    // Start recording
+    const doPronRecord = async () => {
+      setPronState("recording");
+      stopAudio();
+      try { const ok = await startRecording(); if (ok) setIsRecording(true); } catch(e) { console.warn("Mic error:", e); setPronState("ready"); }
+    };
+
+    // Stop recording and score
+    const doPronStop = async () => {
+      setIsRecording(false);
+      setScoring(true);
+      const blob = await stopRecording();
+      const ph = quizItems[idx];
+      if (blob && ph) {
+        try {
+          const result = await scorePronunciation(blob, ph.cn, LANG_CONFIG.id);
+          const chars = parseScoreChars(result, ph.cn);
+          setScoreResult({ score: result.score, passed: result.passed, chars, phrase: ph });
+          setPronState("results");
+        } catch(e) {
+          console.error("Scoring error:", e);
+          setScoreResult({ error: e.message });
+          setPronState("results");
+        }
+      } else {
+        setPronState("ready");
+      }
+      setScoring(false);
+    };
+
+    // Auto-play on mount and when idx changes
+    useEffect(() => {
+      if (mode === "pronunciation" && pronState === "listen") {
+        startListening();
+      }
+    }, [idx, mode]);
+
+    return (<div className="pron-screen">
+      {/* Top bar */}
+      <div className="pron-topbar">
+        <button className="pron-topbar-end" onClick={()=>{exitQuiz();setScoreResult(null);setPronState("listen");}}>✕ End</button>
+        <span className="pron-topbar-label">Pronunciation</span>
+        <span className="pron-topbar-count">{idx+1} / {quizItems.length}</span>
       </div>
-      <div className="quiz-body" style={{justifyContent:"center",gap:0}}>
-        <div className="quiz-sub" style={{marginBottom:12,fontSize:".82rem"}}>Say this out loud in {LANG_CONFIG.name}:</div>
-        <div className="quiz-prompt" style={{marginBottom:16,fontSize:"1.4rem"}}>{item.en}</div>
-        <div style={{marginBottom:20,textAlign:"center"}}>
-          <div style={{fontSize:"1rem",fontStyle:"italic",color:"var(--plum)",fontWeight:600,marginBottom:6}}><JyutpingTone text={item.jyut} /></div>
-          <div style={{fontFamily:`${LANG_CONFIG.fontFamily.replace(/'/g, '')}`,fontSize:"1.1rem",color:"var(--ink)",fontWeight:700}}>{item.cn}</div>
-        </div>
-        <button style={{marginBottom:24,background:"var(--for)",border:"none",borderRadius:999,padding:"12px 24px",fontSize:".78rem",cursor:"pointer",color:"var(--lime)",fontWeight:700,minHeight:44}} onClick={()=>speak(item.cn)}>▶ Listen first</button>
-        <div style={{width:"100%",maxWidth:440}}>
-          {!isRecording && !scoring && !scoreResult ? (
-            <RecordBtn onClick={qStartTest} label="🎙 Record yourself" />
-          ) : scoring ? (
-            <div style={{width:"100%",padding:"16px",borderRadius:14,background:"rgba(0,0,0,.04)",textAlign:"center"}}><div style={{fontSize:".82rem",fontWeight:700,color:"var(--ink2)"}}>Scoring...</div></div>
-          ) : isRecording ? (
-            <button onClick={qStopTest} style={{width:"100%",padding:"16px",borderRadius:14,border:"none",background:"#e74c3c",color:"#fff",fontSize:".88rem",fontWeight:800,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:10,animation:"pulse 1s ease-in-out infinite"}}>⏹ Stop and score</button>
-          ) : null}
-        </div>
-        {!scoreResult && !isRecording && !scoring && (<button onClick={pronSkip} style={{marginTop:16,background:"none",border:"none",cursor:"pointer",fontSize:".78rem",fontWeight:600,color:"var(--ink3)",minHeight:44,padding:"8px 16px"}}>Skip →</button>)}
-        <div style={{fontSize:".65rem",color:"var(--ink3)",marginTop:10}}>{idx+1} of {quizItems.length}</div>
+
+      {/* Progress bar */}
+      <div className="pron-progress">
+        <div className="pron-progress-fill" style={{width:((idx+1)/quizItems.length*100)+"%"}} />
       </div>
-      {scoreResult && (scoreResult.error ? (
-        <div style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"rgba(0,0,0,.6)",zIndex:200,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
-          <div style={{background:"var(--wh)",borderRadius:20,padding:24,maxWidth:360,textAlign:"center"}}>
-            <div style={{fontSize:"2rem",marginBottom:8}}>😕</div>
-            <div style={{fontSize:".88rem",fontWeight:800,color:"var(--ink)",marginBottom:6}}>Scoring failed</div>
-            <div style={{fontSize:".72rem",color:"var(--ink3)",marginBottom:16,lineHeight:1.5}}>{scoreResult.error}</div>
-            <div style={{display:"flex",gap:8}}>
-              <button onClick={()=>{setScoreResult(null);qStartTest();}} style={{flex:1,padding:12,borderRadius:12,border:"none",background:"var(--lime)",color:"var(--for)",fontWeight:800,fontSize:".78rem",cursor:"pointer"}}>Try again</button>
-              <button onClick={pronNext} style={{flex:1,padding:12,borderRadius:12,border:"1.5px solid var(--st)",background:"var(--wh)",color:"var(--ink)",fontWeight:700,fontSize:".78rem",cursor:"pointer"}}>Skip</button>
-            </div>
+
+      {/* Phrase block — always visible */}
+      <div className="pron-phrase">
+        <div className="pron-phrase-en">{item.en}</div>
+        <div className="pron-phrase-cn" style={{fontFamily:LANG_CONFIG.fontFamily.replace(/'/g,'')}}>{item.cn}</div>
+        <div className="pron-phrase-rom"><JyutpingTone text={item.jyut} /></div>
+      </div>
+
+      {/* Bottom zone — changes per state */}
+      <div className="pron-bottom" key={pronState+"-"+idx}>
+
+        {pronState === "listen" && (<>
+          <div className="pron-instruction" style={{color:"#5a7a54"}}>Listen carefully</div>
+          <WaveformPill label="Playing..." />
+          <button onClick={()=>speak(item.cn)} style={{background:"none",border:"none",color:"var(--txt-hint)",fontSize:10,cursor:"pointer",textDecoration:"underline",minHeight:44,padding:8}}>play again</button>
+        </>)}
+
+        {pronState === "ready" && (<>
+          <div className="pron-instruction" style={{color:"#a0b89a"}}>Now say it out loud</div>
+          <div style={{background:"rgba(200,240,96,.08)",border:"1px solid rgba(200,240,96,.18)",borderRadius:12,padding:"10px 16px",width:"100%",maxWidth:380,textAlign:"center"}}>
+            <div style={{fontSize:11,color:"#a0b89a",marginBottom:6}}>Tap when you're ready</div>
+            <button onClick={doPronRecord} style={{width:"100%",background:"var(--lime)",color:"var(--cta-text)",border:"none",borderRadius:10,padding:"11px",fontSize:13,fontWeight:600,cursor:"pointer",minHeight:44,display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/></svg>
+              Record yourself
+            </button>
           </div>
-        </div>
-      ) : <PronunciationScore score={scoreResult.score} chars={scoreResult.chars} phrase={scoreResult.phrase} onRetry={()=>{setScoreResult(null);qStartTest();}} onNext={pronNext} onClose={pronNext} />)}
+          <button onClick={pronSkip} style={{marginTop:12,background:"none",border:"none",color:"#3a5a3a",fontSize:10,cursor:"pointer",textDecoration:"underline",minHeight:44,padding:8}}>skip →</button>
+        </>)}
+
+        {pronState === "recording" && (<>
+          <div className="pron-instruction" style={{color:"var(--lime)"}}>Speaking...</div>
+          <div className="pron-ring" onClick={doPronStop}>
+            <div className="pron-ring-dot" />
+          </div>
+          <div className="pron-listening">LISTENING</div>
+          <WaveformPill label="Recording..." />
+          {scoring && <div style={{fontSize:11,color:"rgba(255,255,255,.4)",marginTop:8}}>Analysing...</div>}
+        </>)}
+
+        {pronState === "results" && scoreResult && (<>
+          {scoreResult.error ? (<>
+            <div style={{fontSize:"2rem",marginBottom:8}}>😕</div>
+            <div style={{fontSize:13,fontWeight:800,color:"var(--txt-dark)",marginBottom:6}}>Scoring failed</div>
+            <div style={{fontSize:11,color:"var(--txt-muted)",marginBottom:16,lineHeight:1.7,textAlign:"center"}}>{scoreResult.error}</div>
+            <div style={{display:"flex",gap:8,width:"100%",maxWidth:300}}>
+              <button onClick={()=>{setScoreResult(null);startListening();}} style={{flex:1,padding:13,borderRadius:12,border:"none",background:"var(--lime)",color:"var(--cta-text)",fontWeight:600,fontSize:13,cursor:"pointer",minHeight:44}}>Try again</button>
+              <button onClick={pronNext} style={{flex:1,padding:11,borderRadius:12,border:"1.5px solid rgba(255,255,255,.15)",background:"rgba(255,255,255,.08)",color:"#c8e8b8",fontWeight:500,fontSize:12,cursor:"pointer",minHeight:44}}>Skip</button>
+            </div>
+          </>) : (<>
+            <div className="pron-instruction" style={{color:"var(--txt-muted)"}}>Done — here's how you did</div>
+
+            {/* Score row */}
+            <div className="pron-score-row">
+              <div>
+                <div><span className="pron-score-num">{scoreResult.score}</span><span className="pron-score-pct">%</span></div>
+                <div className="pron-score-desc">{scoreDesc}</div>
+              </div>
+              <div className="pron-tones-correct">{tonesCorrect} of {tonesTotal} tones correct</div>
+            </div>
+
+            {/* Tone grid */}
+            <ToneGridInline chars={scoreResult.chars} onPillTap={handlePillTap} />
+
+            {/* Toast */}
+            {toneToast && <div className="tone-toast" style={{opacity:1}}>{toneToast}</div>}
+
+            {/* Listen to full sentence */}
+            <button className="pron-listen-btn" onClick={()=>speak(item.cn)}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+              Listen to full sentence
+            </button>
+
+            {/* Action buttons */}
+            <div style={{display:"flex",gap:8,width:"100%",maxWidth:380}}>
+              <button onClick={pronNext} style={{flex:1,padding:13,borderRadius:12,border:"none",background:"var(--lime)",color:"var(--cta-text)",fontWeight:600,fontSize:13,cursor:"pointer",minHeight:44}}>Next phrase</button>
+              <button onClick={()=>{setScoreResult(null);startListening();}} style={{flex:1,padding:11,borderRadius:12,border:"1.5px solid rgba(255,255,255,.15)",background:"rgba(255,255,255,.08)",color:"#c8e8b8",fontWeight:500,fontSize:12,cursor:"pointer",minHeight:44}}>Try again</button>
+            </div>
+          </>)}
+        </>)}
+      </div>
     </div>);
   }
 
@@ -1775,6 +1941,57 @@ function OfflineBanner() {
 
 // ---- OFFLINE-AWARE RECORD BUTTON ----
 // Wraps any record action: if offline, shows a message instead of the button
+// Animated waveform pill — for "Listening" state
+function WaveformPill({ label }) {
+  return (
+    <div className="wave-pill">
+      {[0,1,2,3,4].map(i => (
+        <div key={i} className="bar" style={{height:8,animation:`waveBar .8s ease-in-out ${i*0.12}s infinite`}} />
+      ))}
+      <span style={{marginLeft:10,fontFamily:"'DM Sans',sans-serif",fontSize:11,fontWeight:500,color:"var(--lime)"}}>{label || "Playing..."}</span>
+    </div>
+  );
+}
+
+// Inline tone results grid — correct chars get tick, wrong chars get tappable pills
+function ToneGridInline({ chars, onPillTap }) {
+  if (!chars || !chars.length) return null;
+  return (
+    <div className="tone-grid">
+      {chars.map((c, i) => {
+        const match = c.match || c.m;
+        if (match) {
+          return (
+            <div key={i} className="tone-correct">
+              <div className="tone-correct-char">{c.cn}</div>
+              <div className="tone-correct-tick">✓</div>
+              <div className="tone-correct-label">{c.expected || c.e}</div>
+            </div>
+          );
+        }
+        return (
+          <div key={i} className="tone-wrong">
+            <div className="tone-wrong-char">{c.cn}</div>
+            <div className="tone-wrong-divider" />
+            <div className="tone-wrong-pills">
+              <div className="tone-pill tone-pill-correct" onClick={(e) => { e.stopPropagation(); onPillTap && onPillTap(c, c.expected || c.e, "Correct tone"); }}>
+                <div className="tone-pill-play" />
+                <div className="tone-pill-label">{c.expected || c.e}</div>
+                <div className="tone-pill-sub">correct</div>
+              </div>
+              <div className="tone-pill tone-pill-yours" onClick={(e) => { e.stopPropagation(); onPillTap && onPillTap(c, c.yours || c.y, "You said"); }}>
+                <div className="tone-pill-play" />
+                <div className="tone-pill-label">{c.yours || c.y}</div>
+                <div className="tone-pill-sub">you said</div>
+              </div>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function RecordBtn({ onClick, label, style }) {
   const isOnline = useIsOnline();
   if (!isOnline) {

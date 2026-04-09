@@ -40215,696 +40215,760 @@ function registerFirestore(instance) {
 }
 registerFirestore(firebase);
 const _up = new URLSearchParams(window.location.search);
-const _lang = _up.get("lang") || localStorage.getItem("shadowspeak-lang") || "canto";
-localStorage.setItem("shadowspeak-lang", _lang);
+let _lang = _up.get("lang") || localStorage.getItem("shadowspeak-lang") || null;
 if (_up.has("lang")) {
+  if (_lang) localStorage.setItem("shadowspeak-lang", _lang);
   const u2 = new URL(window.location.href);
   u2.searchParams.delete("lang");
   window.history.replaceState({}, "", u2.pathname + u2.hash);
 }
-(async function boot() {
-  const mod = _lang === "mandarin" ? await __vitePreload(() => import("./data-mandarin-qWQWYtVy.js"), true ? [] : void 0) : await __vitePreload(() => import("./data-canto-CDfymG2T.js"), true ? [] : void 0);
-  window.LANG_CONFIG = mod.default;
-  const LANG_CONFIG = mod.default;
-  const FIREBASE_CONFIG = {
-    apiKey: "AIzaSyBl8PRFr84XLNZNxfSg7LpVekjh5lvBWRI",
-    authDomain: "shadowspeak-22f04.firebaseapp.com",
-    projectId: "shadowspeak-22f04",
-    storageBucket: "shadowspeak-22f04.firebasestorage.app",
-    messagingSenderId: "332784610142",
-    appId: "1:332784610142:web:0dfaf945993e735ef03dcf"
+function LanguagePicker() {
+  const pick = (lang) => {
+    localStorage.setItem("shadowspeak-lang", lang);
+    window.location.reload();
   };
-  if (!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
-  const fbAuth = firebase.auth();
-  const fbDb = firebase.firestore();
-  fbDb.enablePersistence({ synchronizeTabs: true }).catch((err) => {
-    if (err.code === "failed-precondition") console.warn("Firestore persistence: multiple tabs open");
-    else if (err.code === "unimplemented") console.warn("Firestore persistence: not supported in this browser");
-  });
-  let _isOnline2 = navigator.onLine;
-  const _onlineListeners = /* @__PURE__ */ new Set();
-  function onOnlineChange(fn) {
-    _onlineListeners.add(fn);
-    return () => _onlineListeners.delete(fn);
-  }
-  window.addEventListener("online", () => {
-    _isOnline2 = true;
-    _onlineListeners.forEach((fn) => fn(true));
-  });
-  window.addEventListener("offline", () => {
-    _isOnline2 = false;
-    _onlineListeners.forEach((fn) => fn(false));
-  });
-  if ("serviceWorker" in navigator) {
-    window.addEventListener("load", () => {
-      navigator.serviceWorker.register("sw.js").then((reg) => {
-        console.log("SW registered:", reg.scope);
-      }).catch((err) => console.warn("SW registration failed:", err));
-    });
-  }
-  let _audioManifest = null;
-  let _audioManifestLoading = false;
-  async function loadAudioManifest() {
-    if (_audioManifest) return _audioManifest;
-    if (_audioManifestLoading) {
-      return new Promise((resolve) => {
-        const check = setInterval(() => {
-          if (_audioManifest) {
-            clearInterval(check);
-            resolve(_audioManifest);
-          }
-        }, 100);
-        setTimeout(() => {
-          clearInterval(check);
-          resolve(null);
-        }, 5e3);
-      });
-    }
-    _audioManifestLoading = true;
-    try {
-      const res = await fetch("audio/manifest.json");
-      if (res.ok) {
-        _audioManifest = await res.json();
-        console.log("Audio manifest loaded");
-      }
-    } catch (e) {
-      console.warn("Audio manifest not available:", e.message);
-    }
-    _audioManifestLoading = false;
-    return _audioManifest;
-  }
-  loadAudioManifest();
-  function playLocalAudio(url) {
-    return new Promise((resolve, reject) => {
-      stopAudio();
-      const audio = new Audio(url);
-      _currentAudio = audio;
-      if (_audioCtx && _audioCtx.state === "suspended") _audioCtx.resume();
-      audio.onended = () => {
-        _currentAudio = null;
-        resolve();
-      };
-      audio.onerror = () => {
-        _currentAudio = null;
-        reject(new Error("Local audio failed: " + url));
-      };
-      audio.play().catch((e) => {
-        _currentAudio = null;
-        reject(e);
-      });
-    });
-  }
-  async function tryLocalAudio(text, section) {
-    var _a, _b;
-    const manifest = await loadAudioManifest();
-    if (!manifest) return false;
-    const [app, lang] = section.split(".");
-    const path = (_b = (_a = manifest == null ? void 0 : manifest[app]) == null ? void 0 : _a[lang]) == null ? void 0 : _b[text];
-    if (!path) return false;
-    try {
-      await playLocalAudio(path);
-      return true;
-    } catch (e) {
-      console.warn("Local audio playback failed, falling back to API:", e.message);
-      return false;
-    }
-  }
-  const PROGRESS_COLLECTION = LANG_CONFIG.firestoreCollection;
-  async function loadFromFirestore(uid) {
-    try {
-      const doc2 = await fbDb.collection(PROGRESS_COLLECTION).doc(uid).get();
-      return doc2.exists ? doc2.data() : null;
-    } catch (e) {
-      console.warn("Firestore load failed, using local:", e);
-      return null;
-    }
-  }
-  async function saveToFirestore(uid, data) {
-    try {
-      await fbDb.collection(PROGRESS_COLLECTION).doc(uid).set(data, { merge: true });
-    } catch (e) {
-      console.warn("Firestore save failed:", e);
-    }
-  }
-  async function loadSettingsFromFirestore(uid) {
-    try {
-      const doc2 = await fbDb.collection("settings").doc(uid + LANG_CONFIG.settingsKeySuffix).get();
-      return doc2.exists ? doc2.data() : null;
-    } catch (e) {
-      return null;
-    }
-  }
-  async function saveSettingsToFirestore(uid, data) {
-    try {
-      await fbDb.collection("settings").doc(uid + LANG_CONFIG.settingsKeySuffix).set(data);
-    } catch (e) {
-      console.warn("Settings save failed:", e);
-    }
-  }
-  const _romKey = LANG_CONFIG.romanizationKey;
-  const UNITS = LANG_CONFIG.UNITS.map((u2) => ({
-    ...u2,
-    phrases: u2.phrases.map((p2) => p2.jyut ? p2 : { ...p2, jyut: p2[_romKey] || "" })
-  }));
-  const GLOSS_DATA = LANG_CONFIG.GLOSS_DATA;
-  const VOCAB_CATS = LANG_CONFIG.VOCAB_CATS;
-  const ALL_WORDS = LANG_CONFIG.ALL_WORDS;
-  LANG_CONFIG.TIER_META;
-  let _cnVoice = null;
-  let _enVoice = null;
-  function findVoice() {
-    if (!_cnVoice) {
-      const v2 = speechSynthesis.getVoices();
-      _cnVoice = v2.find((x2) => x2.lang === "yue-HK") || v2.find((x2) => x2.lang === "yue-Hant-HK") || v2.find((x2) => x2.lang === "zh-HK" && x2.name.toLowerCase().includes("canton")) || v2.find((x2) => x2.lang === "zh-HK") || null;
-    }
-    if (!_enVoice) {
-      const v2 = speechSynthesis.getVoices();
-      const enVoices = v2.filter((x2) => x2.lang.startsWith("en"));
-      const tiers = [
-        (x2) => x2.lang === "en-US" && /samantha|google.*female|google us/i.test(x2.name),
-        (x2) => x2.lang === "en-US" && /google/i.test(x2.name),
-        (x2) => /samantha|ava|zoe|nicky|allison/i.test(x2.name),
-        // Apple female voices
-        (x2) => x2.lang === "en-US" && /premium|enhanced|natural/i.test(x2.name),
-        (x2) => x2.lang === "en-US" && !/daniel|alex|fred|ralph/i.test(x2.name),
-        // any US, skip male
-        (x2) => x2.lang === "en-US",
-        (x2) => x2.lang === "en-AU",
-        // Aussie over British
-        (x2) => true
-        // anything
-      ];
-      for (const test of tiers) {
-        const match = enVoices.find(test);
-        if (match) {
-          _enVoice = match;
-          break;
-        }
-      }
-      if (!_enVoice) _enVoice = enVoices[0] || null;
-    }
-    return _cnVoice;
-  }
-  if (typeof window !== "undefined" && "speechSynthesis" in window) {
-    speechSynthesis.onvoiceschanged = findVoice;
-    findVoice();
-  }
-  let _audioCtx = null;
-  let _audioUnlocked = false;
-  function unlockAudio() {
-    if (_audioUnlocked) return;
-    try {
-      if (!_audioCtx) _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-      if (_audioCtx.state === "suspended") _audioCtx.resume();
-      const buf = _audioCtx.createBuffer(1, 1, 22050);
-      const src = _audioCtx.createBufferSource();
-      src.buffer = buf;
-      src.connect(_audioCtx.destination);
-      src.start(0);
-      const silentAudio = new Audio("data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YQAAAAA=");
-      silentAudio.play().then(() => {
-        silentAudio.pause();
-      }).catch(() => {
-      });
-      _audioUnlocked = true;
-      console.log("Audio unlocked for Safari");
-    } catch (e) {
-      console.log("Audio unlock failed:", e);
-    }
-  }
-  if (typeof document !== "undefined") {
-    const unlockEvents = ["touchstart", "touchend", "mousedown", "click"];
-    const handleUnlock = () => {
-      unlockAudio();
-      unlockEvents.forEach((e) => document.removeEventListener(e, handleUnlock, true));
+  return React.createElement(
+    "div",
+    {
+      style: { minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#1F3329", padding: 24, fontFamily: "'DM Sans',-apple-system,sans-serif" }
+    },
+    React.createElement(
+      "div",
+      { style: { maxWidth: 420, width: "100%", textAlign: "center" } },
+      React.createElement("div", { style: { fontSize: 40, marginBottom: 12 } }, "🗣"),
+      React.createElement(
+        "div",
+        { style: { fontSize: 28, fontWeight: 900, color: "#fff", marginBottom: 4 } },
+        "Shadow",
+        React.createElement("span", { style: { color: "#C4F000" } }, "Speak")
+      ),
+      React.createElement("div", { style: { fontSize: 15, color: "rgba(255,255,255,.6)", marginBottom: 32, lineHeight: 1.5 } }, "Choose your language to get started."),
+      React.createElement(
+        "div",
+        { style: { display: "flex", flexDirection: "column", gap: 12, marginBottom: 24 } },
+        React.createElement(
+          "button",
+          {
+            onClick: () => pick("canto"),
+            style: { display: "flex", alignItems: "center", gap: 16, padding: "20px 24px", background: "#fff", border: "2px solid #EDE8E0", borderRadius: 16, cursor: "pointer", textAlign: "left", transition: "all .15s", fontFamily: "inherit" }
+          },
+          React.createElement("span", { style: { fontSize: "2rem" } }, "🇭🇰"),
+          React.createElement(
+            "div",
+            null,
+            React.createElement("div", { style: { fontSize: 17, fontWeight: 800, color: "#1F3329" } }, "Cantonese"),
+            React.createElement("div", { style: { fontSize: 22, fontWeight: 800, color: "#2C2C2C", fontFamily: "'Noto Sans HK',sans-serif" } }, "廣東話"),
+            React.createElement("div", { style: { fontSize: 13, color: "#7A756E", marginTop: 2 } }, "85 million speakers")
+          )
+        ),
+        React.createElement(
+          "button",
+          {
+            onClick: () => pick("mandarin"),
+            style: { display: "flex", alignItems: "center", gap: 16, padding: "20px 24px", background: "#fff", border: "2px solid #EDE8E0", borderRadius: 16, cursor: "pointer", textAlign: "left", transition: "all .15s", fontFamily: "inherit" }
+          },
+          React.createElement("span", { style: { fontSize: "2rem" } }, "🇨🇳"),
+          React.createElement(
+            "div",
+            null,
+            React.createElement("div", { style: { fontSize: 17, fontWeight: 800, color: "#1F3329" } }, "Mandarin"),
+            React.createElement("div", { style: { fontSize: 22, fontWeight: 800, color: "#2C2C2C", fontFamily: "'Noto Sans SC',sans-serif" } }, "普通话"),
+            React.createElement("div", { style: { fontSize: 13, color: "#7A756E", marginTop: 2 } }, "920 million speakers")
+          )
+        )
+      ),
+      React.createElement("div", { style: { fontSize: 13, color: "rgba(255,255,255,.35)", lineHeight: 1.5 } }, "More languages coming soon.")
+    )
+  );
+}
+if (!_lang) {
+  const root = client.createRoot(document.getElementById("root"));
+  root.render(React.createElement(LanguagePicker));
+} else {
+  (async function boot() {
+    localStorage.setItem("shadowspeak-lang", _lang);
+    const mod = _lang === "mandarin" ? await __vitePreload(() => import("./data-mandarin-qWQWYtVy.js"), true ? [] : void 0) : await __vitePreload(() => import("./data-canto-CDfymG2T.js"), true ? [] : void 0);
+    window.LANG_CONFIG = mod.default;
+    const LANG_CONFIG = mod.default;
+    const FIREBASE_CONFIG = {
+      apiKey: "AIzaSyBl8PRFr84XLNZNxfSg7LpVekjh5lvBWRI",
+      authDomain: "shadowspeak-22f04.firebaseapp.com",
+      projectId: "shadowspeak-22f04",
+      storageBucket: "shadowspeak-22f04.firebasestorage.app",
+      messagingSenderId: "332784610142",
+      appId: "1:332784610142:web:0dfaf945993e735ef03dcf"
     };
-    unlockEvents.forEach((e) => document.addEventListener(e, handleUnlock, true));
-  }
-  function speakAsync(text, lang, rate = 0.85) {
-    return new Promise((resolve) => {
-      if ("speechSynthesis" in window) {
-        speechSynthesis.cancel();
-        const u2 = new SpeechSynthesisUtterance(text);
-        u2.lang = lang;
-        u2.rate = rate;
-        if (lang === "yue-HK" || lang === "zh-HK") {
-          if (_cnVoice) u2.voice = _cnVoice;
-        } else if (lang.startsWith("en")) {
-          if (_enVoice) u2.voice = _enVoice;
-          u2.pitch = 1;
-        }
-        u2.onend = resolve;
-        u2.onerror = resolve;
-        speechSynthesis.speak(u2);
-        setTimeout(resolve, Math.max(3e3, text.length * 200));
-      } else resolve();
+    if (!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
+    const fbAuth = firebase.auth();
+    const fbDb = firebase.firestore();
+    fbDb.enablePersistence({ synchronizeTabs: true }).catch((err) => {
+      if (err.code === "failed-precondition") console.warn("Firestore persistence: multiple tabs open");
+      else if (err.code === "unimplemented") console.warn("Firestore persistence: not supported in this browser");
     });
-  }
-  let _currentAudio = null;
-  function stopAudio() {
-    unlockAudio();
-    if (_currentAudio) {
-      _currentAudio.pause();
-      _currentAudio.currentTime = 0;
-      _currentAudio = null;
+    let _isOnline2 = navigator.onLine;
+    const _onlineListeners = /* @__PURE__ */ new Set();
+    function onOnlineChange(fn) {
+      _onlineListeners.add(fn);
+      return () => _onlineListeners.delete(fn);
     }
-    if ("speechSynthesis" in window) speechSynthesis.cancel();
-  }
-  const PROXY_URL = LANG_CONFIG.PROXY_URL;
-  const EN_VOICES = LANG_CONFIG.EN_VOICES;
-  const DEFAULT_EN_VOICE = LANG_CONFIG.DEFAULT_EN_VOICE;
-  const CN_VOICES = LANG_CONFIG.CN_VOICES;
-  const DEFAULT_CN_VOICE = LANG_CONFIG.DEFAULT_CN_VOICE;
-  let _activeEnVoiceId = DEFAULT_EN_VOICE;
-  let _activeCnVoiceId = DEFAULT_CN_VOICE;
-  const _ttsCache = /* @__PURE__ */ new Map();
-  const _preloading = /* @__PURE__ */ new Set();
-  function _playCachedBlob(blob) {
-    return new Promise((resolve, reject) => {
-      stopAudio();
-      const url = URL.createObjectURL(blob);
-      const audio = new Audio(url);
-      _currentAudio = audio;
-      if (_audioCtx && _audioCtx.state === "suspended") _audioCtx.resume();
-      audio.onended = () => {
-        _currentAudio = null;
-        resolve();
-      };
-      audio.onerror = () => {
-        _currentAudio = null;
-        reject(new Error("cached playback failed"));
-      };
-      audio.play().catch((e) => {
-        _currentAudio = null;
-        reject(e);
-      });
+    window.addEventListener("online", () => {
+      _isOnline2 = true;
+      _onlineListeners.forEach((fn) => fn(true));
     });
-  }
-  async function _preloadCnAudio(text) {
-    var _a, _b;
-    const cacheKey = `${LANG_CONFIG.id}:${_activeCnVoiceId}:${text}`;
-    if (_ttsCache.has(cacheKey) || _preloading.has(cacheKey)) return;
-    _preloading.add(cacheKey);
-    try {
-      const manifest = await loadAudioManifest();
-      const localPath = (_b = (_a = manifest == null ? void 0 : manifest[LANG_CONFIG.audioManifestKey]) == null ? void 0 : _a.cn) == null ? void 0 : _b[text];
-      if (localPath) {
-        const res = await fetch(localPath);
+    window.addEventListener("offline", () => {
+      _isOnline2 = false;
+      _onlineListeners.forEach((fn) => fn(false));
+    });
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("sw.js").then((reg) => {
+          console.log("SW registered:", reg.scope);
+        }).catch((err) => console.warn("SW registration failed:", err));
+      });
+    }
+    let _audioManifest = null;
+    let _audioManifestLoading = false;
+    async function loadAudioManifest() {
+      if (_audioManifest) return _audioManifest;
+      if (_audioManifestLoading) {
+        return new Promise((resolve) => {
+          const check = setInterval(() => {
+            if (_audioManifest) {
+              clearInterval(check);
+              resolve(_audioManifest);
+            }
+          }, 100);
+          setTimeout(() => {
+            clearInterval(check);
+            resolve(null);
+          }, 5e3);
+        });
+      }
+      _audioManifestLoading = true;
+      try {
+        const res = await fetch("audio/manifest.json");
         if (res.ok) {
-          _ttsCache.set(cacheKey, await res.blob());
+          _audioManifest = await res.json();
+          console.log("Audio manifest loaded");
+        }
+      } catch (e) {
+        console.warn("Audio manifest not available:", e.message);
+      }
+      _audioManifestLoading = false;
+      return _audioManifest;
+    }
+    loadAudioManifest();
+    function playLocalAudio(url) {
+      return new Promise((resolve, reject) => {
+        stopAudio();
+        const audio = new Audio(url);
+        _currentAudio = audio;
+        if (_audioCtx && _audioCtx.state === "suspended") _audioCtx.resume();
+        audio.onended = () => {
+          _currentAudio = null;
+          resolve();
+        };
+        audio.onerror = () => {
+          _currentAudio = null;
+          reject(new Error("Local audio failed: " + url));
+        };
+        audio.play().catch((e) => {
+          _currentAudio = null;
+          reject(e);
+        });
+      });
+    }
+    async function tryLocalAudio(text, section) {
+      var _a, _b;
+      const manifest = await loadAudioManifest();
+      if (!manifest) return false;
+      const [app, lang] = section.split(".");
+      const path = (_b = (_a = manifest == null ? void 0 : manifest[app]) == null ? void 0 : _a[lang]) == null ? void 0 : _b[text];
+      if (!path) return false;
+      try {
+        await playLocalAudio(path);
+        return true;
+      } catch (e) {
+        console.warn("Local audio playback failed, falling back to API:", e.message);
+        return false;
+      }
+    }
+    const PROGRESS_COLLECTION = LANG_CONFIG.firestoreCollection;
+    async function loadFromFirestore(uid) {
+      try {
+        const doc2 = await fbDb.collection(PROGRESS_COLLECTION).doc(uid).get();
+        return doc2.exists ? doc2.data() : null;
+      } catch (e) {
+        console.warn("Firestore load failed, using local:", e);
+        return null;
+      }
+    }
+    async function saveToFirestore(uid, data) {
+      try {
+        await fbDb.collection(PROGRESS_COLLECTION).doc(uid).set(data, { merge: true });
+      } catch (e) {
+        console.warn("Firestore save failed:", e);
+      }
+    }
+    async function loadSettingsFromFirestore(uid) {
+      try {
+        const doc2 = await fbDb.collection("settings").doc(uid + LANG_CONFIG.settingsKeySuffix).get();
+        return doc2.exists ? doc2.data() : null;
+      } catch (e) {
+        return null;
+      }
+    }
+    async function saveSettingsToFirestore(uid, data) {
+      try {
+        await fbDb.collection("settings").doc(uid + LANG_CONFIG.settingsKeySuffix).set(data);
+      } catch (e) {
+        console.warn("Settings save failed:", e);
+      }
+    }
+    const _romKey = LANG_CONFIG.romanizationKey;
+    const UNITS = LANG_CONFIG.UNITS.map((u2) => ({
+      ...u2,
+      phrases: u2.phrases.map((p2) => p2.jyut ? p2 : { ...p2, jyut: p2[_romKey] || "" })
+    }));
+    const GLOSS_DATA = LANG_CONFIG.GLOSS_DATA;
+    const VOCAB_CATS = LANG_CONFIG.VOCAB_CATS;
+    const ALL_WORDS = LANG_CONFIG.ALL_WORDS;
+    LANG_CONFIG.TIER_META;
+    let _cnVoice = null;
+    let _enVoice = null;
+    function findVoice() {
+      if (!_cnVoice) {
+        const v2 = speechSynthesis.getVoices();
+        _cnVoice = v2.find((x2) => x2.lang === "yue-HK") || v2.find((x2) => x2.lang === "yue-Hant-HK") || v2.find((x2) => x2.lang === "zh-HK" && x2.name.toLowerCase().includes("canton")) || v2.find((x2) => x2.lang === "zh-HK") || null;
+      }
+      if (!_enVoice) {
+        const v2 = speechSynthesis.getVoices();
+        const enVoices = v2.filter((x2) => x2.lang.startsWith("en"));
+        const tiers = [
+          (x2) => x2.lang === "en-US" && /samantha|google.*female|google us/i.test(x2.name),
+          (x2) => x2.lang === "en-US" && /google/i.test(x2.name),
+          (x2) => /samantha|ava|zoe|nicky|allison/i.test(x2.name),
+          // Apple female voices
+          (x2) => x2.lang === "en-US" && /premium|enhanced|natural/i.test(x2.name),
+          (x2) => x2.lang === "en-US" && !/daniel|alex|fred|ralph/i.test(x2.name),
+          // any US, skip male
+          (x2) => x2.lang === "en-US",
+          (x2) => x2.lang === "en-AU",
+          // Aussie over British
+          (x2) => true
+          // anything
+        ];
+        for (const test of tiers) {
+          const match = enVoices.find(test);
+          if (match) {
+            _enVoice = match;
+            break;
+          }
+        }
+        if (!_enVoice) _enVoice = enVoices[0] || null;
+      }
+      return _cnVoice;
+    }
+    if (typeof window !== "undefined" && "speechSynthesis" in window) {
+      speechSynthesis.onvoiceschanged = findVoice;
+      findVoice();
+    }
+    let _audioCtx = null;
+    let _audioUnlocked = false;
+    function unlockAudio() {
+      if (_audioUnlocked) return;
+      try {
+        if (!_audioCtx) _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (_audioCtx.state === "suspended") _audioCtx.resume();
+        const buf = _audioCtx.createBuffer(1, 1, 22050);
+        const src = _audioCtx.createBufferSource();
+        src.buffer = buf;
+        src.connect(_audioCtx.destination);
+        src.start(0);
+        const silentAudio = new Audio("data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YQAAAAA=");
+        silentAudio.play().then(() => {
+          silentAudio.pause();
+        }).catch(() => {
+        });
+        _audioUnlocked = true;
+        console.log("Audio unlocked for Safari");
+      } catch (e) {
+        console.log("Audio unlock failed:", e);
+      }
+    }
+    if (typeof document !== "undefined") {
+      const unlockEvents = ["touchstart", "touchend", "mousedown", "click"];
+      const handleUnlock = () => {
+        unlockAudio();
+        unlockEvents.forEach((e) => document.removeEventListener(e, handleUnlock, true));
+      };
+      unlockEvents.forEach((e) => document.addEventListener(e, handleUnlock, true));
+    }
+    function speakAsync(text, lang, rate = 0.85) {
+      return new Promise((resolve) => {
+        if ("speechSynthesis" in window) {
+          speechSynthesis.cancel();
+          const u2 = new SpeechSynthesisUtterance(text);
+          u2.lang = lang;
+          u2.rate = rate;
+          if (lang === "yue-HK" || lang === "zh-HK") {
+            if (_cnVoice) u2.voice = _cnVoice;
+          } else if (lang.startsWith("en")) {
+            if (_enVoice) u2.voice = _enVoice;
+            u2.pitch = 1;
+          }
+          u2.onend = resolve;
+          u2.onerror = resolve;
+          speechSynthesis.speak(u2);
+          setTimeout(resolve, Math.max(3e3, text.length * 200));
+        } else resolve();
+      });
+    }
+    let _currentAudio = null;
+    function stopAudio() {
+      unlockAudio();
+      if (_currentAudio) {
+        _currentAudio.pause();
+        _currentAudio.currentTime = 0;
+        _currentAudio = null;
+      }
+      if ("speechSynthesis" in window) speechSynthesis.cancel();
+    }
+    const PROXY_URL = LANG_CONFIG.PROXY_URL;
+    const EN_VOICES = LANG_CONFIG.EN_VOICES;
+    const DEFAULT_EN_VOICE = LANG_CONFIG.DEFAULT_EN_VOICE;
+    const CN_VOICES = LANG_CONFIG.CN_VOICES;
+    const DEFAULT_CN_VOICE = LANG_CONFIG.DEFAULT_CN_VOICE;
+    let _activeEnVoiceId = DEFAULT_EN_VOICE;
+    let _activeCnVoiceId = DEFAULT_CN_VOICE;
+    const _ttsCache = /* @__PURE__ */ new Map();
+    const _preloading = /* @__PURE__ */ new Set();
+    function _playCachedBlob(blob) {
+      return new Promise((resolve, reject) => {
+        stopAudio();
+        const url = URL.createObjectURL(blob);
+        const audio = new Audio(url);
+        _currentAudio = audio;
+        if (_audioCtx && _audioCtx.state === "suspended") _audioCtx.resume();
+        audio.onended = () => {
+          _currentAudio = null;
+          resolve();
+        };
+        audio.onerror = () => {
+          _currentAudio = null;
+          reject(new Error("cached playback failed"));
+        };
+        audio.play().catch((e) => {
+          _currentAudio = null;
+          reject(e);
+        });
+      });
+    }
+    async function _preloadCnAudio(text) {
+      var _a, _b;
+      const cacheKey = `${LANG_CONFIG.id}:${_activeCnVoiceId}:${text}`;
+      if (_ttsCache.has(cacheKey) || _preloading.has(cacheKey)) return;
+      _preloading.add(cacheKey);
+      try {
+        const manifest = await loadAudioManifest();
+        const localPath = (_b = (_a = manifest == null ? void 0 : manifest[LANG_CONFIG.audioManifestKey]) == null ? void 0 : _a.cn) == null ? void 0 : _b[text];
+        if (localPath) {
+          const res = await fetch(localPath);
+          if (res.ok) {
+            _ttsCache.set(cacheKey, await res.blob());
+            _preloading.delete(cacheKey);
+            return;
+          }
+        }
+        if (!_isOnline2) {
           _preloading.delete(cacheKey);
           return;
         }
-      }
-      if (!_isOnline2) {
-        _preloading.delete(cacheKey);
-        return;
-      }
-      try {
-        const res = await fetch(`${PROXY_URL}/tts`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ text, language: "cantonese", speed: 1, output_extension: "mp3", voice_id: _activeCnVoiceId })
-        });
-        if (res.ok) {
-          _ttsCache.set(cacheKey, await res.blob());
-          _preloading.delete(cacheKey);
-          return;
+        try {
+          const res = await fetch(`${PROXY_URL}/tts`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ text, language: "cantonese", speed: 1, output_extension: "mp3", voice_id: _activeCnVoiceId })
+          });
+          if (res.ok) {
+            _ttsCache.set(cacheKey, await res.blob());
+            _preloading.delete(cacheKey);
+            return;
+          }
+        } catch (e) {
+        }
+        try {
+          const res = await fetch(`${PROXY_URL}/elevenlabs/tts`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ text, voice_id: _activeCnVoiceId, model_id: "eleven_multilingual_v2", voice_settings: { stability: 0.5, similarity_boost: 0.75, style: 0 } })
+          });
+          if (res.ok) _ttsCache.set(cacheKey, await res.blob());
+        } catch (e) {
         }
       } catch (e) {
       }
+      _preloading.delete(cacheKey);
+    }
+    async function _preloadEnAudio(text) {
+      var _a, _b;
+      const cacheKey = `el:${_activeEnVoiceId}:${text}`;
+      if (_ttsCache.has(cacheKey) || _preloading.has(cacheKey)) return;
+      _preloading.add(cacheKey);
       try {
+        const manifest = await loadAudioManifest();
+        const localPath = (_b = (_a = manifest == null ? void 0 : manifest[LANG_CONFIG.audioManifestKey]) == null ? void 0 : _a.en) == null ? void 0 : _b[text];
+        if (localPath) {
+          const res2 = await fetch(localPath);
+          if (res2.ok) {
+            _ttsCache.set(cacheKey, await res2.blob());
+            _preloading.delete(cacheKey);
+            return;
+          }
+        }
+        if (!_isOnline2) {
+          _preloading.delete(cacheKey);
+          return;
+        }
         const res = await fetch(`${PROXY_URL}/elevenlabs/tts`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ text, voice_id: _activeCnVoiceId, model_id: "eleven_multilingual_v2", voice_settings: { stability: 0.5, similarity_boost: 0.75, style: 0 } })
+          body: JSON.stringify({ text, voice_id: _activeEnVoiceId, model_id: "eleven_multilingual_v2", voice_settings: { stability: 0.5, similarity_boost: 0.75, style: 0 } })
         });
         if (res.ok) _ttsCache.set(cacheKey, await res.blob());
       } catch (e) {
       }
-    } catch (e) {
+      _preloading.delete(cacheKey);
     }
-    _preloading.delete(cacheKey);
-  }
-  async function _preloadEnAudio(text) {
-    var _a, _b;
-    const cacheKey = `el:${_activeEnVoiceId}:${text}`;
-    if (_ttsCache.has(cacheKey) || _preloading.has(cacheKey)) return;
-    _preloading.add(cacheKey);
-    try {
-      const manifest = await loadAudioManifest();
-      const localPath = (_b = (_a = manifest == null ? void 0 : manifest[LANG_CONFIG.audioManifestKey]) == null ? void 0 : _a.en) == null ? void 0 : _b[text];
-      if (localPath) {
-        const res2 = await fetch(localPath);
-        if (res2.ok) {
-          _ttsCache.set(cacheKey, await res2.blob());
-          _preloading.delete(cacheKey);
+    function preloadUnitAudio(phrases) {
+      if (!phrases || phrases.length === 0) return;
+      phrases.forEach((ph2, i) => {
+        setTimeout(() => _preloadCnAudio(ph2.cn), i * 500);
+        setTimeout(() => _preloadEnAudio(ph2.en), i * 500 + 250);
+      });
+    }
+    function cantoneseAiTTS(text) {
+      const cacheKey = `${LANG_CONFIG.id}:${_activeCnVoiceId}:${text}`;
+      if (_ttsCache.has(cacheKey)) return _playCachedBlob(_ttsCache.get(cacheKey));
+      return new Promise((resolve, reject) => {
+        stopAudio();
+        fetch(`${PROXY_URL}/tts`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text, language: "cantonese", speed: 1, output_extension: "mp3", voice_id: _activeCnVoiceId })
+        }).then((res) => {
+          if (!res.ok) throw new Error("cantonese.ai " + res.status);
+          return res.blob();
+        }).then((blob) => {
+          _ttsCache.set(cacheKey, blob);
+          _playCachedBlob(blob).then(resolve).catch(reject);
+        }).catch(reject);
+      });
+    }
+    function elevenLabsTTS(text, lang) {
+      const voiceId = lang && lang !== "en" ? _activeCnVoiceId : _activeEnVoiceId;
+      const cacheKey = `el:${voiceId}:${text}`;
+      if (_ttsCache.has(cacheKey)) return _playCachedBlob(_ttsCache.get(cacheKey));
+      return new Promise((resolve, reject) => {
+        stopAudio();
+        fetch(`${PROXY_URL}/elevenlabs/tts`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text, voice_id: voiceId, model_id: "eleven_multilingual_v2", voice_settings: { stability: 0.5, similarity_boost: 0.75, style: 0 } })
+        }).then((res) => {
+          if (!res.ok) throw new Error("ElevenLabs " + res.status);
+          return res.blob();
+        }).then((blob) => {
+          _ttsCache.set(cacheKey, blob);
+          _playCachedBlob(blob).then(resolve).catch(reject);
+        }).catch(reject);
+      });
+    }
+    function googleTTS(text, lang) {
+      return new Promise((resolve, reject) => {
+        stopAudio();
+        const tl2 = lang === "yue-HK" ? "yue" : "en-us";
+        const url = `https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=${tl2}&q=${encodeURIComponent(text)}`;
+        const audio = new Audio(url);
+        _currentAudio = audio;
+        if (_audioCtx && _audioCtx.state === "suspended") _audioCtx.resume();
+        audio.onended = () => {
+          _currentAudio = null;
+          resolve();
+        };
+        audio.onerror = () => {
+          _currentAudio = null;
+          reject(new Error("Google TTS failed"));
+        };
+        audio.play().catch((e) => {
+          _currentAudio = null;
+          reject(e);
+        });
+      });
+    }
+    async function speak(text) {
+      stopAudio();
+      if (await tryLocalAudio(text, LANG_CONFIG.audioManifestKey + ".cn")) return;
+      if (!_isOnline2) {
+        console.warn("Offline: no local audio for", text);
+        return;
+      }
+      if (LANG_CONFIG.ttsProvider === "cantonese-ai") {
+        try {
+          await cantoneseAiTTS(text);
+          return;
+        } catch (e) {
+          console.warn("cantonese.ai failed:", e.message);
+        }
+        try {
+          await googleTTS(text, "yue-HK");
+          return;
+        } catch (e) {
+          console.warn("Google TTS failed:", e.message);
+        }
+        try {
+          await elevenLabsTTS(text, "yue-HK");
+          return;
+        } catch (e) {
+          console.warn("ElevenLabs failed:", e.message);
+        }
+        return speakAsync(text, "yue-HK", 0.85);
+      } else {
+        try {
+          await elevenLabsTTS(text, "cmn-CN");
+          return;
+        } catch (e) {
+          console.warn("ElevenLabs failed:", e.message);
+        }
+        try {
+          await googleTTS(text, "cmn-CN");
+          return;
+        } catch (e) {
+        }
+        return speakAsync(text, "cmn-CN", 0.85);
+      }
+    }
+    async function speakEnglish(text) {
+      stopAudio();
+      if (await tryLocalAudio(text, LANG_CONFIG.audioManifestKey + ".en")) return;
+      if (!_isOnline2) {
+        console.warn("Offline: no local EN audio for", text);
+        return;
+      }
+      try {
+        await elevenLabsTTS(text, "en");
+        return;
+      } catch (e) {
+        console.warn("ElevenLabs EN failed:", e.message);
+      }
+      try {
+        await googleTTS(text, "en");
+        return;
+      } catch (e) {
+      }
+      return speakAsync(text, "en-US", 1);
+    }
+    async function speakPhrase(item) {
+      await speakEnglish(item.en);
+      await new Promise((r2) => setTimeout(r2, 800));
+      await speak(item.cn);
+    }
+    async function scorePronunciation(audioBlob, text, language = LANG_CONFIG.id) {
+      if (!_isOnline2) throw new Error("OFFLINE");
+      const formData = new FormData();
+      formData.append("text", text);
+      formData.append("language", language);
+      formData.append("audio", audioBlob, "recording.webm");
+      const res = await fetch(`${PROXY_URL}/score`, { method: "POST", body: formData });
+      if (!res.ok) throw new Error("Scoring failed: " + res.status);
+      return res.json();
+    }
+    function parseScoreChars(result, phraseCn) {
+      const expField = result.expectedJyutping || result.expectedPinyin;
+      const transField = result.transcribedJyutping || result.transcribedPinyin;
+      if (!expField || !transField) return [];
+      const expSyls = expField.trim().split(/\s+/);
+      const yourSyls = transField.trim().split(/\s+/);
+      const cnChars = phraseCn.replace(/[，,。！？!?\s]/g, "").split("");
+      const chars = [];
+      for (let i = 0; i < Math.max(expSyls.length, cnChars.length); i++) {
+        chars.push({ cn: cnChars[i] || "", e: expSyls[i] || "", y: yourSyls[i] || "", m: expSyls[i] === yourSyls[i] ? 1 : 0 });
+      }
+      return chars;
+    }
+    let _mediaRecorder = null;
+    let _audioChunks = [];
+    let _micStream = null;
+    async function getMicStream() {
+      if (_micStream && _micStream.active) return _micStream;
+      _micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      return _micStream;
+    }
+    async function startRecording() {
+      const stream = await getMicStream();
+      _audioChunks = [];
+      _mediaRecorder = new MediaRecorder(stream, { mimeType: "audio/webm;codecs=opus" });
+      _mediaRecorder.ondataavailable = (e) => {
+        if (e.data.size > 0) _audioChunks.push(e.data);
+      };
+      _mediaRecorder.start();
+      return true;
+    }
+    function stopRecording() {
+      return new Promise((resolve) => {
+        if (!_mediaRecorder || _mediaRecorder.state === "inactive") {
+          resolve(null);
           return;
         }
-      }
-      if (!_isOnline2) {
-        _preloading.delete(cacheKey);
-        return;
-      }
-      const res = await fetch(`${PROXY_URL}/elevenlabs/tts`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text, voice_id: _activeEnVoiceId, model_id: "eleven_multilingual_v2", voice_settings: { stability: 0.5, similarity_boost: 0.75, style: 0 } })
+        _mediaRecorder.onstop = () => {
+          const blob = new Blob(_audioChunks, { type: "audio/webm" });
+          resolve(blob);
+        };
+        _mediaRecorder.stop();
       });
-      if (res.ok) _ttsCache.set(cacheKey, await res.blob());
-    } catch (e) {
     }
-    _preloading.delete(cacheKey);
-  }
-  function preloadUnitAudio(phrases) {
-    if (!phrases || phrases.length === 0) return;
-    phrases.forEach((ph2, i) => {
-      setTimeout(() => _preloadCnAudio(ph2.cn), i * 500);
-      setTimeout(() => _preloadEnAudio(ph2.en), i * 500 + 250);
-    });
-  }
-  function cantoneseAiTTS(text) {
-    const cacheKey = `${LANG_CONFIG.id}:${_activeCnVoiceId}:${text}`;
-    if (_ttsCache.has(cacheKey)) return _playCachedBlob(_ttsCache.get(cacheKey));
-    return new Promise((resolve, reject) => {
-      stopAudio();
-      fetch(`${PROXY_URL}/tts`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text, language: "cantonese", speed: 1, output_extension: "mp3", voice_id: _activeCnVoiceId })
-      }).then((res) => {
-        if (!res.ok) throw new Error("cantonese.ai " + res.status);
-        return res.blob();
-      }).then((blob) => {
-        _ttsCache.set(cacheKey, blob);
-        _playCachedBlob(blob).then(resolve).catch(reject);
-      }).catch(reject);
-    });
-  }
-  function elevenLabsTTS(text, lang) {
-    const voiceId = lang && lang !== "en" ? _activeCnVoiceId : _activeEnVoiceId;
-    const cacheKey = `el:${voiceId}:${text}`;
-    if (_ttsCache.has(cacheKey)) return _playCachedBlob(_ttsCache.get(cacheKey));
-    return new Promise((resolve, reject) => {
-      stopAudio();
-      fetch(`${PROXY_URL}/elevenlabs/tts`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text, voice_id: voiceId, model_id: "eleven_multilingual_v2", voice_settings: { stability: 0.5, similarity_boost: 0.75, style: 0 } })
-      }).then((res) => {
-        if (!res.ok) throw new Error("ElevenLabs " + res.status);
-        return res.blob();
-      }).then((blob) => {
-        _ttsCache.set(cacheKey, blob);
-        _playCachedBlob(blob).then(resolve).catch(reject);
-      }).catch(reject);
-    });
-  }
-  function googleTTS(text, lang) {
-    return new Promise((resolve, reject) => {
-      stopAudio();
-      const tl2 = lang === "yue-HK" ? "yue" : "en-us";
-      const url = `https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=${tl2}&q=${encodeURIComponent(text)}`;
-      const audio = new Audio(url);
-      _currentAudio = audio;
-      if (_audioCtx && _audioCtx.state === "suspended") _audioCtx.resume();
-      audio.onended = () => {
-        _currentAudio = null;
-        resolve();
-      };
-      audio.onerror = () => {
-        _currentAudio = null;
-        reject(new Error("Google TTS failed"));
-      };
-      audio.play().catch((e) => {
-        _currentAudio = null;
-        reject(e);
-      });
-    });
-  }
-  async function speak(text) {
-    stopAudio();
-    if (await tryLocalAudio(text, LANG_CONFIG.audioManifestKey + ".cn")) return;
-    if (!_isOnline2) {
-      console.warn("Offline: no local audio for", text);
-      return;
+    function releaseMicStream() {
+      if (_micStream) {
+        _micStream.getTracks().forEach((t2) => t2.stop());
+        _micStream = null;
+      }
     }
-    if (LANG_CONFIG.ttsProvider === "cantonese-ai") {
+    function playScoreSound(type) {
       try {
-        await cantoneseAiTTS(text);
-        return;
-      } catch (e) {
-        console.warn("cantonese.ai failed:", e.message);
-      }
-      try {
-        await googleTTS(text, "yue-HK");
-        return;
-      } catch (e) {
-        console.warn("Google TTS failed:", e.message);
-      }
-      try {
-        await elevenLabsTTS(text, "yue-HK");
-        return;
-      } catch (e) {
-        console.warn("ElevenLabs failed:", e.message);
-      }
-      return speakAsync(text, "yue-HK", 0.85);
-    } else {
-      try {
-        await elevenLabsTTS(text, "cmn-CN");
-        return;
-      } catch (e) {
-        console.warn("ElevenLabs failed:", e.message);
-      }
-      try {
-        await googleTTS(text, "cmn-CN");
-        return;
-      } catch (e) {
-      }
-      return speakAsync(text, "cmn-CN", 0.85);
-    }
-  }
-  async function speakEnglish(text) {
-    stopAudio();
-    if (await tryLocalAudio(text, LANG_CONFIG.audioManifestKey + ".en")) return;
-    if (!_isOnline2) {
-      console.warn("Offline: no local EN audio for", text);
-      return;
-    }
-    try {
-      await elevenLabsTTS(text, "en");
-      return;
-    } catch (e) {
-      console.warn("ElevenLabs EN failed:", e.message);
-    }
-    try {
-      await googleTTS(text, "en");
-      return;
-    } catch (e) {
-    }
-    return speakAsync(text, "en-US", 1);
-  }
-  async function speakPhrase(item) {
-    await speakEnglish(item.en);
-    await new Promise((r2) => setTimeout(r2, 800));
-    await speak(item.cn);
-  }
-  async function scorePronunciation(audioBlob, text, language = LANG_CONFIG.id) {
-    if (!_isOnline2) throw new Error("OFFLINE");
-    const formData = new FormData();
-    formData.append("text", text);
-    formData.append("language", language);
-    formData.append("audio", audioBlob, "recording.webm");
-    const res = await fetch(`${PROXY_URL}/score`, { method: "POST", body: formData });
-    if (!res.ok) throw new Error("Scoring failed: " + res.status);
-    return res.json();
-  }
-  function parseScoreChars(result, phraseCn) {
-    const expField = result.expectedJyutping || result.expectedPinyin;
-    const transField = result.transcribedJyutping || result.transcribedPinyin;
-    if (!expField || !transField) return [];
-    const expSyls = expField.trim().split(/\s+/);
-    const yourSyls = transField.trim().split(/\s+/);
-    const cnChars = phraseCn.replace(/[，,。！？!?\s]/g, "").split("");
-    const chars = [];
-    for (let i = 0; i < Math.max(expSyls.length, cnChars.length); i++) {
-      chars.push({ cn: cnChars[i] || "", e: expSyls[i] || "", y: yourSyls[i] || "", m: expSyls[i] === yourSyls[i] ? 1 : 0 });
-    }
-    return chars;
-  }
-  let _mediaRecorder = null;
-  let _audioChunks = [];
-  let _micStream = null;
-  async function getMicStream() {
-    if (_micStream && _micStream.active) return _micStream;
-    _micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    return _micStream;
-  }
-  async function startRecording() {
-    const stream = await getMicStream();
-    _audioChunks = [];
-    _mediaRecorder = new MediaRecorder(stream, { mimeType: "audio/webm;codecs=opus" });
-    _mediaRecorder.ondataavailable = (e) => {
-      if (e.data.size > 0) _audioChunks.push(e.data);
-    };
-    _mediaRecorder.start();
-    return true;
-  }
-  function stopRecording() {
-    return new Promise((resolve) => {
-      if (!_mediaRecorder || _mediaRecorder.state === "inactive") {
-        resolve(null);
-        return;
-      }
-      _mediaRecorder.onstop = () => {
-        const blob = new Blob(_audioChunks, { type: "audio/webm" });
-        resolve(blob);
-      };
-      _mediaRecorder.stop();
-    });
-  }
-  function releaseMicStream() {
-    if (_micStream) {
-      _micStream.getTracks().forEach((t2) => t2.stop());
-      _micStream = null;
-    }
-  }
-  function playScoreSound(type) {
-    try {
-      const ax = new (window.AudioContext || window.webkitAudioContext)();
-      if (type === "perfect") {
-        [523.25, 659.25, 783.99, 1046.5, 1318.51].forEach((f2, i) => {
-          const o = ax.createOscillator(), o2 = ax.createOscillator(), g = ax.createGain();
-          o.type = "sine";
-          o2.type = "triangle";
-          o.frequency.value = f2;
-          o2.frequency.value = f2 * 2;
-          g.gain.setValueAtTime(0, ax.currentTime + i * 0.1);
-          g.gain.linearRampToValueAtTime(0.12, ax.currentTime + i * 0.1 + 0.04);
-          g.gain.exponentialRampToValueAtTime(1e-3, ax.currentTime + i * 0.1 + 0.6);
-          o.connect(g);
-          o2.connect(g);
-          g.connect(ax.destination);
-          o.start(ax.currentTime + i * 0.1);
-          o.stop(ax.currentTime + i * 0.1 + 0.6);
-          o2.start(ax.currentTime + i * 0.1);
-          o2.stop(ax.currentTime + i * 0.1 + 0.6);
-        });
-      } else if (type === "good") {
-        [440, 554.37].forEach((f2, i) => {
-          const o = ax.createOscillator(), g = ax.createGain();
-          o.type = "sine";
-          o.frequency.value = f2;
-          g.gain.setValueAtTime(0, ax.currentTime + i * 0.15);
-          g.gain.linearRampToValueAtTime(0.12, ax.currentTime + i * 0.15 + 0.05);
-          g.gain.exponentialRampToValueAtTime(1e-3, ax.currentTime + i * 0.15 + 0.5);
-          o.connect(g).connect(ax.destination);
-          o.start(ax.currentTime + i * 0.15);
-          o.stop(ax.currentTime + i * 0.15 + 0.5);
-        });
-      } else {
-        [392, 330].forEach((f2, i) => {
-          const o = ax.createOscillator(), g = ax.createGain();
-          o.type = "sine";
-          o.frequency.value = f2;
-          g.gain.setValueAtTime(0, ax.currentTime + i * 0.2);
-          g.gain.linearRampToValueAtTime(0.1, ax.currentTime + i * 0.2 + 0.05);
-          g.gain.exponentialRampToValueAtTime(1e-3, ax.currentTime + i * 0.2 + 0.4);
-          o.connect(g).connect(ax.destination);
-          o.start(ax.currentTime + i * 0.2);
-          o.stop(ax.currentTime + i * 0.2 + 0.4);
-        });
-      }
-    } catch (e) {
-    }
-  }
-  function getDueItems(progress) {
-    const now = Date.now();
-    const due = [];
-    const phrases = progress.phrases || {};
-    const phraseTimestamps = progress.phraseTs || {};
-    UNITS.forEach((u2) => {
-      u2.phrases.forEach((p2, i) => {
-        var _a;
-        const key = `${u2.id}-${i}`;
-        if (phrases[key]) {
-          const ts = phraseTimestamps[key] || 0;
-          const age = now - ts;
-          const dayMs = 864e5;
-          let interval;
-          if (age < 7 * dayMs) interval = dayMs;
-          else if (age < 28 * dayMs) interval = 3 * dayMs;
-          else interval = 7 * dayMs;
-          const lastReview = ((_a = progress.lastReview) == null ? void 0 : _a[key]) || ts;
-          if (now - lastReview >= interval) due.push({ ...p2, unitId: u2.id, unitTitle: u2.title, phraseIdx: i, key });
+        const ax = new (window.AudioContext || window.webkitAudioContext)();
+        if (type === "perfect") {
+          [523.25, 659.25, 783.99, 1046.5, 1318.51].forEach((f2, i) => {
+            const o = ax.createOscillator(), o2 = ax.createOscillator(), g = ax.createGain();
+            o.type = "sine";
+            o2.type = "triangle";
+            o.frequency.value = f2;
+            o2.frequency.value = f2 * 2;
+            g.gain.setValueAtTime(0, ax.currentTime + i * 0.1);
+            g.gain.linearRampToValueAtTime(0.12, ax.currentTime + i * 0.1 + 0.04);
+            g.gain.exponentialRampToValueAtTime(1e-3, ax.currentTime + i * 0.1 + 0.6);
+            o.connect(g);
+            o2.connect(g);
+            g.connect(ax.destination);
+            o.start(ax.currentTime + i * 0.1);
+            o.stop(ax.currentTime + i * 0.1 + 0.6);
+            o2.start(ax.currentTime + i * 0.1);
+            o2.stop(ax.currentTime + i * 0.1 + 0.6);
+          });
+        } else if (type === "good") {
+          [440, 554.37].forEach((f2, i) => {
+            const o = ax.createOscillator(), g = ax.createGain();
+            o.type = "sine";
+            o.frequency.value = f2;
+            g.gain.setValueAtTime(0, ax.currentTime + i * 0.15);
+            g.gain.linearRampToValueAtTime(0.12, ax.currentTime + i * 0.15 + 0.05);
+            g.gain.exponentialRampToValueAtTime(1e-3, ax.currentTime + i * 0.15 + 0.5);
+            o.connect(g).connect(ax.destination);
+            o.start(ax.currentTime + i * 0.15);
+            o.stop(ax.currentTime + i * 0.15 + 0.5);
+          });
+        } else {
+          [392, 330].forEach((f2, i) => {
+            const o = ax.createOscillator(), g = ax.createGain();
+            o.type = "sine";
+            o.frequency.value = f2;
+            g.gain.setValueAtTime(0, ax.currentTime + i * 0.2);
+            g.gain.linearRampToValueAtTime(0.1, ax.currentTime + i * 0.2 + 0.05);
+            g.gain.exponentialRampToValueAtTime(1e-3, ax.currentTime + i * 0.2 + 0.4);
+            o.connect(g).connect(ax.destination);
+            o.start(ax.currentTime + i * 0.2);
+            o.stop(ax.currentTime + i * 0.2 + 0.4);
+          });
         }
+      } catch (e) {
+      }
+    }
+    function getDueItems(progress) {
+      const now = Date.now();
+      const due = [];
+      const phrases = progress.phrases || {};
+      const phraseTimestamps = progress.phraseTs || {};
+      UNITS.forEach((u2) => {
+        u2.phrases.forEach((p2, i) => {
+          var _a;
+          const key = `${u2.id}-${i}`;
+          if (phrases[key]) {
+            const ts = phraseTimestamps[key] || 0;
+            const age = now - ts;
+            const dayMs = 864e5;
+            let interval;
+            if (age < 7 * dayMs) interval = dayMs;
+            else if (age < 28 * dayMs) interval = 3 * dayMs;
+            else interval = 7 * dayMs;
+            const lastReview = ((_a = progress.lastReview) == null ? void 0 : _a[key]) || ts;
+            if (now - lastReview >= interval) due.push({ ...p2, unitId: u2.id, unitTitle: u2.title, phraseIdx: i, key });
+          }
+        });
       });
-    });
-    return due;
-  }
-  function getNewItems(progress) {
-    const fresh = [];
-    UNITS.forEach((u2) => {
-      u2.phrases.forEach((p2, i) => {
-        const key = `${u2.id}-${i}`;
-        if (!(progress.phrases || {})[key]) fresh.push({ ...p2, unitId: u2.id, unitTitle: u2.title, phraseIdx: i, key });
+      return due;
+    }
+    function getNewItems(progress) {
+      const fresh = [];
+      UNITS.forEach((u2) => {
+        u2.phrases.forEach((p2, i) => {
+          const key = `${u2.id}-${i}`;
+          if (!(progress.phrases || {})[key]) fresh.push({ ...p2, unitId: u2.id, unitTitle: u2.title, phraseIdx: i, key });
+        });
       });
-    });
-    return fresh.slice(0, 10);
-  }
-  const TONE_PATHS = {
-    "1": "M0,2 L12,2",
-    // high level ˉ
-    "2": "M0,10 L12,2",
-    // high rising ˊ
-    "3": "M0,7 L12,7",
-    // mid level ˉ (mid)
-    "4": "M0,4 L12,12",
-    // low falling ˋ
-    "5": "M0,12 L12,6",
-    // low rising ˊ (low start)
-    "6": "M0,12 L12,12"
-    // low level ˉ (low)
-  };
-  function ToneMark({ tone }) {
-    const path = TONE_PATHS[tone];
-    if (!path) return null;
-    return React.createElement("svg", {
-      width: 12,
-      height: 14,
-      viewBox: "0 0 12 14",
-      style: { verticalAlign: "middle", opacity: 0.65, flexShrink: 0 }
-    }, React.createElement("path", {
-      d: path,
-      stroke: "currentColor",
-      strokeWidth: 2,
-      fill: "none",
-      strokeLinecap: "round"
-    }));
-  }
-  function JyutpingTone({ text, className, style }) {
-    if (!text) return null;
-    const syllables = text.replace(/[，,!！?？。]/g, "").trim().split(/\s+/);
-    return React.createElement("span", {
-      className: className || "",
-      style: { display: "inline-flex", flexWrap: "wrap", gap: "1px 8px", alignItems: "baseline", ...style }
-    }, syllables.map((syl, i) => {
-      const toneMatch = syl.match(/^([a-z]+)(\d)$/i);
-      if (!toneMatch) return React.createElement("span", { key: i }, syl);
-      const base = toneMatch[1];
-      const tone = toneMatch[2];
-      return React.createElement(
-        "span",
-        {
-          key: i,
-          style: { display: "inline-flex", alignItems: "center", gap: 0 }
-        },
-        React.createElement("span", null, base + tone),
-        React.createElement(ToneMark, { tone })
-      );
-    }));
-  }
-  const CSS = `
+      return fresh.slice(0, 10);
+    }
+    const TONE_PATHS = {
+      "1": "M0,2 L12,2",
+      // high level ˉ
+      "2": "M0,10 L12,2",
+      // high rising ˊ
+      "3": "M0,7 L12,7",
+      // mid level ˉ (mid)
+      "4": "M0,4 L12,12",
+      // low falling ˋ
+      "5": "M0,12 L12,6",
+      // low rising ˊ (low start)
+      "6": "M0,12 L12,12"
+      // low level ˉ (low)
+    };
+    function ToneMark({ tone }) {
+      const path = TONE_PATHS[tone];
+      if (!path) return null;
+      return React.createElement("svg", {
+        width: 12,
+        height: 14,
+        viewBox: "0 0 12 14",
+        style: { verticalAlign: "middle", opacity: 0.65, flexShrink: 0 }
+      }, React.createElement("path", {
+        d: path,
+        stroke: "currentColor",
+        strokeWidth: 2,
+        fill: "none",
+        strokeLinecap: "round"
+      }));
+    }
+    function JyutpingTone({ text, className, style }) {
+      if (!text) return null;
+      const syllables = text.replace(/[，,!！?？。]/g, "").trim().split(/\s+/);
+      return React.createElement("span", {
+        className: className || "",
+        style: { display: "inline-flex", flexWrap: "wrap", gap: "1px 8px", alignItems: "baseline", ...style }
+      }, syllables.map((syl, i) => {
+        const toneMatch = syl.match(/^([a-z]+)(\d)$/i);
+        if (!toneMatch) return React.createElement("span", { key: i }, syl);
+        const base = toneMatch[1];
+        const tone = toneMatch[2];
+        return React.createElement(
+          "span",
+          {
+            key: i,
+            style: { display: "inline-flex", alignItems: "center", gap: 0 }
+          },
+          React.createElement("span", null, base + tone),
+          React.createElement(ToneMark, { tone })
+        );
+      }));
+    }
+    const CSS = `
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;0,9..40,900;1,9..40,400&family=Noto+Sans+HK:wght@400;700;900&display=swap');
 :root{--cream:#F5F2EE;--wh:#fff;--st:#EDE8E0;--st2:#E0DAD0;--ink:#2C2C2C;--ink2:#5A554F;--ink3:#7A756E;--lime:#C4F000;--ld:#7AAA00;--for:#1F3329;--navy:#1A1F3D;--navy-l:#242B52;--cor:#F05A3A;--plum:#8F6AE8;}
 *{box-sizing:border-box;margin:0;padding:0}body,button,input,select,textarea{font-family:'DM Sans',-apple-system,sans-serif}
@@ -41421,7 +41485,7 @@ if (_up.has("lang")) {
 .confetti-container{position:fixed;inset:0;z-index:1250;pointer-events:none;overflow:hidden}
 .confetti-piece{position:absolute;width:8px;height:8px;border-radius:2px}
 `;
-  const QUIZ_CSS = `
+    const QUIZ_CSS = `
 .quiz-ov{position:fixed;inset:0;background:var(--cream);z-index:200;display:flex;flex-direction:column}
 .quiz-hd{background:var(--for);padding:12px 14px;display:flex;align-items:center;justify-content:space-between}
 .quiz-cl{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:#fff;border-radius:999px;padding:10px 14px;font-size:.75rem;font-weight:700;cursor:pointer;min-height:44px}
@@ -41501,1756 +41565,2216 @@ if (_up.has("lang")) {
 @keyframes celebPop{0%{transform:scale(0);opacity:0}50%{transform:scale(1.2)}100%{transform:scale(1);opacity:1}}
 @keyframes confettiFall{0%{transform:translateY(-20px) rotate(0deg);opacity:1}100%{transform:translateY(200px) rotate(720deg);opacity:0}}
 `;
-  function QuizTab({ progress, upd, startMode, onBack }) {
-    const [mode, setMode] = reactExports.useState(null);
-    const [quizItems, setQuizItems] = reactExports.useState([]);
-    const [idx, setIdx] = reactExports.useState(0);
-    const [revealed, setRevealed] = reactExports.useState(false);
-    const [score, setScore] = reactExports.useState({ right: 0, almost: 0, wrong: 0 });
-    const [done, setDone] = reactExports.useState(false);
-    const [dictAnswer, setDictAnswer] = reactExports.useState("");
-    const [isRecording, setIsRecording] = reactExports.useState(false);
-    const [scoring, setScoring] = reactExports.useState(false);
-    const [scoreResult, setScoreResult] = reactExports.useState(null);
-    const [picking, setPicking] = reactExports.useState(startMode === "pronunciation");
-    const [autoStarted, setAutoStarted] = reactExports.useState(false);
-    const [selectedUnits, setSelectedUnits] = reactExports.useState(/* @__PURE__ */ new Set());
-    const [source, setSource] = reactExports.useState("known");
-    const [pronScores, setPronScores] = reactExports.useState([]);
-    const exitQuiz = () => {
-      if (onBack) onBack();
-      else setMode(null);
-    };
-    const knownPhrases = reactExports.useMemo(() => {
-      const items = [];
-      UNITS.forEach((u2) => {
-        u2.phrases.forEach((p2, i) => {
-          const key = `${u2.id}-${i}`;
-          if ((progress.phrases || {})[key]) items.push({ ...p2, unitId: u2.id, phraseIdx: i, key });
+    function QuizTab({ progress, upd, startMode, onBack }) {
+      const [mode, setMode] = reactExports.useState(null);
+      const [quizItems, setQuizItems] = reactExports.useState([]);
+      const [idx, setIdx] = reactExports.useState(0);
+      const [revealed, setRevealed] = reactExports.useState(false);
+      const [score, setScore] = reactExports.useState({ right: 0, almost: 0, wrong: 0 });
+      const [done, setDone] = reactExports.useState(false);
+      const [dictAnswer, setDictAnswer] = reactExports.useState("");
+      const [isRecording, setIsRecording] = reactExports.useState(false);
+      const [scoring, setScoring] = reactExports.useState(false);
+      const [scoreResult, setScoreResult] = reactExports.useState(null);
+      const [picking, setPicking] = reactExports.useState(startMode === "pronunciation");
+      const [autoStarted, setAutoStarted] = reactExports.useState(false);
+      const [selectedUnits, setSelectedUnits] = reactExports.useState(/* @__PURE__ */ new Set());
+      const [source, setSource] = reactExports.useState("known");
+      const [pronScores, setPronScores] = reactExports.useState([]);
+      const exitQuiz = () => {
+        if (onBack) onBack();
+        else setMode(null);
+      };
+      const knownPhrases = reactExports.useMemo(() => {
+        const items = [];
+        UNITS.forEach((u2) => {
+          u2.phrases.forEach((p2, i) => {
+            const key = `${u2.id}-${i}`;
+            if ((progress.phrases || {})[key]) items.push({ ...p2, unitId: u2.id, phraseIdx: i, key });
+          });
         });
-      });
-      return items;
-    }, [progress]);
-    reactExports.useEffect(() => {
-      if (startMode === "recall" && !autoStarted && knownPhrases.length >= 3) {
-        setAutoStarted(true);
-        const pool = [...knownPhrases].sort(() => Math.random() - 0.5).slice(0, 10);
-        setQuizItems(pool);
-        setMode("speaking");
-        setSource("known");
-      }
-    }, [startMode, knownPhrases, autoStarted]);
-    const getUnitPhrases = () => {
-      const items = [];
-      UNITS.forEach((u2) => {
-        if (selectedUnits.has(u2.id)) u2.phrases.forEach((p2, i) => items.push({ ...p2, unitId: u2.id, phraseIdx: i, key: `${u2.id}-${i}` }));
-      });
-      return items;
-    };
-    const startQuiz = (m2, src) => {
-      let pool = src === "units" ? getUnitPhrases() : src === "all" ? UNITS.flatMap((u2) => u2.phrases.map((p2, i) => ({ ...p2, unitId: u2.id, phraseIdx: i, key: `${u2.id}-${i}` }))) : knownPhrases;
-      setQuizItems([...pool].sort(() => Math.random() - 0.5).slice(0, 20));
-      setMode(m2);
-      setSource(src);
-      setIdx(0);
-      setRevealed(false);
-      setScore({ right: 0, almost: 0, wrong: 0 });
-      setDone(false);
-      setDictAnswer("");
-      setPicking(false);
-      setScoreResult(null);
-      setPronScores([]);
-    };
-    const grade = (result) => {
-      const item2 = quizItems[idx];
-      if (result === "wrong" && source === "known") upd(`phrases.${item2.key}`, false);
-      setScore((prev) => ({ ...prev, [result]: prev[result] + 1 }));
-      setRevealed(false);
-      setDictAnswer("");
-      setScoreResult(null);
-      if (idx + 1 >= quizItems.length) setDone(true);
-      else setIdx((i) => i + 1);
-    };
-    const pronNext = () => {
-      if (scoreResult) setPronScores((prev) => [...prev, scoreResult.score]);
-      setScoreResult(null);
-      setIsRecording(false);
-      setScoring(false);
-      if (idx + 1 >= quizItems.length) setDone(true);
-      else setIdx((i) => i + 1);
-    };
-    const pronSkip = () => {
-      setPronScores((prev) => [...prev, null]);
-      setScoreResult(null);
-      setIsRecording(false);
-      setScoring(false);
-      if (idx + 1 >= quizItems.length) setDone(true);
-      else setIdx((i) => i + 1);
-    };
-    const toggleUnit = (id2) => {
-      setSelectedUnits((prev) => {
-        const next = new Set(prev);
-        if (next.has(id2)) next.delete(id2);
-        else next.add(id2);
-        return next;
-      });
-    };
-    const qStartTest = async () => {
-      stopAudio();
-      try {
-        const ok2 = await startRecording();
-        if (ok2) setIsRecording(true);
-      } catch (e) {
-        console.warn("Mic error:", e);
-      }
-    };
-    const qStopTest = async () => {
-      setIsRecording(false);
-      setScoring(true);
-      const blob = await stopRecording();
-      const ph2 = quizItems[idx];
-      if (blob && ph2) {
-        try {
-          const result = await scorePronunciation(blob, ph2.cn, LANG_CONFIG.id);
-          const chars = parseScoreChars(result, ph2.cn);
-          setScoreResult({ score: result.score, passed: result.passed, chars, phrase: ph2 });
-        } catch (e) {
-          console.error("Scoring error:", e);
-          setScoreResult(null);
+        return items;
+      }, [progress]);
+      reactExports.useEffect(() => {
+        if (startMode === "recall" && !autoStarted && knownPhrases.length >= 3) {
+          setAutoStarted(true);
+          const pool = [...knownPhrases].sort(() => Math.random() - 0.5).slice(0, 10);
+          setQuizItems(pool);
+          setMode("speaking");
+          setSource("known");
         }
+      }, [startMode, knownPhrases, autoStarted]);
+      const getUnitPhrases = () => {
+        const items = [];
+        UNITS.forEach((u2) => {
+          if (selectedUnits.has(u2.id)) u2.phrases.forEach((p2, i) => items.push({ ...p2, unitId: u2.id, phraseIdx: i, key: `${u2.id}-${i}` }));
+        });
+        return items;
+      };
+      const startQuiz = (m2, src) => {
+        let pool = src === "units" ? getUnitPhrases() : src === "all" ? UNITS.flatMap((u2) => u2.phrases.map((p2, i) => ({ ...p2, unitId: u2.id, phraseIdx: i, key: `${u2.id}-${i}` }))) : knownPhrases;
+        setQuizItems([...pool].sort(() => Math.random() - 0.5).slice(0, 20));
+        setMode(m2);
+        setSource(src);
+        setIdx(0);
+        setRevealed(false);
+        setScore({ right: 0, almost: 0, wrong: 0 });
+        setDone(false);
+        setDictAnswer("");
+        setPicking(false);
+        setScoreResult(null);
+        setPronScores([]);
+      };
+      const grade = (result) => {
+        const item2 = quizItems[idx];
+        if (result === "wrong" && source === "known") upd(`phrases.${item2.key}`, false);
+        setScore((prev) => ({ ...prev, [result]: prev[result] + 1 }));
+        setRevealed(false);
+        setDictAnswer("");
+        setScoreResult(null);
+        if (idx + 1 >= quizItems.length) setDone(true);
+        else setIdx((i) => i + 1);
+      };
+      const pronNext = () => {
+        if (scoreResult) setPronScores((prev) => [...prev, scoreResult.score]);
+        setScoreResult(null);
+        setIsRecording(false);
+        setScoring(false);
+        if (idx + 1 >= quizItems.length) setDone(true);
+        else setIdx((i) => i + 1);
+      };
+      const pronSkip = () => {
+        setPronScores((prev) => [...prev, null]);
+        setScoreResult(null);
+        setIsRecording(false);
+        setScoring(false);
+        if (idx + 1 >= quizItems.length) setDone(true);
+        else setIdx((i) => i + 1);
+      };
+      const toggleUnit = (id2) => {
+        setSelectedUnits((prev) => {
+          const next = new Set(prev);
+          if (next.has(id2)) next.delete(id2);
+          else next.add(id2);
+          return next;
+        });
+      };
+      const qStartTest = async () => {
+        stopAudio();
+        try {
+          const ok2 = await startRecording();
+          if (ok2) setIsRecording(true);
+        } catch (e) {
+          console.warn("Mic error:", e);
+        }
+      };
+      const qStopTest = async () => {
+        setIsRecording(false);
+        setScoring(true);
+        const blob = await stopRecording();
+        const ph2 = quizItems[idx];
+        if (blob && ph2) {
+          try {
+            const result = await scorePronunciation(blob, ph2.cn, LANG_CONFIG.id);
+            const chars = parseScoreChars(result, ph2.cn);
+            setScoreResult({ score: result.score, passed: result.passed, chars, phrase: ph2 });
+          } catch (e) {
+            console.error("Scoring error:", e);
+            setScoreResult(null);
+          }
+        }
+        setScoring(false);
+      };
+      if (picking) {
+        const unitCount = selectedUnits.size;
+        const phraseCount = getUnitPhrases().length;
+        const topicIcons = { 1: "👋", 2: "🤝", 3: "🚕", 4: "☕", 5: "🍜", 6: "🛍", 7: "🏫", 8: "🏠", 9: "🕐", 10: "❤️", 11: "🍻", 12: "🌧", 13: "💰", 14: "💪", 15: "😤", 16: "📱", 17: "🥺", 18: "🔢", 19: "🎉", 20: "🌇" };
+        const topicImgs = { 1: "https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?w=120&h=80&fit=crop", 2: "https://images.unsplash.com/photo-1529156069898-49953e39b3ac?w=120&h=80&fit=crop", 3: "https://images.unsplash.com/photo-1536640712-4d4c36ff0e4e?w=120&h=80&fit=crop", 4: "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=120&h=80&fit=crop", 5: "https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=120&h=80&fit=crop", 6: "https://images.unsplash.com/photo-1555529669-e69e7aa0ba9a?w=120&h=80&fit=crop", 7: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=120&h=80&fit=crop", 8: "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=120&h=80&fit=crop", 9: "https://images.unsplash.com/photo-1508672019048-805c876b67e2?w=120&h=80&fit=crop", 10: "https://images.unsplash.com/photo-1518199266791-5375a83190b7?w=120&h=80&fit=crop", 11: "https://images.unsplash.com/photo-1575444758702-4a6b9222c016?w=120&h=80&fit=crop", 12: "https://images.unsplash.com/photo-1534274988757-a28bf1a57c17?w=120&h=80&fit=crop", 13: "https://images.unsplash.com/photo-1526304640581-d334cdbbf45e?w=120&h=80&fit=crop", 14: "https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=120&h=80&fit=crop", 15: "https://images.unsplash.com/photo-1544027993-37dbfe43562a?w=120&h=80&fit=crop", 16: "https://images.unsplash.com/photo-1512941937669-90a1b58e7e9c?w=120&h=80&fit=crop", 17: "https://images.unsplash.com/photo-1516483638261-f4dbaf036963?w=120&h=80&fit=crop", 18: "https://images.unsplash.com/photo-1466378284817-a6b7fd50cc5a?w=120&h=80&fit=crop", 19: "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=120&h=80&fit=crop", 20: "https://images.unsplash.com/photo-1462275646964-a0e3c11f18a6?w=120&h=80&fit=crop" };
+        return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { paddingBottom: unitCount > 0 ? 140 : 80 }, children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { position: "relative", overflow: "hidden", padding: "16px 20px 14px" }, children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { position: "absolute", inset: 0, background: "linear-gradient(135deg,#3D2A1A 0%,#2A1F15 100%)" } }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { position: "relative", zIndex: 1 }, children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }, children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => {
+                  if (onBack) onBack();
+                  else setPicking(false);
+                }, style: { background: "rgba(255,255,255,.12)", border: "none", borderRadius: 10, padding: "0 14px", height: 38, display: "flex", alignItems: "center", gap: 4, cursor: "pointer", color: "#fff", fontSize: ".82rem", fontWeight: 700, fontFamily: "inherit" }, children: "← Back" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { flex: 1 } }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => setSelectedUnits(new Set(UNITS.map((u2) => u2.id))), style: { background: "rgba(255,255,255,.12)", border: "none", borderRadius: 10, padding: "0 12px", height: 34, cursor: "pointer", color: "rgba(255,255,255,.8)", fontSize: ".72rem", fontWeight: 700, fontFamily: "inherit" }, children: "Select all" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => setSelectedUnits(/* @__PURE__ */ new Set()), style: { background: "rgba(255,255,255,.08)", border: "none", borderRadius: 10, padding: "0 12px", height: 34, cursor: "pointer", color: "rgba(255,255,255,.6)", fontSize: ".72rem", fontWeight: 700, fontFamily: "inherit" }, children: "Clear" })
+              ] }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: "1.05rem", fontWeight: 900, color: "#fff", marginBottom: 2 }, children: "🎙 Pronunciation Practice" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".76rem", color: "rgba(255,255,255,.7)" }, children: "Select units, then practise saying each phrase out loud." })
+            ] })
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { padding: "10px 12px 0", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }, children: UNITS.map((u2) => {
+            u2.phrases.filter((_, i) => (progress.phrases || {})[`${u2.id}-${i}`]).length;
+            const isSel = selectedUnits.has(u2.id);
+            return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { onClick: () => toggleUnit(u2.id), style: {
+              background: isSel ? "rgba(196,240,0,.06)" : "var(--wh)",
+              borderRadius: 10,
+              overflow: "hidden",
+              border: isSel ? "1.5px solid var(--lime)" : "1.5px solid rgba(0,0,0,.06)",
+              cursor: "pointer",
+              transition: "all .15s",
+              boxShadow: isSel ? "0 2px 8px rgba(122,170,0,.15)" : "0 1px 3px rgba(0,0,0,.04)"
+            }, children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { height: 48, position: "relative", overflow: "hidden" }, children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("img", { src: topicImgs[u2.id] || topicImgs[1], alt: "", style: { width: "100%", height: "100%", objectFit: "cover" } }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { position: "absolute", inset: 0, background: "linear-gradient(0deg,rgba(0,0,0,.35) 0%,transparent 70%)" } }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { position: "absolute", top: 5, left: 5, width: 20, height: 20, borderRadius: 5, border: isSel ? "none" : "2px solid rgba(255,255,255,.5)", background: isSel ? "var(--lime)" : "rgba(0,0,0,.25)", display: "flex", alignItems: "center", justifyContent: "center" }, children: isSel && /* @__PURE__ */ jsxRuntimeExports.jsx("svg", { width: "11", height: "11", viewBox: "0 0 24 24", fill: "none", stroke: "var(--for)", strokeWidth: "3", strokeLinecap: "round", strokeLinejoin: "round", children: /* @__PURE__ */ jsxRuntimeExports.jsx("polyline", { points: "20 6 9 17 4 12" }) }) }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { position: "absolute", top: 5, right: 6, fontSize: ".75rem" }, children: topicIcons[u2.id] || "📖" })
+              ] }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { padding: "6px 8px 7px", display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 4 }, children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".82rem", fontWeight: 700, color: "var(--ink)", lineHeight: 1.2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }, children: u2.title }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".6rem", color: "var(--ink3)", fontWeight: 600, flexShrink: 0 }, children: u2.phrases.length })
+              ] })
+            ] }, u2.id);
+          }) }),
+          unitCount > 0 && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { position: "fixed", bottom: 56, left: 0, right: 0, zIndex: 150, padding: "10px 16px", background: "var(--cream)", borderTop: "1.5px solid var(--st)", boxShadow: "0 -8px 24px rgba(0,0,0,.1)" }, children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", alignItems: "center", gap: 10 }, children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { flex: 1, fontSize: ".78rem", color: "var(--ink)", fontWeight: 700 }, children: [
+              unitCount,
+              " unit",
+              unitCount > 1 ? "s" : "",
+              " · ",
+              phraseCount,
+              " phrases"
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => startQuiz("pronunciation", "units"), style: { padding: "12px 28px", borderRadius: 12, border: "none", background: "var(--lime)", color: "var(--for)", fontSize: ".84rem", fontWeight: 900, cursor: "pointer", minHeight: 44 }, children: "🎙 Start practice" })
+          ] }) })
+        ] });
       }
-      setScoring(false);
-    };
-    if (picking) {
-      const unitCount = selectedUnits.size;
-      const phraseCount = getUnitPhrases().length;
-      const topicIcons = { 1: "👋", 2: "🤝", 3: "🚕", 4: "☕", 5: "🍜", 6: "🛍", 7: "🏫", 8: "🏠", 9: "🕐", 10: "❤️", 11: "🍻", 12: "🌧", 13: "💰", 14: "💪", 15: "😤", 16: "📱", 17: "🥺", 18: "🔢", 19: "🎉", 20: "🌇" };
-      const topicImgs = { 1: "https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?w=120&h=80&fit=crop", 2: "https://images.unsplash.com/photo-1529156069898-49953e39b3ac?w=120&h=80&fit=crop", 3: "https://images.unsplash.com/photo-1536640712-4d4c36ff0e4e?w=120&h=80&fit=crop", 4: "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=120&h=80&fit=crop", 5: "https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=120&h=80&fit=crop", 6: "https://images.unsplash.com/photo-1555529669-e69e7aa0ba9a?w=120&h=80&fit=crop", 7: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=120&h=80&fit=crop", 8: "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=120&h=80&fit=crop", 9: "https://images.unsplash.com/photo-1508672019048-805c876b67e2?w=120&h=80&fit=crop", 10: "https://images.unsplash.com/photo-1518199266791-5375a83190b7?w=120&h=80&fit=crop", 11: "https://images.unsplash.com/photo-1575444758702-4a6b9222c016?w=120&h=80&fit=crop", 12: "https://images.unsplash.com/photo-1534274988757-a28bf1a57c17?w=120&h=80&fit=crop", 13: "https://images.unsplash.com/photo-1526304640581-d334cdbbf45e?w=120&h=80&fit=crop", 14: "https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=120&h=80&fit=crop", 15: "https://images.unsplash.com/photo-1544027993-37dbfe43562a?w=120&h=80&fit=crop", 16: "https://images.unsplash.com/photo-1512941937669-90a1b58e7e9c?w=120&h=80&fit=crop", 17: "https://images.unsplash.com/photo-1516483638261-f4dbaf036963?w=120&h=80&fit=crop", 18: "https://images.unsplash.com/photo-1466378284817-a6b7fd50cc5a?w=120&h=80&fit=crop", 19: "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=120&h=80&fit=crop", 20: "https://images.unsplash.com/photo-1462275646964-a0e3c11f18a6?w=120&h=80&fit=crop" };
-      return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { paddingBottom: unitCount > 0 ? 140 : 80 }, children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { position: "relative", overflow: "hidden", padding: "16px 20px 14px" }, children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { position: "absolute", inset: 0, background: "linear-gradient(135deg,#3D2A1A 0%,#2A1F15 100%)" } }),
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { position: "relative", zIndex: 1 }, children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }, children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => {
-                if (onBack) onBack();
-                else setPicking(false);
-              }, style: { background: "rgba(255,255,255,.12)", border: "none", borderRadius: 10, padding: "0 14px", height: 38, display: "flex", alignItems: "center", gap: 4, cursor: "pointer", color: "#fff", fontSize: ".82rem", fontWeight: 700, fontFamily: "inherit" }, children: "← Back" }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { flex: 1 } }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => setSelectedUnits(new Set(UNITS.map((u2) => u2.id))), style: { background: "rgba(255,255,255,.12)", border: "none", borderRadius: 10, padding: "0 12px", height: 34, cursor: "pointer", color: "rgba(255,255,255,.8)", fontSize: ".72rem", fontWeight: 700, fontFamily: "inherit" }, children: "Select all" }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => setSelectedUnits(/* @__PURE__ */ new Set()), style: { background: "rgba(255,255,255,.08)", border: "none", borderRadius: 10, padding: "0 12px", height: 34, cursor: "pointer", color: "rgba(255,255,255,.6)", fontSize: ".72rem", fontWeight: 700, fontFamily: "inherit" }, children: "Clear" })
+      if (!mode) {
+        const hasEnough = knownPhrases.length >= 3;
+        return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "mc", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "pt", children: "Test yourself 🎯" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "ps", children: "Three ways to practise. Pick the one that fits your mood!" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "qs-card", onClick: () => hasEnough && startQuiz("speaking", "known"), style: { opacity: hasEnough ? 1 : 0.4, pointerEvents: hasEnough ? "auto" : "none" }, children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }, children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: "1.6rem" }, children: "🧠" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "qs-ti", children: "Recall Quiz" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { fontSize: ".62rem", color: "var(--ink3)", fontWeight: 600 }, children: [
+                  "From your ",
+                  knownPhrases.length,
+                  " known phrases"
+                ] })
+              ] })
             ] }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: "1.05rem", fontWeight: 900, color: "#fff", marginBottom: 2 }, children: "🎙 Pronunciation Practice" }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".76rem", color: "rgba(255,255,255,.7)" }, children: "Select units, then practise saying each phrase out loud." })
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "qs-sub", children: "See the English and try to remember the Cantonese. Good for building memory. You grade yourself." })
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "qs-card", onClick: () => hasEnough && startQuiz("listening", "known"), style: { opacity: hasEnough ? 1 : 0.4, pointerEvents: hasEnough ? "auto" : "none" }, children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }, children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: "1.6rem" }, children: "👂" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "qs-ti", children: "Listening Quiz" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { fontSize: ".62rem", color: "var(--ink3)", fontWeight: 600 }, children: [
+                  "From your ",
+                  knownPhrases.length,
+                  " known phrases"
+                ] })
+              ] })
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "qs-sub", children: "Hear the Cantonese and type what it means in English. Trains your ear to catch real speech." })
+          ] }),
+          !hasEnough && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".72rem", color: "var(--ink2)", textAlign: "center", margin: "6px 0 10px", fontWeight: 600 }, children: "Mark at least 3 phrases as known in Phrases to unlock the quizzes above 💪" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { borderTop: "1.5px solid var(--st)", margin: "14px 0" } }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "qs-card", onClick: () => setPicking(true), style: { border: "2px solid var(--lime)", background: "rgba(196,240,0,.04)" }, children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }, children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: "1.6rem" }, children: "🎙" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "qs-ti", children: "Pronunciation Quiz" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".62rem", color: "var(--ld)", fontWeight: 700 }, children: "Pick any units, no experience needed" })
+              ] })
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "qs-sub", children: "Pick which units to practise, then record yourself saying each phrase out loud. The AI scores your pronunciation and shows you which sounds you nailed and which need work." })
           ] })
-        ] }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { padding: "10px 12px 0", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }, children: UNITS.map((u2) => {
-          u2.phrases.filter((_, i) => (progress.phrases || {})[`${u2.id}-${i}`]).length;
-          const isSel = selectedUnits.has(u2.id);
-          return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { onClick: () => toggleUnit(u2.id), style: {
-            background: isSel ? "rgba(196,240,0,.06)" : "var(--wh)",
-            borderRadius: 10,
-            overflow: "hidden",
-            border: isSel ? "1.5px solid var(--lime)" : "1.5px solid rgba(0,0,0,.06)",
-            cursor: "pointer",
-            transition: "all .15s",
-            boxShadow: isSel ? "0 2px 8px rgba(122,170,0,.15)" : "0 1px 3px rgba(0,0,0,.04)"
-          }, children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { height: 48, position: "relative", overflow: "hidden" }, children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx("img", { src: topicImgs[u2.id] || topicImgs[1], alt: "", style: { width: "100%", height: "100%", objectFit: "cover" } }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { position: "absolute", inset: 0, background: "linear-gradient(0deg,rgba(0,0,0,.35) 0%,transparent 70%)" } }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { position: "absolute", top: 5, left: 5, width: 20, height: 20, borderRadius: 5, border: isSel ? "none" : "2px solid rgba(255,255,255,.5)", background: isSel ? "var(--lime)" : "rgba(0,0,0,.25)", display: "flex", alignItems: "center", justifyContent: "center" }, children: isSel && /* @__PURE__ */ jsxRuntimeExports.jsx("svg", { width: "11", height: "11", viewBox: "0 0 24 24", fill: "none", stroke: "var(--for)", strokeWidth: "3", strokeLinecap: "round", strokeLinejoin: "round", children: /* @__PURE__ */ jsxRuntimeExports.jsx("polyline", { points: "20 6 9 17 4 12" }) }) }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { position: "absolute", top: 5, right: 6, fontSize: ".75rem" }, children: topicIcons[u2.id] || "📖" })
+        ] });
+      }
+      if (done) {
+        if (mode === "pronunciation") {
+          const scored = pronScores.filter((s) => s !== null);
+          const avg = scored.length ? Math.round(scored.reduce((a, b2) => a + b2, 0) / scored.length) : 0;
+          return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "comp-ov", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "comp-em", children: avg >= 80 ? "🌟" : avg >= 60 ? "💪" : "📝" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "comp-t", children: avg >= 80 ? "Amazing pronunciation!" : avg >= 60 ? "Getting there!" : "Good practice!" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "comp-s", children: [
+              "Average score: ",
+              avg,
+              "% across ",
+              scored.length,
+              " phrase",
+              scored.length !== 1 ? "s" : "",
+              pronScores.length - scored.length > 0 ? ` (${pronScores.length - scored.length} skipped)` : ""
             ] }),
-            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { padding: "6px 8px 7px", display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 4 }, children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".82rem", fontWeight: 700, color: "var(--ink)", lineHeight: 1.2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }, children: u2.title }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".6rem", color: "var(--ink3)", fontWeight: 600, flexShrink: 0 }, children: u2.phrases.length })
-            ] })
-          ] }, u2.id);
-        }) }),
-        unitCount > 0 && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { position: "fixed", bottom: 56, left: 0, right: 0, zIndex: 150, padding: "10px 16px", background: "var(--cream)", borderTop: "1.5px solid var(--st)", boxShadow: "0 -8px 24px rgba(0,0,0,.1)" }, children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", alignItems: "center", gap: 10 }, children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { flex: 1, fontSize: ".78rem", color: "var(--ink)", fontWeight: 700 }, children: [
-            unitCount,
-            " unit",
-            unitCount > 1 ? "s" : "",
-            " · ",
-            phraseCount,
-            " phrases"
-          ] }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => startQuiz("pronunciation", "units"), style: { padding: "12px 28px", borderRadius: 12, border: "none", background: "var(--lime)", color: "var(--for)", fontSize: ".84rem", fontWeight: 900, cursor: "pointer", minHeight: 44 }, children: "🎙 Start practice" })
-        ] }) })
-      ] });
-    }
-    if (!mode) {
-      const hasEnough = knownPhrases.length >= 3;
-      return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "mc", children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "pt", children: "Test yourself 🎯" }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "ps", children: "Three ways to practise. Pick the one that fits your mood!" }),
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "qs-card", onClick: () => hasEnough && startQuiz("speaking", "known"), style: { opacity: hasEnough ? 1 : 0.4, pointerEvents: hasEnough ? "auto" : "none" }, children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }, children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: "1.6rem" }, children: "🧠" }),
-            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "qs-ti", children: "Recall Quiz" }),
-              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { fontSize: ".62rem", color: "var(--ink3)", fontWeight: 600 }, children: [
-                "From your ",
-                knownPhrases.length,
-                " known phrases"
-              ] })
-            ] })
-          ] }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "qs-sub", children: "See the English and try to remember the Cantonese. Good for building memory. You grade yourself." })
-        ] }),
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "qs-card", onClick: () => hasEnough && startQuiz("listening", "known"), style: { opacity: hasEnough ? 1 : 0.4, pointerEvents: hasEnough ? "auto" : "none" }, children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }, children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: "1.6rem" }, children: "👂" }),
-            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "qs-ti", children: "Listening Quiz" }),
-              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { fontSize: ".62rem", color: "var(--ink3)", fontWeight: 600 }, children: [
-                "From your ",
-                knownPhrases.length,
-                " known phrases"
-              ] })
-            ] })
-          ] }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "qs-sub", children: "Hear the Cantonese and type what it means in English. Trains your ear to catch real speech." })
-        ] }),
-        !hasEnough && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".72rem", color: "var(--ink2)", textAlign: "center", margin: "6px 0 10px", fontWeight: 600 }, children: "Mark at least 3 phrases as known in Phrases to unlock the quizzes above 💪" }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { borderTop: "1.5px solid var(--st)", margin: "14px 0" } }),
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "qs-card", onClick: () => setPicking(true), style: { border: "2px solid var(--lime)", background: "rgba(196,240,0,.04)" }, children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }, children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: "1.6rem" }, children: "🎙" }),
-            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "qs-ti", children: "Pronunciation Quiz" }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".62rem", color: "var(--ld)", fontWeight: 700 }, children: "Pick any units, no experience needed" })
-            ] })
-          ] }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "qs-sub", children: "Pick which units to practise, then record yourself saying each phrase out loud. The AI scores your pronunciation and shows you which sounds you nailed and which need work." })
-        ] })
-      ] });
-    }
-    if (done) {
-      if (mode === "pronunciation") {
-        const scored = pronScores.filter((s) => s !== null);
-        const avg = scored.length ? Math.round(scored.reduce((a, b2) => a + b2, 0) / scored.length) : 0;
+            /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "comp-btn", onClick: exitQuiz, children: "Done" })
+          ] });
+        }
+        const total = score.right + score.almost + score.wrong;
+        const pct = total ? Math.round(score.right / total * 100) : 0;
         return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "comp-ov", children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "comp-em", children: avg >= 80 ? "🌟" : avg >= 60 ? "💪" : "📝" }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "comp-t", children: avg >= 80 ? "Amazing pronunciation!" : avg >= 60 ? "Getting there!" : "Good practice!" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "comp-em", children: pct >= 80 ? "🌟" : pct >= 50 ? "💪" : "📝" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "comp-t", children: pct >= 80 ? "Amazing work!" : pct >= 50 ? "Great effort!" : "Good practice!" }),
           /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "comp-s", children: [
-            "Average score: ",
-            avg,
-            "% across ",
-            scored.length,
-            " phrase",
-            scored.length !== 1 ? "s" : "",
-            pronScores.length - scored.length > 0 ? ` (${pronScores.length - scored.length} skipped)` : ""
+            score.right,
+            "/",
+            total,
+            " correct · ",
+            score.wrong > 0 ? `${score.wrong} sent back for more practice` : "nothing sent back!"
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", gap: 10, marginBottom: 16 }, children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { background: "rgba(196,240,0,.15)", borderRadius: 10, padding: "10px 16px", textAlign: "center" }, children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: "1.2rem", fontWeight: 900, color: "var(--lime)" }, children: score.right }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".52rem", color: "rgba(255,255,255,.4)", fontWeight: 700 }, children: "Got it" })
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { background: "rgba(255,255,255,.06)", borderRadius: 10, padding: "10px 16px", textAlign: "center" }, children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: "1.2rem", fontWeight: 900, color: "#fff" }, children: score.almost }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".52rem", color: "rgba(255,255,255,.4)", fontWeight: 700 }, children: "Almost" })
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { background: "rgba(240,90,58,.15)", borderRadius: 10, padding: "10px 16px", textAlign: "center" }, children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: "1.2rem", fontWeight: 900, color: "var(--cor)" }, children: score.wrong }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".52rem", color: "rgba(255,255,255,.4)", fontWeight: 700 }, children: "Review" })
+            ] })
           ] }),
           /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "comp-btn", onClick: exitQuiz, children: "Done" })
         ] });
       }
-      const total = score.right + score.almost + score.wrong;
-      const pct = total ? Math.round(score.right / total * 100) : 0;
-      return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "comp-ov", children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "comp-em", children: pct >= 80 ? "🌟" : pct >= 50 ? "💪" : "📝" }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "comp-t", children: pct >= 80 ? "Amazing work!" : pct >= 50 ? "Great effort!" : "Good practice!" }),
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "comp-s", children: [
-          score.right,
-          "/",
-          total,
-          " correct · ",
-          score.wrong > 0 ? `${score.wrong} sent back for more practice` : "nothing sent back!"
-        ] }),
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", gap: 10, marginBottom: 16 }, children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { background: "rgba(196,240,0,.15)", borderRadius: 10, padding: "10px 16px", textAlign: "center" }, children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: "1.2rem", fontWeight: 900, color: "var(--lime)" }, children: score.right }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".52rem", color: "rgba(255,255,255,.4)", fontWeight: 700 }, children: "Got it" })
-          ] }),
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { background: "rgba(255,255,255,.06)", borderRadius: 10, padding: "10px 16px", textAlign: "center" }, children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: "1.2rem", fontWeight: 900, color: "#fff" }, children: score.almost }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".52rem", color: "rgba(255,255,255,.4)", fontWeight: 700 }, children: "Almost" })
-          ] }),
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { background: "rgba(240,90,58,.15)", borderRadius: 10, padding: "10px 16px", textAlign: "center" }, children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: "1.2rem", fontWeight: 900, color: "var(--cor)" }, children: score.wrong }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".52rem", color: "rgba(255,255,255,.4)", fontWeight: 700 }, children: "Review" })
-          ] })
-        ] }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "comp-btn", onClick: exitQuiz, children: "Done" })
-      ] });
-    }
-    const item = quizItems[idx];
-    if (mode === "pronunciation") {
-      return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "quiz-ov", children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "quiz-hd", children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "quiz-cl", onClick: () => {
-            exitQuiz();
-            setScoreResult(null);
-          }, children: "✕ End" }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "quiz-ti", children: "🎙 Pronunciation" }),
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { fontSize: ".65rem", color: "rgba(255,255,255,.4)" }, children: [
-            idx + 1,
-            "/",
-            quizItems.length
-          ] })
-        ] }),
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "quiz-body", children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "quiz-sub", style: { marginBottom: 4 }, children: "Say this out loud in Cantonese:" }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "quiz-prompt", style: { marginBottom: 6 }, children: item.en }),
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { marginBottom: 4 }, children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".95rem", fontStyle: "italic", color: "var(--plum)", fontWeight: 600 }, children: /* @__PURE__ */ jsxRuntimeExports.jsx(JyutpingTone, { text: item.jyut }) }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontFamily: "${LANG_CONFIG.fontFamily.replace(/'/g, '')}", fontSize: ".88rem", color: "var(--ink2)", marginTop: 2 }, children: item.cn })
-          ] }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("button", { style: { marginBottom: 14, background: "var(--for)", border: "none", borderRadius: 999, padding: "8px 16px", fontSize: ".68rem", cursor: "pointer", color: "var(--lime)", fontWeight: 700 }, onClick: () => speak(item.cn), children: "▶ Listen first" }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { width: "100%", maxWidth: 440 }, children: !isRecording && !scoring && !scoreResult ? /* @__PURE__ */ jsxRuntimeExports.jsx(RecordBtn, { onClick: qStartTest, label: "🎙 Record yourself" }) : scoring ? /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { width: "100%", padding: "16px", borderRadius: 14, background: "rgba(0,0,0,.04)", textAlign: "center" }, children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".82rem", fontWeight: 700, color: "var(--ink2)" }, children: "Scoring..." }) }) : isRecording ? /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: qStopTest, style: { width: "100%", padding: "16px", borderRadius: 14, border: "none", background: "#e74c3c", color: "#fff", fontSize: ".88rem", fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 10, animation: "pulse 1s ease-in-out infinite" }, children: "⏹ Stop and score" }) : null }),
-          !scoreResult && !isRecording && !scoring && /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: pronSkip, style: { marginTop: 10, background: "none", border: "none", cursor: "pointer", fontSize: ".72rem", fontWeight: 600, color: "var(--ink3)" }, children: "Skip →" }),
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { fontSize: ".65rem", color: "var(--ink3)", marginTop: 10 }, children: [
-            idx + 1,
-            " of ",
-            quizItems.length
-          ] })
-        ] }),
-        scoreResult && /* @__PURE__ */ jsxRuntimeExports.jsx(PronunciationScore, { score: scoreResult.score, chars: scoreResult.chars, phrase: scoreResult.phrase, onRetry: () => {
-          setScoreResult(null);
-          qStartTest();
-        }, onNext: pronNext, onClose: pronNext })
-      ] });
-    }
-    if (mode === "speaking") {
-      return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "quiz-ov", children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "quiz-hd", children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "quiz-cl", onClick: exitQuiz, children: "✕ End" }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "quiz-ti", children: "🧠 Recall" }),
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { fontSize: ".65rem", color: "rgba(255,255,255,.4)" }, children: [
-            idx + 1,
-            "/",
-            quizItems.length
-          ] })
-        ] }),
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "quiz-body", children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "quiz-sub", children: "What's this in Cantonese?" }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "quiz-prompt", children: item.en }),
-          !revealed ? /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "quiz-reveal-btn", onClick: () => setRevealed(true), children: "Reveal answer" }) : /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "quiz-answer", children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "quiz-ans-jy", children: /* @__PURE__ */ jsxRuntimeExports.jsx(JyutpingTone, { text: item.jyut }) }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "quiz-ans-cn", children: item.cn }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx("button", { style: { marginTop: 8, background: "var(--for)", border: "none", borderRadius: 999, padding: "8px 16px", fontSize: ".68rem", cursor: "pointer", color: "var(--lime)", fontWeight: 700 }, onClick: () => speak(item.cn), children: "▶ Listen" })
-            ] }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".68rem", color: "var(--ink3)", marginBottom: 8 }, children: "How did you do?" }),
-            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "quiz-grade", children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "quiz-g-btn quiz-g-yes", onClick: () => grade("right"), children: "✓ Got it" }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "quiz-g-btn quiz-g-almost", onClick: () => grade("almost"), children: "~ Almost" }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "quiz-g-btn quiz-g-no", onClick: () => grade("wrong"), children: "✗ Nope" })
+      const item = quizItems[idx];
+      if (mode === "pronunciation") {
+        return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "quiz-ov", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "quiz-hd", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "quiz-cl", onClick: () => {
+              exitQuiz();
+              setScoreResult(null);
+            }, children: "✕ End" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "quiz-ti", children: "🎙 Pronunciation" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { fontSize: ".65rem", color: "rgba(255,255,255,.4)" }, children: [
+              idx + 1,
+              "/",
+              quizItems.length
             ] })
           ] }),
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "quiz-score", children: [
-            score.right,
-            " correct · ",
-            score.wrong,
-            " sent back"
-          ] })
-        ] })
-      ] });
-    }
-    if (mode === "listening") {
-      return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "quiz-ov", children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "quiz-hd", children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "quiz-cl", onClick: exitQuiz, children: "✕ End" }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "quiz-ti", children: "👂 Listening" }),
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { fontSize: ".65rem", color: "rgba(255,255,255,.4)" }, children: [
-            idx + 1,
-            "/",
-            quizItems.length
-          ] })
-        ] }),
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "quiz-body", children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "quiz-sub", children: "Listen carefully, then type what it means:" }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "quiz-play-btn", onClick: () => speak(item.cn), children: "▶" }),
-          !revealed ? /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx("input", { className: "quiz-input", placeholder: "Type the English meaning...", value: dictAnswer, onChange: (e) => setDictAnswer(e.target.value), onKeyDown: (e) => e.key === "Enter" && setRevealed(true) }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "quiz-reveal-btn", onClick: () => setRevealed(true), children: "Check my answer" })
-          ] }) : /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "quiz-answer", children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "quiz-ans-en", children: item.en }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "quiz-ans-jy", children: /* @__PURE__ */ jsxRuntimeExports.jsx(JyutpingTone, { text: item.jyut }) }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "quiz-ans-cn", children: item.cn }),
-              dictAnswer && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { marginTop: 8, fontSize: ".72rem", color: "var(--ink2)", padding: "6px 10px", background: "var(--cream)", borderRadius: 8 }, children: [
-                'Your answer: "',
-                dictAnswer,
-                '"'
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "quiz-body", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "quiz-sub", style: { marginBottom: 4 }, children: "Say this out loud in Cantonese:" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "quiz-prompt", style: { marginBottom: 6 }, children: item.en }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { marginBottom: 4 }, children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".95rem", fontStyle: "italic", color: "var(--plum)", fontWeight: 600 }, children: /* @__PURE__ */ jsxRuntimeExports.jsx(JyutpingTone, { text: item.jyut }) }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontFamily: "${LANG_CONFIG.fontFamily.replace(/'/g, '')}", fontSize: ".88rem", color: "var(--ink2)", marginTop: 2 }, children: item.cn })
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("button", { style: { marginBottom: 14, background: "var(--for)", border: "none", borderRadius: 999, padding: "8px 16px", fontSize: ".68rem", cursor: "pointer", color: "var(--lime)", fontWeight: 700 }, onClick: () => speak(item.cn), children: "▶ Listen first" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { width: "100%", maxWidth: 440 }, children: !isRecording && !scoring && !scoreResult ? /* @__PURE__ */ jsxRuntimeExports.jsx(RecordBtn, { onClick: qStartTest, label: "🎙 Record yourself" }) : scoring ? /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { width: "100%", padding: "16px", borderRadius: 14, background: "rgba(0,0,0,.04)", textAlign: "center" }, children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".82rem", fontWeight: 700, color: "var(--ink2)" }, children: "Scoring..." }) }) : isRecording ? /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: qStopTest, style: { width: "100%", padding: "16px", borderRadius: 14, border: "none", background: "#e74c3c", color: "#fff", fontSize: ".88rem", fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 10, animation: "pulse 1s ease-in-out infinite" }, children: "⏹ Stop and score" }) : null }),
+            !scoreResult && !isRecording && !scoring && /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: pronSkip, style: { marginTop: 10, background: "none", border: "none", cursor: "pointer", fontSize: ".72rem", fontWeight: 600, color: "var(--ink3)" }, children: "Skip →" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { fontSize: ".65rem", color: "var(--ink3)", marginTop: 10 }, children: [
+              idx + 1,
+              " of ",
+              quizItems.length
+            ] })
+          ] }),
+          scoreResult && /* @__PURE__ */ jsxRuntimeExports.jsx(PronunciationScore, { score: scoreResult.score, chars: scoreResult.chars, phrase: scoreResult.phrase, onRetry: () => {
+            setScoreResult(null);
+            qStartTest();
+          }, onNext: pronNext, onClose: pronNext })
+        ] });
+      }
+      if (mode === "speaking") {
+        return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "quiz-ov", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "quiz-hd", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "quiz-cl", onClick: exitQuiz, children: "✕ End" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "quiz-ti", children: "🧠 Recall" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { fontSize: ".65rem", color: "rgba(255,255,255,.4)" }, children: [
+              idx + 1,
+              "/",
+              quizItems.length
+            ] })
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "quiz-body", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "quiz-sub", children: "What's this in Cantonese?" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "quiz-prompt", children: item.en }),
+            !revealed ? /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "quiz-reveal-btn", onClick: () => setRevealed(true), children: "Reveal answer" }) : /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "quiz-answer", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "quiz-ans-jy", children: /* @__PURE__ */ jsxRuntimeExports.jsx(JyutpingTone, { text: item.jyut }) }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "quiz-ans-cn", children: item.cn }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("button", { style: { marginTop: 8, background: "var(--for)", border: "none", borderRadius: 999, padding: "8px 16px", fontSize: ".68rem", cursor: "pointer", color: "var(--lime)", fontWeight: 700 }, onClick: () => speak(item.cn), children: "▶ Listen" })
+              ] }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".68rem", color: "var(--ink3)", marginBottom: 8 }, children: "How did you do?" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "quiz-grade", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "quiz-g-btn quiz-g-yes", onClick: () => grade("right"), children: "✓ Got it" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "quiz-g-btn quiz-g-almost", onClick: () => grade("almost"), children: "~ Almost" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "quiz-g-btn quiz-g-no", onClick: () => grade("wrong"), children: "✗ Nope" })
               ] })
             ] }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".68rem", color: "var(--ink3)", marginBottom: 8 }, children: "Were you close?" }),
-            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "quiz-grade", children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "quiz-g-btn quiz-g-yes", onClick: () => grade("right"), children: "✓ Got it" }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "quiz-g-btn quiz-g-almost", onClick: () => grade("almost"), children: "~ Almost" }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "quiz-g-btn quiz-g-no", onClick: () => grade("wrong"), children: "✗ Nope" })
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "quiz-score", children: [
+              score.right,
+              " correct · ",
+              score.wrong,
+              " sent back"
+            ] })
+          ] })
+        ] });
+      }
+      if (mode === "listening") {
+        return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "quiz-ov", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "quiz-hd", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "quiz-cl", onClick: exitQuiz, children: "✕ End" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "quiz-ti", children: "👂 Listening" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { fontSize: ".65rem", color: "rgba(255,255,255,.4)" }, children: [
+              idx + 1,
+              "/",
+              quizItems.length
             ] })
           ] }),
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "quiz-score", children: [
-            score.right,
-            " correct · ",
-            score.wrong,
-            " sent back"
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "quiz-body", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "quiz-sub", children: "Listen carefully, then type what it means:" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "quiz-play-btn", onClick: () => speak(item.cn), children: "▶" }),
+            !revealed ? /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("input", { className: "quiz-input", placeholder: "Type the English meaning...", value: dictAnswer, onChange: (e) => setDictAnswer(e.target.value), onKeyDown: (e) => e.key === "Enter" && setRevealed(true) }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "quiz-reveal-btn", onClick: () => setRevealed(true), children: "Check my answer" })
+            ] }) : /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "quiz-answer", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "quiz-ans-en", children: item.en }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "quiz-ans-jy", children: /* @__PURE__ */ jsxRuntimeExports.jsx(JyutpingTone, { text: item.jyut }) }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "quiz-ans-cn", children: item.cn }),
+                dictAnswer && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { marginTop: 8, fontSize: ".72rem", color: "var(--ink2)", padding: "6px 10px", background: "var(--cream)", borderRadius: 8 }, children: [
+                  'Your answer: "',
+                  dictAnswer,
+                  '"'
+                ] })
+              ] }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".68rem", color: "var(--ink3)", marginBottom: 8 }, children: "Were you close?" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "quiz-grade", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "quiz-g-btn quiz-g-yes", onClick: () => grade("right"), children: "✓ Got it" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "quiz-g-btn quiz-g-almost", onClick: () => grade("almost"), children: "~ Almost" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "quiz-g-btn quiz-g-no", onClick: () => grade("wrong"), children: "✗ Nope" })
+              ] })
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "quiz-score", children: [
+              score.right,
+              " correct · ",
+              score.wrong,
+              " sent back"
+            ] })
           ] })
-        ] })
+        ] });
+      }
+      return null;
+    }
+    function useIsOnline() {
+      const [online, setOnline] = reactExports.useState(_isOnline2);
+      reactExports.useEffect(() => {
+        const unsub = onOnlineChange(setOnline);
+        return unsub;
+      }, []);
+      return online;
+    }
+    function OfflineBanner() {
+      const isOnline = useIsOnline();
+      if (isOnline) return null;
+      return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: {
+        position: "fixed",
+        top: 0,
+        left: 0,
+        right: 0,
+        zIndex: 9999,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 6,
+        padding: "6px 16px",
+        background: "rgba(44,44,44,.92)",
+        backdropFilter: "blur(8px)",
+        borderBottom: "1px solid rgba(255,255,255,.08)",
+        animation: "slideDown .3s ease"
+      }, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { width: 6, height: 6, borderRadius: "50%", background: "#F05A3A", flexShrink: 0 } }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { fontSize: ".68rem", fontWeight: 700, color: "rgba(255,255,255,.8)", letterSpacing: ".3px" }, children: "Offline mode" })
       ] });
     }
-    return null;
-  }
-  function useIsOnline() {
-    const [online, setOnline] = reactExports.useState(_isOnline2);
-    reactExports.useEffect(() => {
-      const unsub = onOnlineChange(setOnline);
-      return unsub;
-    }, []);
-    return online;
-  }
-  function OfflineBanner() {
-    const isOnline = useIsOnline();
-    if (isOnline) return null;
-    return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: {
-      position: "fixed",
-      top: 0,
-      left: 0,
-      right: 0,
-      zIndex: 9999,
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      gap: 6,
-      padding: "6px 16px",
-      background: "rgba(44,44,44,.92)",
-      backdropFilter: "blur(8px)",
-      borderBottom: "1px solid rgba(255,255,255,.08)",
-      animation: "slideDown .3s ease"
-    }, children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { width: 6, height: 6, borderRadius: "50%", background: "#F05A3A", flexShrink: 0 } }),
-      /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { fontSize: ".68rem", fontWeight: 700, color: "rgba(255,255,255,.8)", letterSpacing: ".3px" }, children: "Offline mode" })
-    ] });
-  }
-  function RecordBtn({ onClick, label, style }) {
-    const isOnline = useIsOnline();
-    if (!isOnline) {
-      return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { width: "100%", padding: "14px 16px", borderRadius: 14, background: "rgba(0,0,0,.04)", textAlign: "center", border: "1.5px dashed var(--st2)" }, children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".75rem", fontWeight: 700, color: "var(--ink3)" }, children: "Go online to test your pronunciation" }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".62rem", color: "var(--ink3)", marginTop: 4 }, children: "Recording requires an internet connection for scoring" })
-      ] });
+    function RecordBtn({ onClick, label, style }) {
+      const isOnline = useIsOnline();
+      if (!isOnline) {
+        return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { width: "100%", padding: "14px 16px", borderRadius: 14, background: "rgba(0,0,0,.04)", textAlign: "center", border: "1.5px dashed var(--st2)" }, children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".75rem", fontWeight: 700, color: "var(--ink3)" }, children: "Go online to test your pronunciation" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".62rem", color: "var(--ink3)", marginTop: 4 }, children: "Recording requires an internet connection for scoring" })
+        ] });
+      }
+      return /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick, style: style || { width: "100%", padding: "16px", borderRadius: 14, border: "none", background: "var(--for)", color: "#fff", fontSize: ".88rem", fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 10 }, children: label || "🎙 Record yourself" });
     }
-    return /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick, style: style || { width: "100%", padding: "16px", borderRadius: 14, border: "none", background: "var(--for)", color: "#fff", fontSize: ".88rem", fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 10 }, children: label || "🎙 Record yourself" });
-  }
-  function App() {
-    var _a, _b, _c;
-    const [user, setUser] = reactExports.useState(null);
-    const [authLoading, setAuthLoading] = reactExports.useState(true);
-    const [tab, setTab] = reactExports.useState("home");
-    const [selUnit, setSelUnit] = reactExports.useState(null);
-    const [progress, setProgress] = reactExports.useState({ phrases: {}, vocab: {}, unit10: [], phraseTs: {}, lastReview: {}, lessonLog: [], quizCount: 0 });
-    const [settings, setSettings] = reactExports.useState({});
-    const [popup, setPopup] = reactExports.useState(null);
-    const [playlist, setPlaylist] = reactExports.useState(null);
-    const [profileMenu, setProfileMenu] = reactExports.useState(false);
-    const [library, setLibrary] = reactExports.useState([]);
-    const [quickCheck, setQuickCheck] = reactExports.useState(null);
-    const [practiceMode, setPracticeMode] = reactExports.useState(null);
-    const [practiceCount, setPracticeCount] = reactExports.useState(parseInt(localStorage.getItem(LANG_CONFIG.id + "-practice-count") || "0"));
-    const [recentTopics, setRecentTopics] = reactExports.useState(JSON.parse(localStorage.getItem(LANG_CONFIG.id + "-recent-topics") || "[]"));
-    const [autoLaunch, setAutoLaunch] = reactExports.useState(null);
-    const saveTimer = reactExports.useRef(null);
-    reactExports.useEffect(() => {
-      const s = document.createElement("style");
-      s.textContent = CSS + QUIZ_CSS;
-      document.head.appendChild(s);
-      localStorage.setItem("shadowspeak-last-lang", "app.html?lang=" + LANG_CONFIG.id);
-      return () => document.head.removeChild(s);
-    }, []);
-    reactExports.useEffect(() => {
-      const unsub = fbAuth.onAuthStateChanged((u2) => {
-        setUser(u2);
-        setAuthLoading(false);
-      });
-      return unsub;
-    }, []);
-    reactExports.useEffect(() => {
-      if (!user) return;
-      (async () => {
-        const cloud = await loadFromFirestore(user.uid);
-        const localRaw = localStorage.getItem(`${LANG_CONFIG.localStoragePrefix}${user.uid}`);
-        const local = localRaw ? JSON.parse(localRaw) : null;
-        const cloudUnit10 = (cloud == null ? void 0 : cloud.unit10) || [];
-        const localUnit10 = (local == null ? void 0 : local.unit10) || [];
-        const cloudPhraseCount = Object.keys((cloud == null ? void 0 : cloud.phrases) || {}).filter((k2) => cloud.phrases[k2]).length;
-        const localPhraseCount = Object.keys((local == null ? void 0 : local.phrases) || {}).filter((k2) => local.phrases[k2]).length;
-        const useLocal = local && (localUnit10.length > cloudUnit10.length || localPhraseCount > cloudPhraseCount);
-        const best = useLocal ? local : cloud || local;
-        if (best) {
-          const merged = { phrases: best.phrases || {}, vocab: best.vocab || {}, unit10: best.unit10 || [], phraseTs: best.phraseTs || {}, lastReview: best.lastReview || {}, lessonLog: best.lessonLog || [], quizCount: best.quizCount || 0 };
-          setProgress(merged);
-          localStorage.setItem(`${LANG_CONFIG.localStoragePrefix}${user.uid}`, JSON.stringify(merged));
-          saveToFirestore(user.uid, merged);
-        } else {
-          const oldProfile = localStorage.getItem(`${LANG_CONFIG.id}-profile`);
-          if (oldProfile) {
-            const d = JSON.parse(localStorage.getItem(`${LANG_CONFIG.localStoragePrefix}${oldProfile}`) || "{}");
-            const migrated = { phrases: d.phrases || {}, vocab: d.vocab || {}, unit10: d.unit10 || [], phraseTs: d.phraseTs || {}, lastReview: d.lastReview || {}, lessonLog: d.lessonLog || [], quizCount: d.quizCount || 0 };
-            setProgress(migrated);
-            saveToFirestore(user.uid, migrated);
+    function App() {
+      var _a, _b, _c;
+      const [user, setUser] = reactExports.useState(null);
+      const [authLoading, setAuthLoading] = reactExports.useState(true);
+      const [tab, setTab] = reactExports.useState("home");
+      const [selUnit, setSelUnit] = reactExports.useState(null);
+      const [progress, setProgress] = reactExports.useState({ phrases: {}, vocab: {}, unit10: [], phraseTs: {}, lastReview: {}, lessonLog: [], quizCount: 0 });
+      const [settings, setSettings] = reactExports.useState({});
+      const [popup, setPopup] = reactExports.useState(null);
+      const [playlist, setPlaylist] = reactExports.useState(null);
+      const [profileMenu, setProfileMenu] = reactExports.useState(false);
+      const [library, setLibrary] = reactExports.useState([]);
+      const [quickCheck, setQuickCheck] = reactExports.useState(null);
+      const [practiceMode, setPracticeMode] = reactExports.useState(null);
+      const [practiceCount, setPracticeCount] = reactExports.useState(parseInt(localStorage.getItem(LANG_CONFIG.id + "-practice-count") || "0"));
+      const [recentTopics, setRecentTopics] = reactExports.useState(JSON.parse(localStorage.getItem(LANG_CONFIG.id + "-recent-topics") || "[]"));
+      const [autoLaunch, setAutoLaunch] = reactExports.useState(null);
+      const saveTimer = reactExports.useRef(null);
+      reactExports.useEffect(() => {
+        const s = document.createElement("style");
+        s.textContent = CSS + QUIZ_CSS;
+        document.head.appendChild(s);
+        localStorage.setItem("shadowspeak-last-lang", "app.html?lang=" + LANG_CONFIG.id);
+        return () => document.head.removeChild(s);
+      }, []);
+      reactExports.useEffect(() => {
+        const unsub = fbAuth.onAuthStateChanged((u2) => {
+          setUser(u2);
+          setAuthLoading(false);
+        });
+        return unsub;
+      }, []);
+      reactExports.useEffect(() => {
+        if (!user) return;
+        (async () => {
+          const cloud = await loadFromFirestore(user.uid);
+          const localRaw = localStorage.getItem(`${LANG_CONFIG.localStoragePrefix}${user.uid}`);
+          const local = localRaw ? JSON.parse(localRaw) : null;
+          const cloudUnit10 = (cloud == null ? void 0 : cloud.unit10) || [];
+          const localUnit10 = (local == null ? void 0 : local.unit10) || [];
+          const cloudPhraseCount = Object.keys((cloud == null ? void 0 : cloud.phrases) || {}).filter((k2) => cloud.phrases[k2]).length;
+          const localPhraseCount = Object.keys((local == null ? void 0 : local.phrases) || {}).filter((k2) => local.phrases[k2]).length;
+          const useLocal = local && (localUnit10.length > cloudUnit10.length || localPhraseCount > cloudPhraseCount);
+          const best = useLocal ? local : cloud || local;
+          if (best) {
+            const merged = { phrases: best.phrases || {}, vocab: best.vocab || {}, unit10: best.unit10 || [], phraseTs: best.phraseTs || {}, lastReview: best.lastReview || {}, lessonLog: best.lessonLog || [], quizCount: best.quizCount || 0 };
+            setProgress(merged);
+            localStorage.setItem(`${LANG_CONFIG.localStoragePrefix}${user.uid}`, JSON.stringify(merged));
+            saveToFirestore(user.uid, merged);
+          } else {
+            const oldProfile = localStorage.getItem(`${LANG_CONFIG.id}-profile`);
+            if (oldProfile) {
+              const d = JSON.parse(localStorage.getItem(`${LANG_CONFIG.localStoragePrefix}${oldProfile}`) || "{}");
+              const migrated = { phrases: d.phrases || {}, vocab: d.vocab || {}, unit10: d.unit10 || [], phraseTs: d.phraseTs || {}, lastReview: d.lastReview || {}, lessonLog: d.lessonLog || [], quizCount: d.quizCount || 0 };
+              setProgress(migrated);
+              saveToFirestore(user.uid, migrated);
+            }
           }
+          const cloudSettings = await loadSettingsFromFirestore(user.uid);
+          const ls = JSON.parse(localStorage.getItem(LANG_CONFIG.localStorageSettingsKey) || "{}");
+          if (cloudSettings) {
+            if (ls.onboardingDone && !cloudSettings.onboardingDone) {
+              cloudSettings.onboardingDone = true;
+              saveSettingsToFirestore(user.uid, cloudSettings);
+            }
+            setSettings(cloudSettings);
+            localStorage.setItem(LANG_CONFIG.localStorageSettingsKey, JSON.stringify(cloudSettings));
+            _activeEnVoiceId = cloudSettings.enVoice || DEFAULT_EN_VOICE;
+            _activeCnVoiceId = cloudSettings.cnVoice || DEFAULT_CN_VOICE;
+          } else if (ls.onboardingDone) {
+            setSettings(ls);
+            _activeEnVoiceId = ls.enVoice || DEFAULT_EN_VOICE;
+            _activeCnVoiceId = ls.cnVoice || DEFAULT_CN_VOICE;
+          } else {
+            const defaults = { learnMode: ls.learnMode || "speaking", enVoice: DEFAULT_EN_VOICE, cnVoice: DEFAULT_CN_VOICE, defaultSpeed: "normal", onboardingDone: false };
+            setSettings(defaults);
+            _activeEnVoiceId = DEFAULT_EN_VOICE;
+            _activeCnVoiceId = DEFAULT_CN_VOICE;
+          }
+        })();
+      }, [user]);
+      const offlineUser = reactExports.useMemo(() => {
+        if (user) return null;
+        try {
+          const keys = Object.keys(localStorage);
+          const progressKey = keys.find((k2) => k2.startsWith(LANG_CONFIG.localStoragePrefix) && k2 !== LANG_CONFIG.localStoragePrefix);
+          if (progressKey) {
+            const uid = progressKey.replace(LANG_CONFIG.localStoragePrefix, "");
+            return { uid, displayName: "Learner", photoURL: null, email: "" };
+          }
+        } catch (e) {
         }
-        const cloudSettings = await loadSettingsFromFirestore(user.uid);
+        return null;
+      }, [user]);
+      reactExports.useEffect(() => {
+        if (user || !offlineUser) return;
+        const localRaw = localStorage.getItem(`${LANG_CONFIG.localStoragePrefix}${offlineUser.uid}`);
+        if (localRaw) {
+          const d = JSON.parse(localRaw);
+          setProgress({ phrases: d.phrases || {}, vocab: d.vocab || {}, unit10: d.unit10 || [], phraseTs: d.phraseTs || {}, lastReview: d.lastReview || {}, lessonLog: d.lessonLog || [], quizCount: d.quizCount || 0 });
+        }
         const ls = JSON.parse(localStorage.getItem(LANG_CONFIG.localStorageSettingsKey) || "{}");
-        if (cloudSettings) {
-          if (ls.onboardingDone && !cloudSettings.onboardingDone) {
-            cloudSettings.onboardingDone = true;
-            saveSettingsToFirestore(user.uid, cloudSettings);
-          }
-          setSettings(cloudSettings);
-          localStorage.setItem(LANG_CONFIG.localStorageSettingsKey, JSON.stringify(cloudSettings));
-          _activeEnVoiceId = cloudSettings.enVoice || DEFAULT_EN_VOICE;
-          _activeCnVoiceId = cloudSettings.cnVoice || DEFAULT_CN_VOICE;
-        } else if (ls.onboardingDone) {
+        if (ls.onboardingDone) {
           setSettings(ls);
           _activeEnVoiceId = ls.enVoice || DEFAULT_EN_VOICE;
           _activeCnVoiceId = ls.cnVoice || DEFAULT_CN_VOICE;
-        } else {
-          const defaults = { learnMode: ls.learnMode || "speaking", enVoice: DEFAULT_EN_VOICE, cnVoice: DEFAULT_CN_VOICE, defaultSpeed: "normal", onboardingDone: false };
-          setSettings(defaults);
-          _activeEnVoiceId = DEFAULT_EN_VOICE;
-          _activeCnVoiceId = DEFAULT_CN_VOICE;
         }
-      })();
-    }, [user]);
-    const offlineUser = reactExports.useMemo(() => {
-      if (user) return null;
-      try {
-        const keys = Object.keys(localStorage);
-        const progressKey = keys.find((k2) => k2.startsWith(LANG_CONFIG.localStoragePrefix) && k2 !== LANG_CONFIG.localStoragePrefix);
-        if (progressKey) {
-          const uid = progressKey.replace(LANG_CONFIG.localStoragePrefix, "");
-          return { uid, displayName: "Learner", photoURL: null, email: "" };
+      }, [offlineUser, user]);
+      const save = reactExports.useCallback((updated) => {
+        const uid = (user == null ? void 0 : user.uid) || (offlineUser == null ? void 0 : offlineUser.uid);
+        if (!uid) return;
+        localStorage.setItem(`${LANG_CONFIG.localStoragePrefix}${uid}`, JSON.stringify(updated));
+        if (user) {
+          clearTimeout(saveTimer.current);
+          saveTimer.current = setTimeout(() => saveToFirestore(user.uid, updated), 2e3);
         }
-      } catch (e) {
-      }
-      return null;
-    }, [user]);
-    reactExports.useEffect(() => {
-      if (user || !offlineUser) return;
-      const localRaw = localStorage.getItem(`${LANG_CONFIG.localStoragePrefix}${offlineUser.uid}`);
-      if (localRaw) {
-        const d = JSON.parse(localRaw);
-        setProgress({ phrases: d.phrases || {}, vocab: d.vocab || {}, unit10: d.unit10 || [], phraseTs: d.phraseTs || {}, lastReview: d.lastReview || {}, lessonLog: d.lessonLog || [], quizCount: d.quizCount || 0 });
-      }
-      const ls = JSON.parse(localStorage.getItem(LANG_CONFIG.localStorageSettingsKey) || "{}");
-      if (ls.onboardingDone) {
-        setSettings(ls);
-        _activeEnVoiceId = ls.enVoice || DEFAULT_EN_VOICE;
-        _activeCnVoiceId = ls.cnVoice || DEFAULT_CN_VOICE;
-      }
-    }, [offlineUser, user]);
-    const save = reactExports.useCallback((updated) => {
-      const uid = (user == null ? void 0 : user.uid) || (offlineUser == null ? void 0 : offlineUser.uid);
-      if (!uid) return;
-      localStorage.setItem(`${LANG_CONFIG.localStoragePrefix}${uid}`, JSON.stringify(updated));
-      if (user) {
-        clearTimeout(saveTimer.current);
-        saveTimer.current = setTimeout(() => saveToFirestore(user.uid, updated), 2e3);
-      }
-    }, [user, offlineUser]);
-    const upd = reactExports.useCallback((path, value) => {
-      setProgress((prev) => {
-        const u2 = { ...prev };
-        const p2 = path.split(".");
-        if (p2.length === 1) u2[p2[0]] = value;
-        else u2[p2[0]] = { ...u2[p2[0]], [p2[1]]: value };
-        if (p2[0] === "phrases" && value === true) {
-          u2.phraseTs = { ...u2.phraseTs, [p2[1]]: Date.now() };
+      }, [user, offlineUser]);
+      const upd = reactExports.useCallback((path, value) => {
+        setProgress((prev) => {
+          const u2 = { ...prev };
+          const p2 = path.split(".");
+          if (p2.length === 1) u2[p2[0]] = value;
+          else u2[p2[0]] = { ...u2[p2[0]], [p2[1]]: value };
+          if (p2[0] === "phrases" && value === true) {
+            u2.phraseTs = { ...u2.phraseTs, [p2[1]]: Date.now() };
+          }
+          save(u2);
+          const vk2 = Object.keys(u2.vocab || {}).filter((k2) => u2.vocab[k2]).length;
+          const tw = ALL_WORDS.length;
+          if (vk2 === Math.min(200, tw) && !localStorage.getItem("ms1")) {
+            localStorage.setItem("ms1", "1");
+            setTimeout(() => setPopup({ e: "🎊", t: "Tier 1 Complete!", s: "You can survive HK!" }), 300);
+          }
+          return u2;
+        });
+      }, [save]);
+      const markReviewed = reactExports.useCallback((key) => {
+        setProgress((prev) => {
+          const u2 = { ...prev, lastReview: { ...prev.lastReview, [key]: Date.now() } };
+          save(u2);
+          return u2;
+        });
+      }, [save]);
+      const updSettings = reactExports.useCallback((path, val) => {
+        setSettings((prev) => {
+          const u2 = { ...prev };
+          const p2 = path.split(".");
+          if (p2.length === 1) u2[p2[0]] = val;
+          else u2[p2[0]] = { ...u2[p2[0]], [p2[1]]: val };
+          if (path === "enVoice") _activeEnVoiceId = val;
+          if (path === "cnVoice") _activeCnVoiceId = val;
+          localStorage.setItem(LANG_CONFIG.localStorageSettingsKey, JSON.stringify(u2));
+          if (user) saveSettingsToFirestore(user.uid, u2);
+          return u2;
+        });
+      }, [user]);
+      const [showPlBuilder, setShowPlBuilder] = reactExports.useState(false);
+      const plActive = reactExports.useRef(false);
+      reactExports.useEffect(() => {
+        if (!playlist || !playlist.playing) {
+          plActive.current = false;
+          return;
         }
-        save(u2);
-        const vk2 = Object.keys(u2.vocab || {}).filter((k2) => u2.vocab[k2]).length;
-        const tw = ALL_WORDS.length;
-        if (vk2 === Math.min(200, tw) && !localStorage.getItem("ms1")) {
-          localStorage.setItem("ms1", "1");
-          setTimeout(() => setPopup({ e: "🎊", t: "Tier 1 Complete!", s: "You can survive HK!" }), 300);
-        }
-        return u2;
-      });
-    }, [save]);
-    const markReviewed = reactExports.useCallback((key) => {
-      setProgress((prev) => {
-        const u2 = { ...prev, lastReview: { ...prev.lastReview, [key]: Date.now() } };
-        save(u2);
-        return u2;
-      });
-    }, [save]);
-    const updSettings = reactExports.useCallback((path, val) => {
-      setSettings((prev) => {
-        const u2 = { ...prev };
-        const p2 = path.split(".");
-        if (p2.length === 1) u2[p2[0]] = val;
-        else u2[p2[0]] = { ...u2[p2[0]], [p2[1]]: val };
-        if (path === "enVoice") _activeEnVoiceId = val;
-        if (path === "cnVoice") _activeCnVoiceId = val;
-        localStorage.setItem(LANG_CONFIG.localStorageSettingsKey, JSON.stringify(u2));
-        if (user) saveSettingsToFirestore(user.uid, u2);
-        return u2;
-      });
-    }, [user]);
-    const [showPlBuilder, setShowPlBuilder] = reactExports.useState(false);
-    const plActive = reactExports.useRef(false);
-    reactExports.useEffect(() => {
-      if (!playlist || !playlist.playing) {
-        plActive.current = false;
-        return;
-      }
-      plActive.current = true;
-      const item = playlist.items[playlist.idx];
-      if (!item) {
-        setPlaylist(null);
-        setPopup({ e: "🎵", t: "Playlist complete!", s: `Reviewed ${playlist.items.length} items` });
-        return;
-      }
-      const gapMs = { slow: 2500, normal: 1500, fast: 700 }[playlist.speed || "normal"];
-      let cancelled = false;
-      (async () => {
-        await speakPhrase(item);
-        await new Promise((r2) => setTimeout(r2, gapMs));
-        if (!cancelled && plActive.current) setPlaylist((prev) => prev ? { ...prev, idx: prev.idx + 1 } : null);
-      })();
-      return () => {
-        cancelled = true;
-        if ("speechSynthesis" in window) speechSynthesis.cancel();
-      };
-    }, [playlist == null ? void 0 : playlist.idx, playlist == null ? void 0 : playlist.playing, playlist == null ? void 0 : playlist.speed]);
-    const startPlaylist = reactExports.useCallback((items, title) => {
-      setPlaylist({ items, title, idx: 0, playing: true, speed: "normal" });
-    }, []);
-    const activeUser = user || offlineUser;
-    if (authLoading && !offlineUser) return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "ca", children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "pkr", children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { color: "var(--lime)", fontSize: "1rem", fontWeight: 900 }, children: "Loading..." }) }) });
-    if (!activeUser) {
-      window.location.href = "index.html";
-      return null;
-    }
-    activeUser.uid;
-    const displayName = activeUser.displayName || "Learner";
-    const photoURL = activeUser.photoURL;
-    Object.keys(progress.vocab || {}).filter((k2) => progress.vocab[k2]).length;
-    const isReturningUser = (progress.lessonLog || []).length > 0 || Object.keys(progress.phrases || {}).length > 0 || Object.keys(progress.vocab || {}).length > 0;
-    if (settings.onboardingDone === false && !isReturningUser) {
-      if (!_isOnline2) {
-        updSettings("enVoice", DEFAULT_EN_VOICE);
-        updSettings("cnVoice", DEFAULT_CN_VOICE);
-        updSettings("onboardingDone", true);
-      } else {
-        return /* @__PURE__ */ jsxRuntimeExports.jsx(VoiceOnboarding, { onComplete: (enVoice, cnVoice) => {
-          const newSettings = { ...settings, enVoice, cnVoice, onboardingDone: true };
-          setSettings(newSettings);
-          _activeEnVoiceId = enVoice;
-          _activeCnVoiceId = cnVoice;
-          localStorage.setItem(LANG_CONFIG.localStorageSettingsKey, JSON.stringify(newSettings));
-          if (user) saveSettingsToFirestore(user.uid, newSettings);
-        } });
-      }
-    } else if (settings.onboardingDone === false && isReturningUser) {
-      updSettings("onboardingDone", true);
-    }
-    return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: `ca ${settings.learnMode === "reading" ? "reading-mode" : ""}`, children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsx(OfflineBanner, {}),
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "hdr", children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "hdr-l", children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "hm", style: { background: "var(--for)", borderRadius: 8 }, children: /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { fontSize: "1rem" }, children: "🗣" }) }),
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "ht", children: [
-              "Shadow",
-              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { color: "var(--lime)" }, children: "Speak" })
-            ] }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".58rem", fontWeight: 700, color: "rgba(255,255,255,.5)", letterSpacing: ".5px", marginTop: -1 }, children: LANG_CONFIG.name.toUpperCase() })
-          ] }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "tn", children: [{ id: "home", icon: "🏠", l: "Home" }, { id: "library", icon: "📚", l: "My Library" }, { id: "practice", icon: "🧠", l: "Practice" }].map(
-            (t2) => /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { className: `tn-btn ${tab === t2.id ? "on" : ""}`, onClick: () => setTab(t2.id), children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "tn-icon", children: t2.icon }),
-              t2.l
-            ] }, t2.id)
-          ) })
-        ] }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { display: "flex", alignItems: "center", gap: 8 }, children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { position: "relative" }, children: [
-          photoURL ? /* @__PURE__ */ jsxRuntimeExports.jsx("img", { src: photoURL, referrerPolicy: "no-referrer", style: { width: 36, height: 36, borderRadius: "50%", border: "2px solid var(--lime)", cursor: "pointer" }, onClick: () => setProfileMenu((v2) => !v2), title: displayName }) : /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "ha", style: { background: "var(--lime)", color: "var(--for)", cursor: "pointer" }, onClick: () => setProfileMenu((v2) => !v2), children: displayName[0] }),
-          profileMenu && /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { position: "fixed", inset: 0, zIndex: 998 }, onClick: () => setProfileMenu(false) }),
-            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { position: "absolute", right: 0, top: "calc(100% + 8px)", background: "var(--wh)", border: "1.5px solid var(--st)", borderRadius: 14, padding: "10px 0", minWidth: 220, zIndex: 999, boxShadow: "0 8px 32px rgba(0,0,0,.15)" }, children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { padding: "8px 16px", borderBottom: "1px solid var(--st)" }, children: [
-                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".78rem", fontWeight: 800, color: "var(--ink)" }, children: displayName }),
-                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".62rem", color: "var(--ink2)" }, children: activeUser.email })
-              ] }),
-              /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { onClick: () => {
-                setProfileMenu(false);
-                window.location.href = "app.html?lang=" + LANG_CONFIG.switchTo.lang;
-              }, style: { width: "100%", padding: "14px 16px", background: "none", border: "none", cursor: "pointer", fontSize: ".82rem", fontWeight: 700, color: "var(--ink)", textAlign: "left", display: "flex", alignItems: "center", gap: 10, minHeight: 48 }, children: [
-                LANG_CONFIG.switchTo.flag,
-                " ",
-                LANG_CONFIG.switchTo.label
-              ] }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => {
-                setProfileMenu(false);
-                setTab("settings");
-              }, style: { width: "100%", padding: "14px 16px", background: "none", border: "none", cursor: "pointer", fontSize: ".82rem", fontWeight: 700, color: "var(--ink)", textAlign: "left", display: "flex", alignItems: "center", gap: 10, minHeight: 48 }, children: "⚙️ Settings" }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => {
-                setProfileMenu(false);
-                window.location.href = "index.html";
-              }, style: { width: "100%", padding: "14px 16px", background: "none", border: "none", cursor: "pointer", fontSize: ".82rem", fontWeight: 700, color: "var(--ink)", textAlign: "left", display: "flex", alignItems: "center", gap: 10, minHeight: 48 }, children: "🏠 Back to home" }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { borderTop: "1px solid var(--st)", margin: "2px 0" } }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => {
-                fbAuth.signOut();
-                window.location.href = "index.html";
-              }, style: { width: "100%", padding: "14px 16px", background: "none", border: "none", cursor: "pointer", fontSize: ".82rem", fontWeight: 700, color: "#e74c3c", textAlign: "left", display: "flex", alignItems: "center", gap: 10, minHeight: 48 }, children: "🚪 Sign out" })
-            ] })
-          ] })
-        ] }) })
-      ] }),
-      tab === "home" && /* @__PURE__ */ jsxRuntimeExports.jsx(HomeTab, { profile: displayName, progress, upd, settings, setTab, recentTopics, setRecentTopics, practiceCount, library, selUnit, setSelUnit, markReviewed, startPlaylist, openPlBuilder: () => setShowPlBuilder(true), setAutoLaunch }),
-      tab === "library" && /* @__PURE__ */ jsxRuntimeExports.jsx(LibraryTab, { library, setLibrary, progress, upd, settings, startPlaylist }),
-      tab === "practice" && /* @__PURE__ */ jsxRuntimeExports.jsx(PracticeTab, { progress, upd, settings, library, practiceCount, setPracticeCount, autoLaunch }),
-      tab === "settings" && /* @__PURE__ */ jsxRuntimeExports.jsx(SettingsTab, { settings, updSettings }),
-      showPlBuilder && /* @__PURE__ */ jsxRuntimeExports.jsx(PlaylistBuilder, { onClose: () => setShowPlBuilder(false), onPlay: (items, title) => {
-        setShowPlBuilder(false);
-        startPlaylist(items, title);
-      }, progress }),
-      playlist && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { position: "fixed", bottom: 54, left: 0, right: 0, zIndex: 110, padding: "0 10px" }, children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "pl-bar-v2", children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "pl-v2-close", onClick: () => {
+        plActive.current = true;
+        const item = playlist.items[playlist.idx];
+        if (!item) {
           setPlaylist(null);
+          setPopup({ e: "🎵", t: "Playlist complete!", s: `Reviewed ${playlist.items.length} items` });
+          return;
+        }
+        const gapMs = { slow: 2500, normal: 1500, fast: 700 }[playlist.speed || "normal"];
+        let cancelled = false;
+        (async () => {
+          await speakPhrase(item);
+          await new Promise((r2) => setTimeout(r2, gapMs));
+          if (!cancelled && plActive.current) setPlaylist((prev) => prev ? { ...prev, idx: prev.idx + 1 } : null);
+        })();
+        return () => {
+          cancelled = true;
           if ("speechSynthesis" in window) speechSynthesis.cancel();
-        }, children: "✕" }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "pl-v2-play", onClick: () => setPlaylist((p2) => p2 ? { ...p2, playing: !p2.playing } : null), children: playlist.playing ? "⏸" : "▶" }),
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "pl-v2-info", children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "pl-v2-en", children: ((_a = playlist.items[playlist.idx]) == null ? void 0 : _a.en) || "..." }),
-          ((_b = playlist.items[playlist.idx]) == null ? void 0 : _b.jyut) && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "pl-v2-jy", children: /* @__PURE__ */ jsxRuntimeExports.jsx(JyutpingTone, { text: playlist.items[playlist.idx].jyut }) }),
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "pl-v2-counter", children: [
-            "Word ",
-            playlist.idx + 1,
-            " of ",
-            playlist.items.length
-          ] }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "pl-v2-prog", children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "pl-v2-prog-fill", style: { width: `${(playlist.idx + 1) / playlist.items.length * 100}%` } }) }),
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "pl-v2-speeds", children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "pl-v2-speed-label", children: "Speed" }),
-            [{ k: "slow", l: "🐢" }, { k: "normal", l: "Normal" }, { k: "fast", l: "🐇" }].map(
-              (s) => /* @__PURE__ */ jsxRuntimeExports.jsx("button", { style: { padding: "4px 10px", borderRadius: 999, border: playlist.speed === s.k ? "1px solid var(--lime)" : "1px solid rgba(255,255,255,.1)", background: playlist.speed === s.k ? "rgba(196,240,0,.12)" : "transparent", color: playlist.speed === s.k ? "var(--lime)" : "rgba(255,255,255,.4)", fontSize: ".62rem", fontWeight: 700, cursor: "pointer" }, onClick: () => setPlaylist((p2) => p2 ? { ...p2, speed: s.k } : null), children: s.l }, s.k)
-            )
-          ] })
-        ] }),
-        ((_c = playlist.items[playlist.idx]) == null ? void 0 : _c.cn) && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "pl-v2-cn", children: playlist.items[playlist.idx].cn })
-      ] }) }),
-      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "bn", children: [{ id: "home", icon: "🏠", l: "Home" }, { id: "library", icon: "📚", l: "My Library", badge: (progress.unit10 || []).filter((x2) => !x2.known).length || 0 }, { id: "practice", icon: "🧠", l: "Practice" }].map(
-        (t2) => /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { className: `bb ${tab === t2.id ? "on" : ""}`, onClick: () => setTab(t2.id), style: { flex: "1 1 33.33%" }, children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "bi", children: t2.icon }),
-          t2.l,
-          t2.badge > 0 && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { position: "absolute", top: 4, right: "calc(50% - 18px)", background: "var(--cor,#e74c3c)", color: "#fff", fontSize: ".55rem", fontWeight: 900, borderRadius: 999, minWidth: 16, height: 16, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 4px" }, children: t2.badge })
-        ] }, t2.id)
-      ) }),
-      popup && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "comp-ov", onClick: () => setPopup(null), children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "comp-em", children: popup.e }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "comp-t", children: popup.t }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "comp-s", children: popup.s }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "comp-btn", onClick: () => setPopup(null), children: "Continue" })
-      ] })
-    ] });
-  }
-  LANG_CONFIG.BADGE_DEFS;
-  function getStats(progress) {
-    const known = Object.keys(progress.phrases || {}).filter((k2) => (progress.phrases || {})[k2]).length;
-    const lessonLog = progress.lessonLog || [];
-    const streak = calcStreak(lessonLog);
-    const totalMins = lessonLog.reduce((s, l2) => s + (l2.mins || 30), 0);
-    const unitsDone = UNITS.filter((u2) => u2.phrases.every((_, i) => (progress.phrases || {})[`${u2.id}-${i}`])).length;
-    const quizzes = progress.quizCount || 0;
-    return { known, streak, totalMins, unitsDone, quizzes, lessonLog };
-  }
-  function calcStreak(log) {
-    if (!log.length) return 0;
-    const today = /* @__PURE__ */ new Date();
-    const todayStr = today.toDateString();
-    const dates = [...new Set(log.map((l2) => new Date(l2.date).toDateString()))].sort((a, b2) => new Date(b2) - new Date(a));
-    const lastLesson = new Date(dates[0]);
-    function weekdaysBetween(d1, d2) {
-      let count = 0;
-      const start = new Date(Math.min(d1, d2));
-      const end = new Date(Math.max(d1, d2));
-      const cur = new Date(start);
-      cur.setDate(cur.getDate() + 1);
-      while (cur < end) {
-        const day = cur.getDay();
-        if (day !== 0 && day !== 6) count++;
-        cur.setDate(cur.getDate() + 1);
-      }
-      return count;
-    }
-    if (dates[0] !== todayStr) {
-      const gap = weekdaysBetween(lastLesson, today);
-      if (gap > 1) return 0;
-    }
-    let streak = 1;
-    for (let i = 1; i < dates.length; i++) {
-      const gap = weekdaysBetween(new Date(dates[i]), new Date(dates[i - 1]));
-      if (gap <= 1) streak++;
-      else break;
-    }
-    return streak;
-  }
-  function getAutoGloss(ph2) {
-    if (!ph2 || !ph2.cn) return [];
-    if (GLOSS_DATA[ph2.cn]) return GLOSS_DATA[ph2.cn];
-    const cn = (ph2.cn || "").replace(/[，。！？、「」]/g, "").trim();
-    const jy = (ph2.jyut || "").replace(/[，,]/g, " ").replace(/\s+/g, " ").trim();
-    const jyParts = jy.split(" ").filter(Boolean);
-    const chars = [...cn].filter((c) => c.trim());
-    const result = [];
-    let ci2 = 0, ji2 = 0;
-    while (ci2 < chars.length) {
-      if (ci2 + 1 < chars.length && ji2 + 1 < jyParts.length) {
-        result.push({ cn: chars[ci2] + chars[ci2 + 1], jy: jyParts[ji2] + " " + jyParts[ji2 + 1], en: "" });
-        ci2 += 2;
-        ji2 += 2;
-      } else {
-        result.push({ cn: chars[ci2] || "", jy: jyParts[ji2] || "", en: "" });
-        ci2++;
-        ji2++;
-      }
-    }
-    return result;
-  }
-  function DrillView({ item, items, innerIdx, safeIdx, showJyut }) {
-    if (!item) return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "sh-bd", children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { color: "rgba(255,255,255,.4)" }, children: "Preparing drill..." }) });
-    const passNum = items.length ? Math.floor(innerIdx / items.length) : 0;
-    const round = passNum % 3;
-    const gloss = getAutoGloss(item);
-    return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "sh-bd", children: [
-      round === 1 && gloss.length > 0 && gloss.some((g) => g.en) ? /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "sh-en", style: { fontSize: "1rem", marginBottom: 14, opacity: 0.5 }, children: item.en }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "center", margin: "0 0 16px" }, children: gloss.filter((g) => g.cn).map((g, i) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "drill-word-card", onClick: () => speak(g.cn), children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "dwc-cn", children: g.cn }),
-          showJyut && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "dwc-jy", children: /* @__PURE__ */ jsxRuntimeExports.jsx(JyutpingTone, { text: g.jy }) }),
-          g.en && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "dwc-en", children: g.en })
-        ] }, i)) })
-      ] }) : /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "sh-en", children: item.en }),
-        showJyut && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "sh-jy", children: /* @__PURE__ */ jsxRuntimeExports.jsx(JyutpingTone, { text: item.jyut }) }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "sh-cn", children: item.cn }),
-        round === 2 && gloss.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { display: "flex", flexWrap: "wrap", gap: 2, margin: "6px 0", padding: 4, background: "rgba(255,255,255,.04)", borderRadius: 6, justifyContent: "center" }, children: gloss.filter((g) => g.cn).map((g, i) => /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { textAlign: "center", padding: "1px 3px" }, children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".65rem", color: "rgba(255,255,255,.35)" }, children: g.en }) }, i)) })
-      ] }),
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { fontSize: ".68rem", color: "rgba(255,255,255,.3)", marginTop: 6 }, children: [
-        "Phrase ",
-        safeIdx + 1,
-        "/",
-        items.length
-      ] })
-    ] });
-  }
-  function LessonMode({ progress, upd, profile, settings, onComplete, onQuit }) {
-    var _a, _b;
-    const saved = reactExports.useMemo(() => {
-      try {
-        const s = sessionStorage.getItem(`${LANG_CONFIG.id}-lesson`);
-        return s ? JSON.parse(s) : null;
-      } catch (e) {
+        };
+      }, [playlist == null ? void 0 : playlist.idx, playlist == null ? void 0 : playlist.playing, playlist == null ? void 0 : playlist.speed]);
+      const startPlaylist = reactExports.useCallback((items, title) => {
+        setPlaylist({ items, title, idx: 0, playing: true, speed: "normal" });
+      }, []);
+      const activeUser = user || offlineUser;
+      if (authLoading && !offlineUser) return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "ca", children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "pkr", children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { color: "var(--lime)", fontSize: "1rem", fontWeight: 900 }, children: "Loading..." }) }) });
+      if (!activeUser) {
+        window.location.href = "index.html";
         return null;
       }
-    }, []);
-    const [showIntro, setShowIntro] = reactExports.useState(!saved);
-    const [phase, setPhase] = reactExports.useState((saved == null ? void 0 : saved.phase) || 0);
-    const [timeLeft, setTimeLeft] = reactExports.useState((saved == null ? void 0 : saved.timeLeft) ?? 30 * 60);
-    const [phaseTimeLeft, setPhaseTimeLeft] = reactExports.useState((saved == null ? void 0 : saved.phaseTimeLeft) ?? 3 * 60);
-    const [paused, setPaused] = reactExports.useState(false);
-    const [phaseData, setPhaseData] = reactExports.useState(null);
-    const [innerIdx, setInnerIdx] = reactExports.useState((saved == null ? void 0 : saved.innerIdx) || 0);
-    const [shadowPhase, setShadowPhase] = reactExports.useState("play");
-    const [drillPass, setDrillPass] = reactExports.useState(0);
-    const [revealed, setRevealed] = reactExports.useState(false);
-    const [quizScore, setQuizScore] = reactExports.useState((saved == null ? void 0 : saved.quizScore) || { right: 0, wrong: 0 });
-    const [lessonDone, setLessonDone] = reactExports.useState(false);
-    const [speed, setSpeed] = reactExports.useState((settings == null ? void 0 : settings.defaultSpeed) || "normal");
-    const [showJyut, setShowJyut] = reactExports.useState(true);
-    const [showTransition, setShowTransition] = reactExports.useState(false);
-    const [isRecording, setIsRecording] = reactExports.useState(false);
-    const [scoring, setScoring] = reactExports.useState(false);
-    const [scoreResult, setScoreResult] = reactExports.useState(null);
-    const timerRef = reactExports.useRef(null);
-    const shadowTimer = reactExports.useRef(null);
-    reactExports.useEffect(() => {
-      if (!lessonDone && !showIntro) {
-        sessionStorage.setItem(`${LANG_CONFIG.id}-lesson`, JSON.stringify({ phase, timeLeft, phaseTimeLeft, innerIdx, quizScore }));
-      }
-    }, [phase, timeLeft, phaseTimeLeft, innerIdx, quizScore, lessonDone, showIntro]);
-    const phaseDurations = [3 * 60, 7 * 60, 8 * 60, 5 * 60, 5 * 60, 2 * 60];
-    const phaseInfo = [
-      { name: "Warm-up", short: "Warm-up", icon: "🔥", desc: "Shadow recent phrases", coach: "Listen and say them out loud. No pressure.", transDesc: "Let's ease in. These are phrases you've seen before. Listen and say them out loud. No pressure." },
-      { name: "New Phrases", short: "Learn", icon: "🆕", desc: "Hear English, try Cantonese, hear answer", coach: "You'll hear the English first, then the Cantonese. Say each one out loud.", transDesc: "Time for something new. You'll hear the English, then try to say it in Cantonese. Each new phrase expands what you can say in the real world." },
-      { name: "Repeat Drill", short: "Drill", icon: "🗣", desc: "Repeat after me", coach: "Listen to the whole phrase, then say it out loud.", transDesc: "Repeat each phrase out loud three times. First the whole thing, then broken into words, then back together again." },
-      { name: "Mix & Review", short: "Review", icon: "🔁", desc: "Old + new shuffled", coach: "Old and new mixed together. Say each one out loud.", transDesc: "Old and new phrases mixed together. Say each one out loud. This is where your brain starts connecting everything." },
-      { name: "Quiz", short: "Quiz", icon: "📝", desc: "Prove you know it", coach: "See the English and try to say it in Cantonese out loud.", transDesc: "See the English and try to say it out loud in Cantonese. Testing yourself makes the memory stronger." },
-      { name: "Cool-down", short: "Wind down", icon: "🎧", desc: "One last listen", coach: "One last gentle listen. Let the sounds settle.", transDesc: "One last gentle listen. Let the sounds settle into your memory while you relax." }
-    ];
-    const drillCoach = [
-      { emoji: "🎯", text: "Listen to the whole phrase, then say it out loud" },
-      { emoji: "🔍", text: "Say it out loud. See how the words fit together and what each one means." },
-      { emoji: "🧩", text: "Put it all together. Say the whole phrase out loud." }
-    ];
-    const getSpeedGaps = (item2) => {
-      const len = item2 ? (item2.cn || "").length : 4;
-      const bonus = Math.max(0, (len - 4) * 400);
-      return { slow: [4e3 + bonus, 5e3 + bonus], normal: [2800 + bonus, 3500 + bonus], fast: [1500 + bonus, 2e3 + bonus] };
-    };
-    reactExports.useEffect(() => {
-      const due = getDueItems(progress).slice(0, 10);
-      const newP = getNewItems(progress).slice(0, 5);
-      const lifePriority = (progress.unit10 || []).filter((s) => s.cn && s.cn !== "(add characters)" && !s.known).slice(0, 5).map((s) => ({ en: s.en, jyut: s.jyut, cn: s.cn, tag: s.tag, unitId: 11, key: "life" }));
-      const lifeOther = (progress.unit10 || []).filter((s) => s.cn && s.cn !== "(add characters)" && s.known).slice(0, 2).map((s) => ({ en: s.en, jyut: s.jyut, cn: s.cn, tag: s.tag, unitId: 11, key: "life" }));
-      const newWithLife = [...lifePriority, ...newP, ...lifeOther].slice(0, 7);
-      const mixItems = [...newWithLife, ...due.slice(0, 5)].sort(() => Math.random() - 0.5);
-      const quizItems = Object.keys(progress.phrases || {}).filter((k2) => (progress.phrases || {})[k2]).map((k2) => {
-        const [uid, pi2] = k2.split("-").map(Number);
-        const u2 = UNITS.find((x2) => x2.id === uid);
-        return (u2 == null ? void 0 : u2.phrases[pi2]) ? { ...u2.phrases[pi2], key: k2, unitId: uid, phraseIdx: pi2 } : null;
-      }).filter(Boolean).sort(() => Math.random() - 0.5).slice(0, 10);
-      setPhaseData({ warmup: due.length ? due : newWithLife, newPhrases: newWithLife, drill: newWithLife, mix: mixItems, quiz: quizItems, cooldown: newWithLife });
-      const allItems = [...new Map([...due, ...newWithLife, ...mixItems, ...quizItems].filter(Boolean).map((p2) => [p2.cn, p2])).values()];
-      preloadUnitAudio(allItems);
-    }, []);
-    reactExports.useEffect(() => {
-      if (paused || lessonDone || showIntro || showTransition) return;
-      timerRef.current = setInterval(() => {
-        setTimeLeft((t2) => {
-          if (t2 <= 1) {
-            setLessonDone(true);
-            sessionStorage.removeItem(`${LANG_CONFIG.id}-lesson`);
-            return 0;
-          }
-          return t2 - 1;
-        });
-        setPhaseTimeLeft((t2) => {
-          if (t2 <= 1) {
-            advancePhase();
-            return 0;
-          }
-          return t2 - 1;
-        });
-      }, 1e3);
-      return () => clearInterval(timerRef.current);
-    }, [paused, lessonDone, phase, showIntro, showTransition]);
-    reactExports.useEffect(() => {
-      if (paused || lessonDone || phase === 4 || showIntro || showTransition) return;
-      if (!phaseData) return;
-      clearTimeout(shadowTimer.current);
-      const items2 = getPhaseItems();
-      if (!items2 || items2.length === 0) return;
-      const safeIdx2 = innerIdx % items2.length;
-      const [playGap, shadowGap] = getSpeedGaps(items2[safeIdx2])[speed];
-      if (phase === 1) {
-        if (shadowPhase === "play") {
-          shadowTimer.current = setTimeout(() => setShadowPhase("answer"), playGap + 1e3);
-        } else if (shadowPhase === "answer") {
-          speak(items2[safeIdx2].cn);
-          shadowTimer.current = setTimeout(() => setShadowPhase("shadow"), playGap);
+      activeUser.uid;
+      const displayName = activeUser.displayName || "Learner";
+      const photoURL = activeUser.photoURL;
+      Object.keys(progress.vocab || {}).filter((k2) => progress.vocab[k2]).length;
+      const isReturningUser = (progress.lessonLog || []).length > 0 || Object.keys(progress.phrases || {}).length > 0 || Object.keys(progress.vocab || {}).length > 0;
+      if (settings.onboardingDone === false && !isReturningUser) {
+        if (!_isOnline2) {
+          updSettings("enVoice", DEFAULT_EN_VOICE);
+          updSettings("cnVoice", DEFAULT_CN_VOICE);
+          updSettings("onboardingDone", true);
         } else {
-          shadowTimer.current = setTimeout(() => {
-            setInnerIdx((i) => i + 1);
-            setShadowPhase("play");
-          }, shadowGap);
+          return /* @__PURE__ */ jsxRuntimeExports.jsx(VoiceOnboarding, { onComplete: (enVoice, cnVoice) => {
+            const newSettings = { ...settings, enVoice, cnVoice, onboardingDone: true };
+            setSettings(newSettings);
+            _activeEnVoiceId = enVoice;
+            _activeCnVoiceId = cnVoice;
+            localStorage.setItem(LANG_CONFIG.localStorageSettingsKey, JSON.stringify(newSettings));
+            if (user) saveSettingsToFirestore(user.uid, newSettings);
+          } });
         }
-      } else if (phase === 2) {
-        if (shadowPhase === "play") {
-          speak(items2[safeIdx2].cn);
-          shadowTimer.current = setTimeout(() => setShadowPhase("shadow"), playGap);
-        } else {
-          shadowTimer.current = setTimeout(() => {
-            setInnerIdx((i) => i + 1);
-            setShadowPhase("play");
-          }, shadowGap);
-        }
-      } else {
-        if (shadowPhase === "play") {
-          speak(items2[safeIdx2].cn);
-          shadowTimer.current = setTimeout(() => setShadowPhase("shadow"), playGap);
-        } else {
-          shadowTimer.current = setTimeout(() => {
-            setInnerIdx((i) => i + 1);
-            setShadowPhase("play");
-          }, shadowGap);
-        }
+      } else if (settings.onboardingDone === false && isReturningUser) {
+        updSettings("onboardingDone", true);
       }
-      return () => clearTimeout(shadowTimer.current);
-    }, [phase, innerIdx, shadowPhase, paused, lessonDone, phaseData, speed, showIntro, showTransition]);
-    function getPhaseItems() {
-      if (!phaseData) return [];
-      switch (phase) {
-        case 0:
-          return phaseData.warmup;
-        case 1:
-          return phaseData.newPhrases;
-        case 2:
-          return phaseData.drill;
-        case 3:
-          return phaseData.mix;
-        case 4:
-          return phaseData.quiz;
-        case 5:
-          return phaseData.cooldown;
-        default:
-          return [];
-      }
+      return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: `ca ${settings.learnMode === "reading" ? "reading-mode" : ""}`, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx(OfflineBanner, {}),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "hdr", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "hdr-l", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "hm", style: { background: "var(--for)", borderRadius: 8 }, children: /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { fontSize: "1rem" }, children: "🗣" }) }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "ht", children: [
+                "Shadow",
+                /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { color: "var(--lime)" }, children: "Speak" })
+              ] }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".58rem", fontWeight: 700, color: "rgba(255,255,255,.5)", letterSpacing: ".5px", marginTop: -1 }, children: LANG_CONFIG.name.toUpperCase() })
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "tn", children: [{ id: "home", icon: "🏠", l: "Home" }, { id: "library", icon: "📚", l: "My Library" }, { id: "practice", icon: "🧠", l: "Practice" }].map(
+              (t2) => /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { className: `tn-btn ${tab === t2.id ? "on" : ""}`, onClick: () => setTab(t2.id), children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "tn-icon", children: t2.icon }),
+                t2.l
+              ] }, t2.id)
+            ) })
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { display: "flex", alignItems: "center", gap: 8 }, children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { position: "relative" }, children: [
+            photoURL ? /* @__PURE__ */ jsxRuntimeExports.jsx("img", { src: photoURL, referrerPolicy: "no-referrer", style: { width: 36, height: 36, borderRadius: "50%", border: "2px solid var(--lime)", cursor: "pointer" }, onClick: () => setProfileMenu((v2) => !v2), title: displayName }) : /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "ha", style: { background: "var(--lime)", color: "var(--for)", cursor: "pointer" }, onClick: () => setProfileMenu((v2) => !v2), children: displayName[0] }),
+            profileMenu && /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { position: "fixed", inset: 0, zIndex: 998 }, onClick: () => setProfileMenu(false) }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { position: "absolute", right: 0, top: "calc(100% + 8px)", background: "var(--wh)", border: "1.5px solid var(--st)", borderRadius: 14, padding: "10px 0", minWidth: 220, zIndex: 999, boxShadow: "0 8px 32px rgba(0,0,0,.15)" }, children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { padding: "8px 16px", borderBottom: "1px solid var(--st)" }, children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".78rem", fontWeight: 800, color: "var(--ink)" }, children: displayName }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".62rem", color: "var(--ink2)" }, children: activeUser.email })
+                ] }),
+                /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { onClick: () => {
+                  setProfileMenu(false);
+                  {
+                    localStorage.setItem("shadowspeak-lang", LANG_CONFIG.switchTo.lang);
+                    window.location.reload();
+                  }
+                }, style: { width: "100%", padding: "14px 16px", background: "none", border: "none", cursor: "pointer", fontSize: ".82rem", fontWeight: 700, color: "var(--ink)", textAlign: "left", display: "flex", alignItems: "center", gap: 10, minHeight: 48 }, children: [
+                  LANG_CONFIG.switchTo.flag,
+                  " ",
+                  LANG_CONFIG.switchTo.label
+                ] }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => {
+                  setProfileMenu(false);
+                  setTab("settings");
+                }, style: { width: "100%", padding: "14px 16px", background: "none", border: "none", cursor: "pointer", fontSize: ".82rem", fontWeight: 700, color: "var(--ink)", textAlign: "left", display: "flex", alignItems: "center", gap: 10, minHeight: 48 }, children: "⚙️ Settings" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => {
+                  setProfileMenu(false);
+                  window.location.href = "index.html";
+                }, style: { width: "100%", padding: "14px 16px", background: "none", border: "none", cursor: "pointer", fontSize: ".82rem", fontWeight: 700, color: "var(--ink)", textAlign: "left", display: "flex", alignItems: "center", gap: 10, minHeight: 48 }, children: "🏠 Back to home" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { borderTop: "1px solid var(--st)", margin: "2px 0" } }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => {
+                  fbAuth.signOut();
+                  window.location.href = "index.html";
+                }, style: { width: "100%", padding: "14px 16px", background: "none", border: "none", cursor: "pointer", fontSize: ".82rem", fontWeight: 700, color: "#e74c3c", textAlign: "left", display: "flex", alignItems: "center", gap: 10, minHeight: 48 }, children: "🚪 Sign out" })
+              ] })
+            ] })
+          ] }) })
+        ] }),
+        tab === "home" && /* @__PURE__ */ jsxRuntimeExports.jsx(HomeTab, { profile: displayName, progress, upd, settings, setTab, recentTopics, setRecentTopics, practiceCount, library, selUnit, setSelUnit, markReviewed, startPlaylist, openPlBuilder: () => setShowPlBuilder(true), setAutoLaunch }),
+        tab === "library" && /* @__PURE__ */ jsxRuntimeExports.jsx(LibraryTab, { library, setLibrary, progress, upd, settings, startPlaylist }),
+        tab === "practice" && /* @__PURE__ */ jsxRuntimeExports.jsx(PracticeTab, { progress, upd, settings, library, practiceCount, setPracticeCount, autoLaunch }),
+        tab === "settings" && /* @__PURE__ */ jsxRuntimeExports.jsx(SettingsTab, { settings, updSettings }),
+        showPlBuilder && /* @__PURE__ */ jsxRuntimeExports.jsx(PlaylistBuilder, { onClose: () => setShowPlBuilder(false), onPlay: (items, title) => {
+          setShowPlBuilder(false);
+          startPlaylist(items, title);
+        }, progress }),
+        playlist && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { position: "fixed", bottom: 54, left: 0, right: 0, zIndex: 110, padding: "0 10px" }, children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "pl-bar-v2", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "pl-v2-close", onClick: () => {
+            setPlaylist(null);
+            if ("speechSynthesis" in window) speechSynthesis.cancel();
+          }, children: "✕" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "pl-v2-play", onClick: () => setPlaylist((p2) => p2 ? { ...p2, playing: !p2.playing } : null), children: playlist.playing ? "⏸" : "▶" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "pl-v2-info", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "pl-v2-en", children: ((_a = playlist.items[playlist.idx]) == null ? void 0 : _a.en) || "..." }),
+            ((_b = playlist.items[playlist.idx]) == null ? void 0 : _b.jyut) && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "pl-v2-jy", children: /* @__PURE__ */ jsxRuntimeExports.jsx(JyutpingTone, { text: playlist.items[playlist.idx].jyut }) }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "pl-v2-counter", children: [
+              "Word ",
+              playlist.idx + 1,
+              " of ",
+              playlist.items.length
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "pl-v2-prog", children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "pl-v2-prog-fill", style: { width: `${(playlist.idx + 1) / playlist.items.length * 100}%` } }) }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "pl-v2-speeds", children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "pl-v2-speed-label", children: "Speed" }),
+              [{ k: "slow", l: "🐢" }, { k: "normal", l: "Normal" }, { k: "fast", l: "🐇" }].map(
+                (s) => /* @__PURE__ */ jsxRuntimeExports.jsx("button", { style: { padding: "4px 10px", borderRadius: 999, border: playlist.speed === s.k ? "1px solid var(--lime)" : "1px solid rgba(255,255,255,.1)", background: playlist.speed === s.k ? "rgba(196,240,0,.12)" : "transparent", color: playlist.speed === s.k ? "var(--lime)" : "rgba(255,255,255,.4)", fontSize: ".62rem", fontWeight: 700, cursor: "pointer" }, onClick: () => setPlaylist((p2) => p2 ? { ...p2, speed: s.k } : null), children: s.l }, s.k)
+              )
+            ] })
+          ] }),
+          ((_c = playlist.items[playlist.idx]) == null ? void 0 : _c.cn) && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "pl-v2-cn", children: playlist.items[playlist.idx].cn })
+        ] }) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "bn", children: [{ id: "home", icon: "🏠", l: "Home" }, { id: "library", icon: "📚", l: "My Library", badge: (progress.unit10 || []).filter((x2) => !x2.known).length || 0 }, { id: "practice", icon: "🧠", l: "Practice" }].map(
+          (t2) => /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { className: `bb ${tab === t2.id ? "on" : ""}`, onClick: () => setTab(t2.id), style: { flex: "1 1 33.33%" }, children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "bi", children: t2.icon }),
+            t2.l,
+            t2.badge > 0 && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { position: "absolute", top: 4, right: "calc(50% - 18px)", background: "var(--cor,#e74c3c)", color: "#fff", fontSize: ".55rem", fontWeight: 900, borderRadius: 999, minWidth: 16, height: 16, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 4px" }, children: t2.badge })
+          ] }, t2.id)
+        ) }),
+        popup && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "comp-ov", onClick: () => setPopup(null), children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "comp-em", children: popup.e }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "comp-t", children: popup.t }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "comp-s", children: popup.s }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "comp-btn", onClick: () => setPopup(null), children: "Continue" })
+        ] })
+      ] });
     }
-    const advancePhase = reactExports.useCallback(() => {
-      if (phase >= 5) {
-        setLessonDone(true);
-        sessionStorage.removeItem(`${LANG_CONFIG.id}-lesson`);
-        return;
+    LANG_CONFIG.BADGE_DEFS;
+    function getStats(progress) {
+      const known = Object.keys(progress.phrases || {}).filter((k2) => (progress.phrases || {})[k2]).length;
+      const lessonLog = progress.lessonLog || [];
+      const streak = calcStreak(lessonLog);
+      const totalMins = lessonLog.reduce((s, l2) => s + (l2.mins || 30), 0);
+      const unitsDone = UNITS.filter((u2) => u2.phrases.every((_, i) => (progress.phrases || {})[`${u2.id}-${i}`])).length;
+      const quizzes = progress.quizCount || 0;
+      return { known, streak, totalMins, unitsDone, quizzes, lessonLog };
+    }
+    function calcStreak(log) {
+      if (!log.length) return 0;
+      const today = /* @__PURE__ */ new Date();
+      const todayStr = today.toDateString();
+      const dates = [...new Set(log.map((l2) => new Date(l2.date).toDateString()))].sort((a, b2) => new Date(b2) - new Date(a));
+      const lastLesson = new Date(dates[0]);
+      function weekdaysBetween(d1, d2) {
+        let count = 0;
+        const start = new Date(Math.min(d1, d2));
+        const end = new Date(Math.max(d1, d2));
+        const cur = new Date(start);
+        cur.setDate(cur.getDate() + 1);
+        while (cur < end) {
+          const day = cur.getDay();
+          if (day !== 0 && day !== 6) count++;
+          cur.setDate(cur.getDate() + 1);
+        }
+        return count;
       }
-      const next = phase + 1;
-      setShowTransition(true);
-      const cp2 = phaseInfo[next];
-      speakEnglish(cp2.transDesc + " Remember, say it out loud!");
-      setTimeout(() => {
+      if (dates[0] !== todayStr) {
+        const gap = weekdaysBetween(lastLesson, today);
+        if (gap > 1) return 0;
+      }
+      let streak = 1;
+      for (let i = 1; i < dates.length; i++) {
+        const gap = weekdaysBetween(new Date(dates[i]), new Date(dates[i - 1]));
+        if (gap <= 1) streak++;
+        else break;
+      }
+      return streak;
+    }
+    function getAutoGloss(ph2) {
+      if (!ph2 || !ph2.cn) return [];
+      if (GLOSS_DATA[ph2.cn]) return GLOSS_DATA[ph2.cn];
+      const cn = (ph2.cn || "").replace(/[，。！？、「」]/g, "").trim();
+      const jy = (ph2.jyut || "").replace(/[，,]/g, " ").replace(/\s+/g, " ").trim();
+      const jyParts = jy.split(" ").filter(Boolean);
+      const chars = [...cn].filter((c) => c.trim());
+      const result = [];
+      let ci2 = 0, ji2 = 0;
+      while (ci2 < chars.length) {
+        if (ci2 + 1 < chars.length && ji2 + 1 < jyParts.length) {
+          result.push({ cn: chars[ci2] + chars[ci2 + 1], jy: jyParts[ji2] + " " + jyParts[ji2 + 1], en: "" });
+          ci2 += 2;
+          ji2 += 2;
+        } else {
+          result.push({ cn: chars[ci2] || "", jy: jyParts[ji2] || "", en: "" });
+          ci2++;
+          ji2++;
+        }
+      }
+      return result;
+    }
+    function DrillView({ item, items, innerIdx, safeIdx, showJyut }) {
+      if (!item) return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "sh-bd", children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { color: "rgba(255,255,255,.4)" }, children: "Preparing drill..." }) });
+      const passNum = items.length ? Math.floor(innerIdx / items.length) : 0;
+      const round = passNum % 3;
+      const gloss = getAutoGloss(item);
+      return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "sh-bd", children: [
+        round === 1 && gloss.length > 0 && gloss.some((g) => g.en) ? /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "sh-en", style: { fontSize: "1rem", marginBottom: 14, opacity: 0.5 }, children: item.en }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "center", margin: "0 0 16px" }, children: gloss.filter((g) => g.cn).map((g, i) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "drill-word-card", onClick: () => speak(g.cn), children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "dwc-cn", children: g.cn }),
+            showJyut && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "dwc-jy", children: /* @__PURE__ */ jsxRuntimeExports.jsx(JyutpingTone, { text: g.jy }) }),
+            g.en && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "dwc-en", children: g.en })
+          ] }, i)) })
+        ] }) : /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "sh-en", children: item.en }),
+          showJyut && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "sh-jy", children: /* @__PURE__ */ jsxRuntimeExports.jsx(JyutpingTone, { text: item.jyut }) }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "sh-cn", children: item.cn }),
+          round === 2 && gloss.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { display: "flex", flexWrap: "wrap", gap: 2, margin: "6px 0", padding: 4, background: "rgba(255,255,255,.04)", borderRadius: 6, justifyContent: "center" }, children: gloss.filter((g) => g.cn).map((g, i) => /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { textAlign: "center", padding: "1px 3px" }, children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".65rem", color: "rgba(255,255,255,.35)" }, children: g.en }) }, i)) })
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { fontSize: ".68rem", color: "rgba(255,255,255,.3)", marginTop: 6 }, children: [
+          "Phrase ",
+          safeIdx + 1,
+          "/",
+          items.length
+        ] })
+      ] });
+    }
+    function LessonMode({ progress, upd, profile, settings, onComplete, onQuit }) {
+      var _a, _b;
+      const saved = reactExports.useMemo(() => {
+        try {
+          const s = sessionStorage.getItem(`${LANG_CONFIG.id}-lesson`);
+          return s ? JSON.parse(s) : null;
+        } catch (e) {
+          return null;
+        }
+      }, []);
+      const [showIntro, setShowIntro] = reactExports.useState(!saved);
+      const [phase, setPhase] = reactExports.useState((saved == null ? void 0 : saved.phase) || 0);
+      const [timeLeft, setTimeLeft] = reactExports.useState((saved == null ? void 0 : saved.timeLeft) ?? 30 * 60);
+      const [phaseTimeLeft, setPhaseTimeLeft] = reactExports.useState((saved == null ? void 0 : saved.phaseTimeLeft) ?? 3 * 60);
+      const [paused, setPaused] = reactExports.useState(false);
+      const [phaseData, setPhaseData] = reactExports.useState(null);
+      const [innerIdx, setInnerIdx] = reactExports.useState((saved == null ? void 0 : saved.innerIdx) || 0);
+      const [shadowPhase, setShadowPhase] = reactExports.useState("play");
+      const [drillPass, setDrillPass] = reactExports.useState(0);
+      const [revealed, setRevealed] = reactExports.useState(false);
+      const [quizScore, setQuizScore] = reactExports.useState((saved == null ? void 0 : saved.quizScore) || { right: 0, wrong: 0 });
+      const [lessonDone, setLessonDone] = reactExports.useState(false);
+      const [speed, setSpeed] = reactExports.useState((settings == null ? void 0 : settings.defaultSpeed) || "normal");
+      const [showJyut, setShowJyut] = reactExports.useState(true);
+      const [showTransition, setShowTransition] = reactExports.useState(false);
+      const [isRecording, setIsRecording] = reactExports.useState(false);
+      const [scoring, setScoring] = reactExports.useState(false);
+      const [scoreResult, setScoreResult] = reactExports.useState(null);
+      const timerRef = reactExports.useRef(null);
+      const shadowTimer = reactExports.useRef(null);
+      reactExports.useEffect(() => {
+        if (!lessonDone && !showIntro) {
+          sessionStorage.setItem(`${LANG_CONFIG.id}-lesson`, JSON.stringify({ phase, timeLeft, phaseTimeLeft, innerIdx, quizScore }));
+        }
+      }, [phase, timeLeft, phaseTimeLeft, innerIdx, quizScore, lessonDone, showIntro]);
+      const phaseDurations = [3 * 60, 7 * 60, 8 * 60, 5 * 60, 5 * 60, 2 * 60];
+      const phaseInfo = [
+        { name: "Warm-up", short: "Warm-up", icon: "🔥", desc: "Shadow recent phrases", coach: "Listen and say them out loud. No pressure.", transDesc: "Let's ease in. These are phrases you've seen before. Listen and say them out loud. No pressure." },
+        { name: "New Phrases", short: "Learn", icon: "🆕", desc: "Hear English, try Cantonese, hear answer", coach: "You'll hear the English first, then the Cantonese. Say each one out loud.", transDesc: "Time for something new. You'll hear the English, then try to say it in Cantonese. Each new phrase expands what you can say in the real world." },
+        { name: "Repeat Drill", short: "Drill", icon: "🗣", desc: "Repeat after me", coach: "Listen to the whole phrase, then say it out loud.", transDesc: "Repeat each phrase out loud three times. First the whole thing, then broken into words, then back together again." },
+        { name: "Mix & Review", short: "Review", icon: "🔁", desc: "Old + new shuffled", coach: "Old and new mixed together. Say each one out loud.", transDesc: "Old and new phrases mixed together. Say each one out loud. This is where your brain starts connecting everything." },
+        { name: "Quiz", short: "Quiz", icon: "📝", desc: "Prove you know it", coach: "See the English and try to say it in Cantonese out loud.", transDesc: "See the English and try to say it out loud in Cantonese. Testing yourself makes the memory stronger." },
+        { name: "Cool-down", short: "Wind down", icon: "🎧", desc: "One last listen", coach: "One last gentle listen. Let the sounds settle.", transDesc: "One last gentle listen. Let the sounds settle into your memory while you relax." }
+      ];
+      const drillCoach = [
+        { emoji: "🎯", text: "Listen to the whole phrase, then say it out loud" },
+        { emoji: "🔍", text: "Say it out loud. See how the words fit together and what each one means." },
+        { emoji: "🧩", text: "Put it all together. Say the whole phrase out loud." }
+      ];
+      const getSpeedGaps = (item2) => {
+        const len = item2 ? (item2.cn || "").length : 4;
+        const bonus = Math.max(0, (len - 4) * 400);
+        return { slow: [4e3 + bonus, 5e3 + bonus], normal: [2800 + bonus, 3500 + bonus], fast: [1500 + bonus, 2e3 + bonus] };
+      };
+      reactExports.useEffect(() => {
+        const due = getDueItems(progress).slice(0, 10);
+        const newP = getNewItems(progress).slice(0, 5);
+        const lifePriority = (progress.unit10 || []).filter((s) => s.cn && s.cn !== "(add characters)" && !s.known).slice(0, 5).map((s) => ({ en: s.en, jyut: s.jyut, cn: s.cn, tag: s.tag, unitId: 11, key: "life" }));
+        const lifeOther = (progress.unit10 || []).filter((s) => s.cn && s.cn !== "(add characters)" && s.known).slice(0, 2).map((s) => ({ en: s.en, jyut: s.jyut, cn: s.cn, tag: s.tag, unitId: 11, key: "life" }));
+        const newWithLife = [...lifePriority, ...newP, ...lifeOther].slice(0, 7);
+        const mixItems = [...newWithLife, ...due.slice(0, 5)].sort(() => Math.random() - 0.5);
+        const quizItems = Object.keys(progress.phrases || {}).filter((k2) => (progress.phrases || {})[k2]).map((k2) => {
+          const [uid, pi2] = k2.split("-").map(Number);
+          const u2 = UNITS.find((x2) => x2.id === uid);
+          return (u2 == null ? void 0 : u2.phrases[pi2]) ? { ...u2.phrases[pi2], key: k2, unitId: uid, phraseIdx: pi2 } : null;
+        }).filter(Boolean).sort(() => Math.random() - 0.5).slice(0, 10);
+        setPhaseData({ warmup: due.length ? due : newWithLife, newPhrases: newWithLife, drill: newWithLife, mix: mixItems, quiz: quizItems, cooldown: newWithLife });
+        const allItems = [...new Map([...due, ...newWithLife, ...mixItems, ...quizItems].filter(Boolean).map((p2) => [p2.cn, p2])).values()];
+        preloadUnitAudio(allItems);
+      }, []);
+      reactExports.useEffect(() => {
+        if (paused || lessonDone || showIntro || showTransition) return;
+        timerRef.current = setInterval(() => {
+          setTimeLeft((t2) => {
+            if (t2 <= 1) {
+              setLessonDone(true);
+              sessionStorage.removeItem(`${LANG_CONFIG.id}-lesson`);
+              return 0;
+            }
+            return t2 - 1;
+          });
+          setPhaseTimeLeft((t2) => {
+            if (t2 <= 1) {
+              advancePhase();
+              return 0;
+            }
+            return t2 - 1;
+          });
+        }, 1e3);
+        return () => clearInterval(timerRef.current);
+      }, [paused, lessonDone, phase, showIntro, showTransition]);
+      reactExports.useEffect(() => {
+        if (paused || lessonDone || phase === 4 || showIntro || showTransition) return;
+        if (!phaseData) return;
+        clearTimeout(shadowTimer.current);
+        const items2 = getPhaseItems();
+        if (!items2 || items2.length === 0) return;
+        const safeIdx2 = innerIdx % items2.length;
+        const [playGap, shadowGap] = getSpeedGaps(items2[safeIdx2])[speed];
+        if (phase === 1) {
+          if (shadowPhase === "play") {
+            shadowTimer.current = setTimeout(() => setShadowPhase("answer"), playGap + 1e3);
+          } else if (shadowPhase === "answer") {
+            speak(items2[safeIdx2].cn);
+            shadowTimer.current = setTimeout(() => setShadowPhase("shadow"), playGap);
+          } else {
+            shadowTimer.current = setTimeout(() => {
+              setInnerIdx((i) => i + 1);
+              setShadowPhase("play");
+            }, shadowGap);
+          }
+        } else if (phase === 2) {
+          if (shadowPhase === "play") {
+            speak(items2[safeIdx2].cn);
+            shadowTimer.current = setTimeout(() => setShadowPhase("shadow"), playGap);
+          } else {
+            shadowTimer.current = setTimeout(() => {
+              setInnerIdx((i) => i + 1);
+              setShadowPhase("play");
+            }, shadowGap);
+          }
+        } else {
+          if (shadowPhase === "play") {
+            speak(items2[safeIdx2].cn);
+            shadowTimer.current = setTimeout(() => setShadowPhase("shadow"), playGap);
+          } else {
+            shadowTimer.current = setTimeout(() => {
+              setInnerIdx((i) => i + 1);
+              setShadowPhase("play");
+            }, shadowGap);
+          }
+        }
+        return () => clearTimeout(shadowTimer.current);
+      }, [phase, innerIdx, shadowPhase, paused, lessonDone, phaseData, speed, showIntro, showTransition]);
+      function getPhaseItems() {
+        if (!phaseData) return [];
+        switch (phase) {
+          case 0:
+            return phaseData.warmup;
+          case 1:
+            return phaseData.newPhrases;
+          case 2:
+            return phaseData.drill;
+          case 3:
+            return phaseData.mix;
+          case 4:
+            return phaseData.quiz;
+          case 5:
+            return phaseData.cooldown;
+          default:
+            return [];
+        }
+      }
+      const advancePhase = reactExports.useCallback(() => {
+        if (phase >= 5) {
+          setLessonDone(true);
+          sessionStorage.removeItem(`${LANG_CONFIG.id}-lesson`);
+          return;
+        }
+        const next = phase + 1;
+        setShowTransition(true);
+        const cp2 = phaseInfo[next];
+        speakEnglish(cp2.transDesc + " Remember, say it out loud!");
+        setTimeout(() => {
+          setShowTransition(false);
+          setPhase(next);
+          setPhaseTimeLeft(phaseDurations[next] || 120);
+          setInnerIdx(0);
+          setShadowPhase("play");
+          setRevealed(false);
+          setDrillPass(0);
+        }, 3e3);
+      }, [phase]);
+      const skipTransition = () => {
+        stopAudio();
         setShowTransition(false);
+        const next = phase + 1;
         setPhase(next);
         setPhaseTimeLeft(phaseDurations[next] || 120);
         setInnerIdx(0);
         setShadowPhase("play");
         setRevealed(false);
         setDrillPass(0);
-      }, 3e3);
-    }, [phase]);
-    const skipTransition = () => {
-      stopAudio();
-      setShowTransition(false);
-      const next = phase + 1;
-      setPhase(next);
-      setPhaseTimeLeft(phaseDurations[next] || 120);
-      setInnerIdx(0);
-      setShadowPhase("play");
-      setRevealed(false);
-      setDrillPass(0);
-    };
-    const handleQuizGrade = (result) => {
-      const items2 = phaseData.quiz;
-      if (!items2.length) return;
-      const item2 = items2[innerIdx % items2.length];
-      if (result === "wrong" && (item2 == null ? void 0 : item2.key) && item2.key !== "life") upd(`phrases.${item2.key}`, false);
-      setQuizScore((prev) => ({ ...prev, [result]: (prev[result] || 0) + 1 }));
-      setRevealed(false);
-      if (innerIdx + 1 < items2.length) setInnerIdx((i) => i + 1);
-    };
-    const quizStartTest = async () => {
-      setPaused(true);
-      stopAudio();
-      try {
-        const ok2 = await startRecording();
-        if (ok2) setIsRecording(true);
-      } catch (e) {
-        console.warn("Mic error:", e);
-      }
-    };
-    const quizStopTest = async () => {
-      setIsRecording(false);
-      setScoring(true);
-      const blob = await stopRecording();
-      const items2 = getPhaseItems();
-      const safeIdx2 = innerIdx % ((items2 == null ? void 0 : items2.length) || 1);
-      const ph2 = items2 == null ? void 0 : items2[safeIdx2];
-      if (blob && ph2) {
+      };
+      const handleQuizGrade = (result) => {
+        const items2 = phaseData.quiz;
+        if (!items2.length) return;
+        const item2 = items2[innerIdx % items2.length];
+        if (result === "wrong" && (item2 == null ? void 0 : item2.key) && item2.key !== "life") upd(`phrases.${item2.key}`, false);
+        setQuizScore((prev) => ({ ...prev, [result]: (prev[result] || 0) + 1 }));
+        setRevealed(false);
+        if (innerIdx + 1 < items2.length) setInnerIdx((i) => i + 1);
+      };
+      const quizStartTest = async () => {
+        setPaused(true);
+        stopAudio();
         try {
-          const result = await scorePronunciation(blob, ph2.cn, LANG_CONFIG.id);
-          const chars = parseScoreChars(result, ph2.cn);
-          setScoreResult({ score: result.score, passed: result.passed, chars, phrase: ph2 });
+          const ok2 = await startRecording();
+          if (ok2) setIsRecording(true);
         } catch (e) {
-          console.error("Quiz scoring error:", e);
-          setScoreResult(null);
+          console.warn("Mic error:", e);
         }
+      };
+      const quizStopTest = async () => {
+        setIsRecording(false);
+        setScoring(true);
+        const blob = await stopRecording();
+        const items2 = getPhaseItems();
+        const safeIdx2 = innerIdx % ((items2 == null ? void 0 : items2.length) || 1);
+        const ph2 = items2 == null ? void 0 : items2[safeIdx2];
+        if (blob && ph2) {
+          try {
+            const result = await scorePronunciation(blob, ph2.cn, LANG_CONFIG.id);
+            const chars = parseScoreChars(result, ph2.cn);
+            setScoreResult({ score: result.score, passed: result.passed, chars, phrase: ph2 });
+          } catch (e) {
+            console.error("Quiz scoring error:", e);
+            setScoreResult(null);
+          }
+        }
+        setScoring(false);
+      };
+      const markKnownInLesson = () => {
+        const items2 = getPhaseItems();
+        if (!(items2 == null ? void 0 : items2.length)) return;
+        const safeIdx2 = innerIdx % items2.length;
+        const item2 = items2[safeIdx2];
+        if (item2 == null ? void 0 : item2.key) upd(`phrases.${item2.key}`, true);
+      };
+      if (!phaseData) return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "sho navy", style: { alignItems: "center", justifyContent: "center" }, children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { color: "var(--lime)", fontSize: "1rem", fontWeight: 900 }, children: "Preparing lesson..." }) });
+      if (showIntro) {
+        return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "sho navy", style: { overflow: "auto" }, children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "lesson-intro", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "li-emoji", children: "🎯" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "li-title", children: [
+            "30 minutes of",
+            /* @__PURE__ */ jsxRuntimeExports.jsx("br", {}),
+            "speaking practice."
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "li-sub", children: [
+            "You'll listen to real Cantonese phrases, then say them ",
+            /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "out loud" }),
+            ". This is called ",
+            /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "shadowing" }),
+            ". It trains your ear to hear the sounds and your mouth to make them. Each lesson has 6 short sections:"
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "li-roadmap", children: phaseInfo.map((p2, i) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "rm-item", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: `rm-icon ${["warmup", "learn", "drill", "review", "quiz", "wind"][i]}`, children: p2.icon }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "rm-text", children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "rm-name", children: p2.short }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "rm-desc", children: p2.transDesc })
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "rm-dur", children: [
+              Math.floor(phaseDurations[i] / 60),
+              " min"
+            ] })
+          ] }, i)) }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "li-go", onClick: () => {
+            setShowIntro(false);
+            setShowTransition(true);
+            speakEnglish(phaseInfo[0].transDesc + " Remember, say it out loud!");
+            setTimeout(() => {
+              setShowTransition(false);
+            }, 3e3);
+          }, children: "Let's go 💪" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "li-tip", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "li-tip-emoji", children: "💡" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "li-tip-text", children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "Say it out loud." }),
+              " Even whispering is 3× more effective than just listening. Your mouth needs to learn the shapes."
+            ] })
+          ] })
+        ] }) });
       }
-      setScoring(false);
-    };
-    const markKnownInLesson = () => {
-      const items2 = getPhaseItems();
-      if (!(items2 == null ? void 0 : items2.length)) return;
-      const safeIdx2 = innerIdx % items2.length;
-      const item2 = items2[safeIdx2];
-      if (item2 == null ? void 0 : item2.key) upd(`phrases.${item2.key}`, true);
-    };
-    if (!phaseData) return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "sho navy", style: { alignItems: "center", justifyContent: "center" }, children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { color: "var(--lime)", fontSize: "1rem", fontWeight: 900 }, children: "Preparing lesson..." }) });
-    if (showIntro) {
-      return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "sho navy", style: { overflow: "auto" }, children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "lesson-intro", children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "li-emoji", children: "🎯" }),
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "li-title", children: [
-          "30 minutes of",
-          /* @__PURE__ */ jsxRuntimeExports.jsx("br", {}),
-          "speaking practice."
-        ] }),
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "li-sub", children: [
-          "You'll listen to real Cantonese phrases, then say them ",
-          /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "out loud" }),
-          ". This is called ",
-          /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "shadowing" }),
-          ". It trains your ear to hear the sounds and your mouth to make them. Each lesson has 6 short sections:"
-        ] }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "li-roadmap", children: phaseInfo.map((p2, i) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "rm-item", children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: `rm-icon ${["warmup", "learn", "drill", "review", "quiz", "wind"][i]}`, children: p2.icon }),
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "rm-text", children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "rm-name", children: p2.short }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "rm-desc", children: p2.transDesc })
+      if (showTransition) {
+        const nextPhase = Math.min(phase + 1, 5);
+        const tp = phase === 0 && !saved ? phaseInfo[0] : phaseInfo[nextPhase];
+        return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "phase-trans navy", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "pt-icon", children: tp.icon }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "pt-name", children: tp.short }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "pt-desc", children: tp.transDesc }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "voice-coach", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "vc-waves", children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "vc-bar" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "vc-bar" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "vc-bar" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "vc-bar" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "vc-bar" })
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "vc-text", children: '"Remember, say it out loud!"' })
           ] }),
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "rm-dur", children: [
-            Math.floor(phaseDurations[i] / 60),
-            " min"
-          ] })
-        ] }, i)) }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "li-go", onClick: () => {
-          setShowIntro(false);
-          setShowTransition(true);
-          speakEnglish(phaseInfo[0].transDesc + " Remember, say it out loud!");
-          setTimeout(() => {
-            setShowTransition(false);
-          }, 3e3);
-        }, children: "Let's go 💪" }),
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "li-tip", children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "li-tip-emoji", children: "💡" }),
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "li-tip-text", children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "Say it out loud." }),
-            " Even whispering is 3× more effective than just listening. Your mouth needs to learn the shapes."
-          ] })
-        ] })
-      ] }) });
-    }
-    if (showTransition) {
-      const nextPhase = Math.min(phase + 1, 5);
-      const tp = phase === 0 && !saved ? phaseInfo[0] : phaseInfo[nextPhase];
-      return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "phase-trans navy", children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "pt-icon", children: tp.icon }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "pt-name", children: tp.short }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "pt-desc", children: tp.transDesc }),
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "voice-coach", children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "vc-waves", children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "vc-bar" }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "vc-bar" }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "vc-bar" }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "vc-bar" }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "vc-bar" })
+          /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "pt-skip", onClick: skipTransition, children: "Skip →" })
+        ] });
+      }
+      const totalAfter = (progress.lessonLog || []).length + 1;
+      const inBlock = totalAfter % 10 || 10;
+      const nextReward = Math.ceil(totalAfter / 10) * 10;
+      const atReward = inBlock === 10;
+      if (lessonDone) {
+        const totalPhrases = UNITS.reduce((s, u2) => s + u2.phrases.length, 0);
+        const totalAll = totalPhrases + ALL_WORDS.length;
+        const knownCount = Object.values(progress.phrases || {}).filter(Boolean).length;
+        const pctTrail = Math.min(100, Math.round(knownCount / totalAll * 100));
+        const progressMsg = totalAfter <= 3 ? "You're just getting started. Every session builds the foundation." : totalAfter <= 10 ? "Your brain is forming new pathways with every repetition." : totalAfter <= 25 ? "You're past the hardest part. The habit is taking root." : "You're deep in it now. Cantonese is becoming part of you.";
+        return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { position: "fixed", inset: 0, background: "linear-gradient(180deg, #0D2818 0%, #1A3A2A 40%, #0D2818 100%)", zIndex: 300, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 24, textAlign: "center", animation: "fi .3s", overflow: "auto" }, children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { position: "absolute", top: "-20%", left: "-10%", width: "120%", height: "60%", background: "radial-gradient(ellipse at center, rgba(196,240,0,.08) 0%, transparent 70%)", pointerEvents: "none" } }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { position: "absolute", bottom: "-10%", right: "-10%", width: "80%", height: "40%", background: "radial-gradient(ellipse at center, rgba(196,240,0,.05) 0%, transparent 70%)", pointerEvents: "none" } }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { position: "absolute", top: 0, left: 0, right: 0, height: 2, background: "linear-gradient(90deg, transparent, var(--lime), transparent)", animation: "pulseGlow 2s ease-in-out infinite" } }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontFamily: "'DM Sans',sans-serif", fontSize: "1.6rem", fontWeight: 900, color: "#fff", lineHeight: 1.2, marginBottom: 4, position: "relative" }, children: atReward ? /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+            nextReward,
+            " Lessons!"
+          ] }) : /* @__PURE__ */ jsxRuntimeExports.jsx(jsxRuntimeExports.Fragment, { children: "Lesson complete!" }) }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontFamily: "'DM Sans',sans-serif", fontSize: "1rem", fontWeight: 400, marginBottom: 16, position: "relative" }, children: /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { style: { background: "linear-gradient(90deg, var(--lime), #9FE870)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }, children: [
+            totalPhrases,
+            " phrases + ",
+            ALL_WORDS.length,
+            " vocab words in Cantonese"
+          ] }) }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { width: "100%", maxWidth: 300, marginBottom: 16, position: "relative" }, children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { height: 6, background: "rgba(255,255,255,.08)", borderRadius: 3, overflow: "visible", position: "relative" }, children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { height: "100%", borderRadius: 3, background: "linear-gradient(90deg, var(--lime), #9FE870)", width: `${pctTrail}%`, transition: "width .8s ease-out", position: "relative" }, children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { position: "absolute", inset: 0, borderRadius: 3, background: "linear-gradient(90deg, transparent 0%, rgba(255,255,255,.3) 50%, transparent 100%)", animation: "shimmer 2s ease-in-out infinite" } }) }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { position: "absolute", top: "50%", left: `${pctTrail}%`, transform: "translate(-50%,-50%)", width: 14, height: 14, borderRadius: "50%", background: "var(--lime)", boxShadow: "0 0 12px rgba(196,240,0,.6), 0 0 24px rgba(196,240,0,.3)", border: "2px solid #fff" } })
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { fontSize: ".68rem", color: "rgba(255,255,255,.4)", marginTop: 8 }, children: [
+              pctTrail,
+              "% of total content covered"
+            ] })
           ] }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "vc-text", children: '"Remember, say it out loud!"' })
-        ] }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "pt-skip", onClick: skipTransition, children: "Skip →" })
-      ] });
-    }
-    const totalAfter = (progress.lessonLog || []).length + 1;
-    const inBlock = totalAfter % 10 || 10;
-    const nextReward = Math.ceil(totalAfter / 10) * 10;
-    const atReward = inBlock === 10;
-    if (lessonDone) {
-      const totalPhrases = UNITS.reduce((s, u2) => s + u2.phrases.length, 0);
-      const totalAll = totalPhrases + ALL_WORDS.length;
-      const knownCount = Object.values(progress.phrases || {}).filter(Boolean).length;
-      const pctTrail = Math.min(100, Math.round(knownCount / totalAll * 100));
-      const progressMsg = totalAfter <= 3 ? "You're just getting started. Every session builds the foundation." : totalAfter <= 10 ? "Your brain is forming new pathways with every repetition." : totalAfter <= 25 ? "You're past the hardest part. The habit is taking root." : "You're deep in it now. Cantonese is becoming part of you.";
-      return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { position: "fixed", inset: 0, background: "linear-gradient(180deg, #0D2818 0%, #1A3A2A 40%, #0D2818 100%)", zIndex: 300, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 24, textAlign: "center", animation: "fi .3s", overflow: "auto" }, children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { position: "absolute", top: "-20%", left: "-10%", width: "120%", height: "60%", background: "radial-gradient(ellipse at center, rgba(196,240,0,.08) 0%, transparent 70%)", pointerEvents: "none" } }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { position: "absolute", bottom: "-10%", right: "-10%", width: "80%", height: "40%", background: "radial-gradient(ellipse at center, rgba(196,240,0,.05) 0%, transparent 70%)", pointerEvents: "none" } }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { position: "absolute", top: 0, left: 0, right: 0, height: 2, background: "linear-gradient(90deg, transparent, var(--lime), transparent)", animation: "pulseGlow 2s ease-in-out infinite" } }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontFamily: "'DM Sans',sans-serif", fontSize: "1.6rem", fontWeight: 900, color: "#fff", lineHeight: 1.2, marginBottom: 4, position: "relative" }, children: atReward ? /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
-          nextReward,
-          " Lessons!"
-        ] }) : /* @__PURE__ */ jsxRuntimeExports.jsx(jsxRuntimeExports.Fragment, { children: "Lesson complete!" }) }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontFamily: "'DM Sans',sans-serif", fontSize: "1rem", fontWeight: 400, marginBottom: 16, position: "relative" }, children: /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { style: { background: "linear-gradient(90deg, var(--lime), #9FE870)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }, children: [
-          totalPhrases,
-          " phrases + ",
-          ALL_WORDS.length,
-          " vocab words in Cantonese"
-        ] }) }),
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { width: "100%", maxWidth: 300, marginBottom: 16, position: "relative" }, children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { height: 6, background: "rgba(255,255,255,.08)", borderRadius: 3, overflow: "visible", position: "relative" }, children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { height: "100%", borderRadius: 3, background: "linear-gradient(90deg, var(--lime), #9FE870)", width: `${pctTrail}%`, transition: "width .8s ease-out", position: "relative" }, children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { position: "absolute", inset: 0, borderRadius: 3, background: "linear-gradient(90deg, transparent 0%, rgba(255,255,255,.3) 50%, transparent 100%)", animation: "shimmer 2s ease-in-out infinite" } }) }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { position: "absolute", top: "50%", left: `${pctTrail}%`, transform: "translate(-50%,-50%)", width: 14, height: 14, borderRadius: "50%", background: "var(--lime)", boxShadow: "0 0 12px rgba(196,240,0,.6), 0 0 24px rgba(196,240,0,.3)", border: "2px solid #fff" } })
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap", justifyContent: "center" }, children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { background: "rgba(255,255,255,.06)", backdropFilter: "blur(8px)", borderRadius: 12, padding: "10px 16px", textAlign: "center", border: "1px solid rgba(255,255,255,.1)" }, children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: "1.1rem", fontWeight: 900, color: "var(--lime)" }, children: phaseData.newPhrases.length }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".62rem", color: "rgba(255,255,255,.4)", fontWeight: 700 }, children: "Phrases" })
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { background: "rgba(255,255,255,.06)", backdropFilter: "blur(8px)", borderRadius: 12, padding: "10px 16px", textAlign: "center", border: "1px solid rgba(255,255,255,.1)" }, children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: "1.1rem", fontWeight: 900, color: "#fff" }, children: quizScore.right || 0 }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".62rem", color: "rgba(255,255,255,.4)", fontWeight: 700 }, children: "Quiz correct" })
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { background: "rgba(255,255,255,.06)", backdropFilter: "blur(8px)", borderRadius: 12, padding: "10px 16px", textAlign: "center", border: "1px solid rgba(255,255,255,.1)" }, children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: "1.1rem", fontWeight: 900, color: "var(--lime)" }, children: totalAfter }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".62rem", color: "rgba(255,255,255,.4)", fontWeight: 700 }, children: "Total lessons" })
+            ] })
           ] }),
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { fontSize: ".68rem", color: "rgba(255,255,255,.4)", marginTop: 8 }, children: [
-            pctTrail,
-            "% of total content covered"
-          ] })
-        ] }),
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap", justifyContent: "center" }, children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { background: "rgba(255,255,255,.06)", backdropFilter: "blur(8px)", borderRadius: 12, padding: "10px 16px", textAlign: "center", border: "1px solid rgba(255,255,255,.1)" }, children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: "1.1rem", fontWeight: 900, color: "var(--lime)" }, children: phaseData.newPhrases.length }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".62rem", color: "rgba(255,255,255,.4)", fontWeight: 700 }, children: "Phrases" })
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".78rem", color: "rgba(255,255,255,.5)", marginBottom: 16, maxWidth: 280, lineHeight: 1.5 }, children: progressMsg }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", gap: 8, marginBottom: 20, maxWidth: 320, width: "100%" }, children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { flex: 1, background: "rgba(196,240,0,.06)", border: "1px solid rgba(196,240,0,.12)", borderRadius: 12, padding: "12px 10px", textAlign: "center" }, children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".9rem", fontWeight: 900, color: "var(--lime)" }, children: "30 min" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".62rem", color: "rgba(255,255,255,.35)", fontWeight: 600, lineHeight: 1.3, marginTop: 2 }, children: "Rewires your brain" })
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { flex: 1, background: "rgba(255,255,255,.04)", border: "1px solid rgba(255,255,255,.08)", borderRadius: 12, padding: "12px 10px", textAlign: "center" }, children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".9rem", fontWeight: 900, color: "#fff" }, children: "85M" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".62rem", color: "rgba(255,255,255,.35)", fontWeight: 600, lineHeight: 1.3, marginTop: 2 }, children: "Cantonese speakers" })
+            ] })
           ] }),
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { background: "rgba(255,255,255,.06)", backdropFilter: "blur(8px)", borderRadius: 12, padding: "10px 16px", textAlign: "center", border: "1px solid rgba(255,255,255,.1)" }, children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: "1.1rem", fontWeight: 900, color: "#fff" }, children: quizScore.right || 0 }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".62rem", color: "rgba(255,255,255,.4)", fontWeight: 700 }, children: "Quiz correct" })
-          ] }),
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { background: "rgba(255,255,255,.06)", backdropFilter: "blur(8px)", borderRadius: 12, padding: "10px 16px", textAlign: "center", border: "1px solid rgba(255,255,255,.1)" }, children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: "1.1rem", fontWeight: 900, color: "var(--lime)" }, children: totalAfter }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".62rem", color: "rgba(255,255,255,.4)", fontWeight: 700 }, children: "Total lessons" })
-          ] })
-        ] }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".78rem", color: "rgba(255,255,255,.5)", marginBottom: 16, maxWidth: 280, lineHeight: 1.5 }, children: progressMsg }),
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", gap: 8, marginBottom: 20, maxWidth: 320, width: "100%" }, children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { flex: 1, background: "rgba(196,240,0,.06)", border: "1px solid rgba(196,240,0,.12)", borderRadius: 12, padding: "12px 10px", textAlign: "center" }, children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".9rem", fontWeight: 900, color: "var(--lime)" }, children: "30 min" }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".62rem", color: "rgba(255,255,255,.35)", fontWeight: 600, lineHeight: 1.3, marginTop: 2 }, children: "Rewires your brain" })
-          ] }),
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { flex: 1, background: "rgba(255,255,255,.04)", border: "1px solid rgba(255,255,255,.08)", borderRadius: 12, padding: "12px 10px", textAlign: "center" }, children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".9rem", fontWeight: 900, color: "#fff" }, children: "85M" }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".62rem", color: "rgba(255,255,255,.35)", fontWeight: 600, lineHeight: 1.3, marginTop: 2 }, children: "Cantonese speakers" })
-          ] })
-        ] }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("style", { children: `
+          /* @__PURE__ */ jsxRuntimeExports.jsx("style", { children: `
           @keyframes pulseGlow { 0%,100% { opacity:.4; } 50% { opacity:1; } }
           @keyframes shimmer { 0% { transform:translateX(-100%); } 100% { transform:translateX(200%); } }
           @keyframes popIn { 0% { transform: scale(0.5); } 50% { transform: scale(1.3); } 100% { transform: scale(1); } }
         ` }),
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", gap: 8 }, children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "comp-btn", onClick: onComplete, children: "Done 💪" }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "comp-btn", style: { background: "rgba(255,255,255,.1)", color: "#fff" }, onClick: () => {
-            sessionStorage.removeItem(`${LANG_CONFIG.id}-lesson`);
-            setLessonDone(false);
-            setPhase(0);
-            setTimeLeft(30 * 60);
-            setPhaseTimeLeft(phaseDurations[0]);
-            setInnerIdx(0);
-            setShadowPhase("play");
-            setQuizScore({ right: 0, wrong: 0 });
-          }, children: "Another lesson 🔁" })
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", gap: 8 }, children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "comp-btn", onClick: onComplete, children: "Done 💪" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "comp-btn", style: { background: "rgba(255,255,255,.1)", color: "#fff" }, onClick: () => {
+              sessionStorage.removeItem(`${LANG_CONFIG.id}-lesson`);
+              setLessonDone(false);
+              setPhase(0);
+              setTimeLeft(30 * 60);
+              setPhaseTimeLeft(phaseDurations[0]);
+              setInnerIdx(0);
+              setShadowPhase("play");
+              setQuizScore({ right: 0, wrong: 0 });
+            }, children: "Another lesson 🔁" })
+          ] })
+        ] });
+      }
+      const mm = String(Math.floor(timeLeft / 60)).padStart(2, "0");
+      const ss = String(timeLeft % 60).padStart(2, "0");
+      const pmm = String(Math.floor(phaseTimeLeft / 60)).padStart(2, "0");
+      const pss = String(phaseTimeLeft % 60).padStart(2, "0");
+      const cp = phaseInfo[phase];
+      const items = getPhaseItems();
+      const safeIdx = (items == null ? void 0 : items.length) ? innerIdx % items.length : 0;
+      const item = items == null ? void 0 : items[safeIdx];
+      const passNum = (items == null ? void 0 : items.length) ? Math.floor(innerIdx / items.length) : 0;
+      const round = passNum % 3;
+      const showKnowBtn = phase === 3 || phase === 4;
+      return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "sho navy", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 16px" }, children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("button", { style: { width: 40, height: 40, borderRadius: "50%", background: "rgba(255,255,255,.08)", border: "1px solid rgba(255,255,255,.1)", color: "rgba(255,255,255,.6)", fontSize: 15, fontFamily: "inherit", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }, onClick: onQuit, children: "✕" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { textAlign: "center" }, children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { fontSize: "1.2rem", fontWeight: 900, color: "var(--lime)", fontVariantNumeric: "tabular-nums", lineHeight: 1 }, children: [
+              mm,
+              ":",
+              ss
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { fontSize: ".65rem", fontWeight: 700, color: "rgba(255,255,255,.4)", marginTop: 2 }, children: [
+              cp.icon,
+              " ",
+              cp.short
+            ] })
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { textAlign: "right" }, children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { fontSize: ".72rem", fontWeight: 700, color: "rgba(255,255,255,.45)" }, children: [
+            "Phrase ",
+            safeIdx + 1,
+            " of ",
+            (items == null ? void 0 : items.length) || 0
+          ] }) })
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { height: 3, background: "rgba(255,255,255,.08)", margin: "0 16px", borderRadius: 2 }, children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { height: "100%", background: "var(--lime)", borderRadius: 2, width: `${Math.max(0, Math.min(100, (30 * 60 - timeLeft) / (30 * 60) * 100))}%`, transition: "width .5s" } }) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "l-phase-bar", children: phaseInfo.map((p2, i) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "l-pb-item", style: { flex: phaseDurations[i] }, children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "l-pb-icon", style: { color: i < phase ? "var(--lime)" : i === phase ? "rgba(255,255,255,.7)" : "rgba(255,255,255,.2)" }, children: i < phase ? "✓" : p2.icon }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "l-pb-label", style: { color: i < phase ? "rgba(196,240,0,.4)" : i === phase ? "rgba(255,255,255,.6)" : "rgba(255,255,255,.18)", fontWeight: i === phase ? 700 : 600 }, children: p2.short })
+        ] }, i)) }),
+        phase !== 4 && item && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "coach-inline", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "ci-emoji", children: phase === 2 ? ((_a = drillCoach[round]) == null ? void 0 : _a.emoji) || "🎯" : "🎯" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "ci-text", children: /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: phase === 2 ? ((_b = drillCoach[round]) == null ? void 0 : _b.text) || cp.coach : cp.coach }) })
+        ] }),
+        phase === 1 ? (
+          /* New Learning */
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "sh-bd", children: item ? /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "sh-en", children: item.en }),
+            shadowPhase !== "play" && showJyut && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "sh-jy", children: /* @__PURE__ */ jsxRuntimeExports.jsx(JyutpingTone, { text: item.jyut }) }),
+            shadowPhase !== "play" && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "sh-cn", children: item.cn }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: `cue-pill ${shadowPhase === "shadow" ? "speak" : "listen"}`, children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "cue-pill-emoji", children: shadowPhase === "shadow" ? "🗣️" : "👂" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "cue-pill-dot" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "cue-pill-text", children: shadowPhase === "shadow" ? "Say it out loud!" : "Listen" })
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { fontSize: ".68rem", color: "rgba(255,255,255,.2)", marginTop: 6 }, children: [
+              "Phrase ",
+              safeIdx + 1,
+              " of ",
+              items.length
+            ] })
+          ] }) : /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { color: "rgba(255,255,255,.4)" }, children: "Preparing..." }) })
+        ) : phase === 2 ? (
+          /* Repeat Drill with enlarged word cards (#19) */
+          /* @__PURE__ */ jsxRuntimeExports.jsx(DrillView, { item, items, innerIdx, safeIdx, showJyut })
+        ) : phase === 4 ? (
+          /* Quiz */
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "quiz-body", style: { background: "var(--navy)" }, children: item && innerIdx < items.length ? /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "quiz-sub", children: "Say this in Cantonese:" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "quiz-prompt", children: item.en }),
+            !revealed ? /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "quiz-reveal-btn", onClick: () => setRevealed(true), children: "Reveal answer" }) : /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "quiz-answer", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "quiz-ans-jy", children: /* @__PURE__ */ jsxRuntimeExports.jsx(JyutpingTone, { text: item.jyut }) }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "quiz-ans-cn", children: item.cn }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("button", { style: { marginTop: 6, background: "var(--st)", border: "none", borderRadius: 999, padding: "8px 12px", fontSize: ".72rem", cursor: "pointer" }, onClick: () => speak(item.cn), children: "▶ Listen" })
+              ] }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { width: "100%", maxWidth: 440, marginBottom: 10 }, children: !isRecording && !scoring ? /* @__PURE__ */ jsxRuntimeExports.jsx(RecordBtn, { onClick: quizStartTest, label: "🎙 Test your pronunciation", style: { width: "100%", padding: "12px", borderRadius: 12, border: "2px solid var(--lime)", background: "rgba(196,240,0,.08)", color: "var(--lime)", fontSize: ".78rem", fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 } }) : scoring ? /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { width: "100%", padding: "12px", borderRadius: 12, background: "rgba(255,255,255,.06)", textAlign: "center" }, children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".75rem", fontWeight: 700, color: "rgba(255,255,255,.5)" }, children: "Scoring your pronunciation..." }) }) : /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: quizStopTest, style: { width: "100%", padding: "12px", borderRadius: 12, border: "2px solid #e74c3c", background: "rgba(231,76,60,.12)", color: "#ff7a5c", fontSize: ".78rem", fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, animation: "pulse 1s ease-in-out infinite" }, children: "⏹ Stop recording & score" }) }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "quiz-grade", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "quiz-g-btn quiz-g-yes", onClick: () => handleQuizGrade("right"), children: "✓ Got it" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "quiz-g-btn quiz-g-no", onClick: () => handleQuizGrade("wrong"), children: "✗ Nope" })
+              ] })
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { fontSize: ".68rem", color: "rgba(255,255,255,.3)", marginTop: 6 }, children: [
+              innerIdx + 1,
+              " of ",
+              items.length
+            ] })
+          ] }) : /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { color: "rgba(255,255,255,.4)", fontSize: ".78rem", padding: 20 }, children: [
+            "Quiz done! ",
+            pmm,
+            ":",
+            pss,
+            " until next phase"
+          ] }) })
+        ) : (
+          /* Standard shadow (warmup, mix, cooldown) */
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "sh-bd", children: item ? /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "sh-tg", children: item.tag || cp.name }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "sh-en", children: item.en }),
+            showJyut && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "sh-jy", children: /* @__PURE__ */ jsxRuntimeExports.jsx(JyutpingTone, { text: item.jyut }) }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "sh-cn", children: item.cn }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: `cue-pill ${shadowPhase === "shadow" ? "speak" : "listen"}`, children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "cue-pill-emoji", children: shadowPhase === "shadow" ? "🗣️" : "👂" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "cue-pill-dot" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "cue-pill-text", children: shadowPhase === "shadow" ? "Say it out loud!" : "Listen" })
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { fontSize: ".68rem", color: "rgba(255,255,255,.25)", marginTop: 8 }, children: [
+              "Phrase ",
+              safeIdx + 1,
+              "/",
+              items.length,
+              " · looping"
+            ] })
+          ] }) : /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { color: "rgba(255,255,255,.4)" }, children: "Preparing..." }) })
+        ),
+        phase !== 4 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "l-ctrl", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "l-transport", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "lt-wrap", children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "lt-btn sec", onClick: () => {
+                clearTimeout(shadowTimer.current);
+                setShadowPhase("play");
+              }, children: "↻" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "lt-lbl", children: "Replay" })
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "lt-wrap", children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "lt-btn pri", onClick: () => setPaused((p2) => !p2), children: paused ? "▶" : "⏸" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "lt-lbl", children: paused ? "Resume" : "Pause" })
+            ] })
+          ] }),
+          showKnowBtn && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "l-know-row", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { className: "l-know-btn", onClick: markKnownInLesson, children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { fontSize: "1rem" }, children: "💪" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "I know this now" })
+          ] }) }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "l-divider" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "l-speed", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "l-row-label", children: "Pause between phrases" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "l-pill-row", children: [{ k: "slow", l: "Longer pause" }, { k: "normal", l: "Normal" }, { k: "fast", l: "Shorter pause" }].map(
+              (s) => /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: `l-pill-btn ${speed === s.k ? "on" : ""}`, onClick: () => setSpeed(s.k), children: s.l }, s.k)
+            ) })
+          ] })
+        ] }),
+        phase === 4 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "l-ctrl", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "l-transport", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "lt-wrap", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "lt-btn pri", onClick: () => setPaused((p2) => !p2), children: paused ? "▶" : "⏸" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "lt-lbl", children: paused ? "Resume" : "Pause" })
+          ] }) }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "l-know-row", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { className: "l-know-btn", onClick: markKnownInLesson, children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { fontSize: "1rem" }, children: "💪" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "I know this now" })
+          ] }) })
+        ] }),
+        scoreResult && /* @__PURE__ */ jsxRuntimeExports.jsx(
+          PronunciationScore,
+          {
+            score: scoreResult.score,
+            chars: scoreResult.chars,
+            phrase: scoreResult.phrase,
+            onRetry: () => {
+              setScoreResult(null);
+              quizStartTest();
+            },
+            onNext: () => {
+              setScoreResult(null);
+              setPaused(false);
+            },
+            onClose: () => {
+              setScoreResult(null);
+              setPaused(false);
+            }
+          }
+        )
+      ] });
+    }
+    function ConfettiBurst() {
+      const colors = ["#C4F000", "#7AAA00", "#8F6AE8", "#E8A040", "#FF6B9D", "#00C9DB"];
+      const [pieces] = reactExports.useState(() => Array.from({ length: 30 }, (_, i) => ({
+        id: i,
+        left: Math.random() * 100,
+        delay: Math.random() * 0.4,
+        color: colors[i % colors.length],
+        size: 6 + Math.random() * 6,
+        dur: 1 + Math.random() * 0.8
+      })));
+      return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "confetti-container", children: pieces.map(
+        (p2) => /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "confetti-piece", style: { left: p2.left + "%", top: -10, width: p2.size, height: p2.size, background: p2.color, animation: `confettiFall ${p2.dur}s ease-out ${p2.delay}s forwards` } }, p2.id)
+      ) });
+    }
+    function MasteryConfirmSheet({ phrase, onMastered, onCancel }) {
+      const [mode, setMode] = reactExports.useState("ask");
+      const [revealed, setRevealed] = reactExports.useState(false);
+      const romanization = phrase[LANG_CONFIG.romanizationKey] || phrase.jyut;
+      if (mode === "quiz") {
+        return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "mastery-overlay", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "mastery-card", onClick: (e) => e.stopPropagation(), style: { maxWidth: 360 }, children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { fontSize: ".68rem", fontWeight: 800, color: "var(--ink3)", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 12 }, children: [
+            "SAY THIS IN ",
+            LANG_CONFIG.name.toUpperCase(),
+            ":"
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: "1.1rem", fontWeight: 800, color: "var(--ink)", marginBottom: 8 }, children: phrase.en }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".75rem", color: "var(--ink3)", marginBottom: 16 }, children: "Try to say it out loud first!" }),
+          !revealed ? /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => setRevealed(true), style: { width: "100%", padding: "14px", borderRadius: 12, border: "none", background: "var(--lime)", color: "var(--for)", fontSize: ".88rem", fontWeight: 800, cursor: "pointer", minHeight: 48 }, children: "Reveal answer" }) : /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { background: "var(--cream)", borderRadius: 14, padding: "16px", marginBottom: 16, display: "flex", alignItems: "center", gap: 12 }, children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => speak(phrase.cn), style: { width: 44, height: 44, borderRadius: "50%", border: "none", background: "var(--for)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }, children: /* @__PURE__ */ jsxRuntimeExports.jsx("svg", { width: "12", height: "14", viewBox: "0 0 10 12", fill: "none", children: /* @__PURE__ */ jsxRuntimeExports.jsx("path", { d: "M0 0L10 6L0 12V0Z", fill: "#C4F000" }) }) }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+                romanization && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".85rem", fontStyle: "italic", color: "var(--plum)", fontWeight: 600, marginBottom: 2 }, children: romanization }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontFamily: LANG_CONFIG.fontFamily, fontSize: "1.1rem", fontWeight: 800, color: "var(--ink)" }, children: phrase.cn })
+              ] })
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".78rem", fontWeight: 700, color: "var(--ink2)", marginBottom: 12 }, children: "Did you get it right?" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: onMastered, style: { width: "100%", padding: "14px", borderRadius: 12, border: "none", background: "var(--lime)", color: "var(--for)", fontSize: ".88rem", fontWeight: 800, cursor: "pointer", marginBottom: 8, minHeight: 48 }, children: "Yes, I nailed it!" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: onCancel, style: { width: "100%", padding: "14px", borderRadius: 12, border: "1.5px solid var(--st)", background: "var(--wh)", color: "var(--ink3)", fontSize: ".82rem", fontWeight: 700, cursor: "pointer", minHeight: 48 }, children: "Not quite yet" })
+          ] })
+        ] }) });
+      }
+      return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "mastery-overlay", onClick: onCancel, children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "mastery-card", onClick: (e) => e.stopPropagation(), children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: "2.5rem", marginBottom: 8 }, children: "🔥" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: "1rem", fontWeight: 900, color: "var(--ink)", marginBottom: 4 }, children: "Nice — let's lock it in!" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".78rem", color: "var(--ink3)", marginBottom: 6, lineHeight: 1.5 }, children: /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: phrase.en }) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".82rem", fontWeight: 700, color: "var(--plum)", marginBottom: 20 }, children: phrase.cn }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => setMode("quiz"), style: { width: "100%", padding: "14px", borderRadius: 12, border: "none", background: "var(--for)", color: "#fff", fontSize: ".84rem", fontWeight: 800, cursor: "pointer", marginBottom: 8, minHeight: 48 }, children: "🧠 Quick test to make it stick" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: onMastered, style: { width: "100%", padding: "14px", borderRadius: 12, border: "1.5px solid var(--st)", background: "var(--wh)", color: "var(--ink)", fontSize: ".84rem", fontWeight: 700, cursor: "pointer", minHeight: 48 }, children: "I've got this one — mark as mastered" })
+      ] }) });
+    }
+    function HomeTab({ profile, progress, upd, settings, setTab, recentTopics, setRecentTopics, practiceCount, library, selUnit, setSelUnit, markReviewed, startPlaylist, openPlBuilder, setAutoLaunch }) {
+      const [shadow, setShadow] = reactExports.useState(null);
+      const [searchQ, setSearchQ] = reactExports.useState("");
+      const [readingMode, setReadingMode] = reactExports.useState(false);
+      const [expandedIdx, setExpandedIdx] = reactExports.useState(null);
+      const [actionBarScrolled, setActionBarScrolled] = reactExports.useState(false);
+      const [miniPlayer, setMiniPlayer] = reactExports.useState(null);
+      const [masteryConfirm, setMasteryConfirm] = reactExports.useState(null);
+      const [showConfetti, setShowConfetti] = reactExports.useState(false);
+      const [toastMsg, setToastMsg] = reactExports.useState(null);
+      const miniTimer = reactExports.useRef(null);
+      const showMasteryToast = (msg) => {
+        setShowConfetti(true);
+        setToastMsg(msg);
+        setTimeout(() => setShowConfetti(false), 2e3);
+        setTimeout(() => setToastMsg(null), 2200);
+      };
+      const handleMarkKnown = reactExports.useCallback((ph2) => {
+        const items = progress.unit10 || [];
+        if (!items.find((s) => s.cn === ph2.cn)) {
+          upd("unit10", [{ en: ph2.en, jyut: ph2.jyut, cn: ph2.cn, tag: (UNITS.find((u2) => u2.id === selUnit) || UNITS[0]).title, known: true, date: (/* @__PURE__ */ new Date()).toLocaleDateString("en-GB", { day: "numeric", month: "short" }) }, ...items]);
+        } else {
+          upd("unit10", items.map((s) => s.cn === ph2.cn ? { ...s, known: true } : s));
+        }
+        upd("phrases", { ...progress.phrases || {}, [`${selUnit}-${ph2.origIdx}`]: true });
+        setMasteryConfirm(null);
+        showMasteryToast("Added to Mastered!");
+      }, [progress, upd, selUnit]);
+      const playPhraseMini = (ph2) => {
+        clearTimeout(miniTimer.current);
+        setMiniPlayer({ en: ph2.en, cn: ph2.cn, jyut: ph2.jyut, playing: true });
+        speak(ph2.cn);
+        miniTimer.current = setTimeout(() => setMiniPlayer(null), 6e3);
+      };
+      reactExports.useEffect(() => () => clearTimeout(miniTimer.current), []);
+      reactExports.useRef(null);
+      const searchRef = reactExports.useRef(null);
+      reactExports.useMemo(() => getStats(progress), [progress]);
+      const userName = profile;
+      UNITS.reduce((s, u2) => s + u2.phrases.length, 0);
+      const knownPhrases = Object.keys(progress.phrases || {}).filter((k2) => (progress.phrases || {})[k2]).length;
+      const hour = (/* @__PURE__ */ new Date()).getHours();
+      const greeting = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
+      const unit = UNITS.find((u2) => u2.id === selUnit) || UNITS[0];
+      unit.phrases.filter((_, i) => (progress.phrases || {})[`${unit.id}-${i}`]).length;
+      const sorted = unit.phrases.map((p2, i) => ({ ...p2, origIdx: i, known: !!(progress.phrases || {})[`${unit.id}-${i}`] })).sort((a, b2) => a.known - b2.known);
+      [...UNITS].sort((a, b2) => {
+        const aDone = a.phrases.every((_, i) => (progress.phrases || {})[`${a.id}-${i}`]);
+        const bDone = b2.phrases.every((_, i) => (progress.phrases || {})[`${b2.id}-${i}`]);
+        if (aDone && !bDone) return 1;
+        if (!aDone && bDone) return -1;
+        return a.id - b2.id;
+      });
+      const TOPIC_IMAGES = {
+        1: "https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?w=300&h=200&fit=crop",
+        2: "https://images.unsplash.com/photo-1529156069898-49953e39b3ac?w=300&h=200&fit=crop",
+        3: "https://images.unsplash.com/photo-1536640712-4d4c36ff0e4e?w=300&h=200&fit=crop",
+        4: "https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=300&h=200&fit=crop",
+        5: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=300&h=200&fit=crop",
+        6: "https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=300&h=200&fit=crop",
+        7: "https://images.unsplash.com/photo-1580582932707-520aed937b7b?w=300&h=200&fit=crop",
+        8: "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=300&h=200&fit=crop",
+        9: "https://images.unsplash.com/photo-1508739773434-c26b3d09e071?w=300&h=200&fit=crop",
+        10: "https://images.unsplash.com/photo-1518199266791-5375a83190b7?w=300&h=200&fit=crop",
+        11: "https://images.unsplash.com/photo-1470337458703-46ad1756a187?w=300&h=200&fit=crop",
+        12: "https://images.unsplash.com/photo-1501691223387-dd0500403074?w=300&h=200&fit=crop",
+        13: "https://images.unsplash.com/photo-1526304640581-d334cdbbf45e?w=300&h=200&fit=crop",
+        14: "https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=300&h=200&fit=crop",
+        15: "https://images.unsplash.com/photo-1544027993-37dbfe43562a?w=300&h=200&fit=crop",
+        16: "https://images.unsplash.com/photo-1512941937669-90a1b58e7e9c?w=300&h=200&fit=crop",
+        17: "https://images.unsplash.com/photo-1516483638261-f4dbaf036963?w=300&h=200&fit=crop",
+        18: "https://images.unsplash.com/photo-1611532736597-de2d4265fba3?w=300&h=200&fit=crop",
+        19: "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=300&h=200&fit=crop",
+        20: "https://images.unsplash.com/photo-1536599018102-9f803c140fc1?w=300&h=200&fit=crop"
+      };
+      const searchResults = reactExports.useMemo(() => {
+        const q2 = searchQ.trim().toLowerCase();
+        if (!q2) return [];
+        const results = [];
+        UNITS.forEach((u2) => {
+          u2.phrases.forEach((ph2, i) => {
+            const matchEn = (ph2.en || "").toLowerCase().includes(q2);
+            const matchCn = (ph2.cn || "").toLowerCase().includes(q2);
+            const matchJyut = (ph2.jyut || "").toLowerCase().includes(q2);
+            if (matchEn || matchCn || matchJyut) {
+              results.push({ type: "phrase", en: ph2.en, cn: ph2.cn, jyut: ph2.jyut, unitId: u2.id, unitTitle: u2.title, idx: i });
+            }
+          });
+        });
+        const seenWords = /* @__PURE__ */ new Set();
+        Object.keys(GLOSS_DATA || {}).forEach((key) => {
+          const g = GLOSS_DATA[key];
+          if (!Array.isArray(g)) return;
+          g.forEach((w2) => {
+            const matchKey = key.toLowerCase().includes(q2);
+            const matchEn = (w2.en || "").toLowerCase().includes(q2);
+            const matchCn = (w2.cn || "").toLowerCase().includes(q2);
+            const matchJy = (w2.jy || "").toLowerCase().includes(q2);
+            if (matchKey || matchEn || matchCn || matchJy) {
+              const wordId = w2.cn || key;
+              if (!seenWords.has(wordId)) {
+                seenWords.add(wordId);
+                results.push({ type: "word", en: w2.en || "", cn: w2.cn || key, jyut: w2.jy || key, unitId: null, unitTitle: null });
+              }
+            }
+          });
+        });
+        return results.slice(0, 12);
+      }, [searchQ]);
+      const inProgressTopics = reactExports.useMemo(() => {
+        return UNITS.filter((u2) => {
+          const k2 = u2.phrases.filter((_, i) => (progress.phrases || {})[`${u2.id}-${i}`]).length;
+          return k2 > 0 && k2 < u2.phrases.length;
+        });
+      }, [progress]);
+      const continueTopics = reactExports.useMemo(() => {
+        const ordered = [];
+        (recentTopics || []).forEach((rid) => {
+          const found = inProgressTopics.find((u2) => u2.id === rid);
+          if (found && !ordered.find((o) => o.id === found.id)) ordered.push(found);
+        });
+        inProgressTopics.forEach((u2) => {
+          if (!ordered.find((o) => o.id === u2.id)) ordered.push(u2);
+        });
+        return ordered.slice(0, 4);
+      }, [inProgressTopics, recentTopics]);
+      const updateRecent = (id2) => {
+        setRecentTopics((prev) => {
+          const updated = [id2, ...(prev || []).filter((x2) => x2 !== id2)].slice(0, 10);
+          localStorage.setItem(LANG_CONFIG.id + "-recent-topics", JSON.stringify(updated));
+          return updated;
+        });
+      };
+      const recentUnits = reactExports.useMemo(() => {
+        return (recentTopics || []).map((id2) => UNITS.find((u2) => u2.id === id2)).filter(Boolean);
+      }, [recentTopics]);
+      const libraryCount = (progress.unit10 || []).length;
+      reactExports.useEffect(() => {
+        preloadUnitAudio(unit.phrases);
+      }, [selUnit]);
+      if (shadow !== null) return /* @__PURE__ */ jsxRuntimeExports.jsx(ShadowMode, { unit, progress, upd, settings, onClose: () => {
+        releaseMicStream();
+        setShadow(null);
+      }, startIdx: shadow === "unit" ? 0 : shadow, single: shadow !== "unit" });
+      if (selUnit) {
+        const items = unit.phrases;
+        const knownInUnit = items.filter((_, i) => (progress.phrases || {})[`${unit.id}-${i}`]).length;
+        const unitPct = Math.round(knownInUnit / items.length * 100);
+        return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { paddingBottom: 80 }, children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "lesson-hdr", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "lesson-hdr-top", children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "lesson-back", onClick: () => setSelUnit(null), children: "← Back" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "lesson-stats-badge", children: [
+                knownInUnit,
+                " known · ",
+                unitPct,
+                "%"
+              ] })
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "lesson-hero", children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "lesson-art", children: /* @__PURE__ */ jsxRuntimeExports.jsx("img", { src: TOPIC_IMAGES[unit.id] || TOPIC_IMAGES[1], alt: "" }) }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "lesson-meta", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "lesson-meta-title", children: unit.title }),
+                /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "lesson-meta-sub", children: [
+                  items.length,
+                  " phrases · Unit ",
+                  unit.id
+                ] }),
+                /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "lesson-meta-progress", children: [
+                  knownInUnit,
+                  " of ",
+                  items.length,
+                  " learned"
+                ] })
+              ] })
+            ] })
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "ctrl-row", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { className: "play-all-btn", onClick: () => startPlaylist(items.map((p2) => ({ en: p2.en, cn: p2.cn, jyut: p2.jyut })), unit.title), children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("svg", { width: "14", height: "14", viewBox: "0 0 18 18", fill: "none", children: /* @__PURE__ */ jsxRuntimeExports.jsx("path", { d: "M4 2.5L15 9L4 15.5V2.5Z", fill: "#fff" }) }),
+              "Play All"
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { className: "shuffle-btn", onClick: () => setShadow("unit"), children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("svg", { width: "16", height: "16", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2.5", strokeLinecap: "round", strokeLinejoin: "round", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("polyline", { points: "16 3 21 3 21 8" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("line", { x1: "4", y1: "20", x2: "21", y2: "3" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("polyline", { points: "21 16 21 21 16 21" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("line", { x1: "15", y1: "15", x2: "21", y2: "21" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("line", { x1: "4", y1: "4", x2: "9", y2: "9" })
+              ] }),
+              "Shuffle"
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "filter-chip", onClick: () => setReadingMode((r2) => !r2), children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("svg", { width: "14", height: "14", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", strokeLinecap: "round", style: { marginRight: 4 }, children: /* @__PURE__ */ jsxRuntimeExports.jsx("path", { d: "M4 6h16M4 12h16M4 18h10" }) }),
+              readingMode ? "Chinese first" : "English first"
+            ] })
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { children: (() => {
+            const notKnown = sorted.filter((p2) => !p2.known);
+            const known = sorted.filter((p2) => p2.known);
+            return /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+              notKnown.map((ph2, i) => {
+                const gloss = getAutoGloss(ph2);
+                const isExp = expandedIdx === ph2.origIdx;
+                return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "ph-item" + (isExp ? " expanded" : ""), onClick: () => setExpandedIdx(isExp ? null : ph2.origIdx), children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "ph-row", children: [
+                    /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "ph-play", onClick: (e) => {
+                      e.stopPropagation();
+                      playPhraseMini(ph2);
+                    }, children: /* @__PURE__ */ jsxRuntimeExports.jsx("svg", { width: "10", height: "12", viewBox: "0 0 10 12", fill: "none", children: /* @__PURE__ */ jsxRuntimeExports.jsx("path", { d: "M0 0L10 6L0 12V0Z", fill: "#fff" }) }) }),
+                    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "ph-text", children: readingMode ? /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+                      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "ph-chi", style: { fontSize: 15, fontWeight: 600, color: "var(--ink)", marginBottom: 3, display: "flex", justifyContent: "space-between", alignItems: "center" }, children: [
+                        ph2.cn,
+                        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "ph-chev", children: "▾" })
+                      ] }),
+                      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "ph-jyut", children: ph2.jyut }),
+                      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 13, color: "var(--ink2)" }, children: ph2.en })
+                    ] }) : /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+                      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "ph-eng", children: [
+                        ph2.en,
+                        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "ph-chev", children: "▾" })
+                      ] }),
+                      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "ph-jyut", children: ph2.jyut }),
+                      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "ph-chi", children: ph2.cn })
+                    ] }) })
+                  ] }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "ph-detail", children: [
+                    ph2.tag && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "ph-context", children: [
+                      "Context: ",
+                      ph2.tag
+                    ] }),
+                    gloss.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "gloss-row", children: gloss.filter((g) => g.cn).map((g, gi2) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "gloss-chip", onClick: (e) => {
+                      e.stopPropagation();
+                      speak(g.cn);
+                    }, children: [
+                      /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "gloss-chi", children: g.cn }),
+                      /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "gloss-jyut", children: g.jy }),
+                      g.en && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "gloss-eng", children: g.en }),
+                      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "gloss-actions", children: /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "gloss-action", onClick: (e) => {
+                        e.stopPropagation();
+                        const items2 = progress.unit10 || [];
+                        if (!items2.find((s) => s.cn === g.cn)) {
+                          upd("unit10", [{ en: g.en || "", jyut: g.jy || "", cn: g.cn, tag: unit.title, known: false, date: (/* @__PURE__ */ new Date()).toLocaleDateString("en-GB", { day: "numeric", month: "short" }) }, ...items2]);
+                        }
+                      }, children: (progress.unit10 || []).find((s) => s.cn === g.cn) ? "✓" : "+" }) })
+                    ] }, gi2)) }),
+                    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "ph-actions", children: [
+                      /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "ph-action-btn" + ((progress.unit10 || []).find((s) => s.cn === ph2.cn) ? " saved-btn" : ""), onClick: (e) => {
+                        e.stopPropagation();
+                        const items2 = progress.unit10 || [];
+                        if (!items2.find((s) => s.cn === ph2.cn)) {
+                          upd("unit10", [{ en: ph2.en, jyut: ph2.jyut, cn: ph2.cn, tag: unit.title, known: false, date: (/* @__PURE__ */ new Date()).toLocaleDateString("en-GB", { day: "numeric", month: "short" }) }, ...items2]);
+                        }
+                      }, children: (progress.unit10 || []).find((s) => s.cn === ph2.cn) ? "✓ Saved!" : "Save to Library" }),
+                      /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { className: "ph-action-btn", onClick: (e) => {
+                        e.stopPropagation();
+                        setShadow(ph2.origIdx);
+                      }, children: [
+                        /* @__PURE__ */ jsxRuntimeExports.jsx("svg", { width: "10", height: "10", viewBox: "0 0 10 12", fill: "none", children: /* @__PURE__ */ jsxRuntimeExports.jsx("path", { d: "M0 0L10 6L0 12V0Z", fill: "#fff" }) }),
+                        " Repeat"
+                      ] }),
+                      !ph2.known && /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "ph-action-btn know-btn", onClick: (e) => {
+                        e.stopPropagation();
+                        setMasteryConfirm(ph2);
+                      }, children: "I know this!" })
+                    ] })
+                  ] })
+                ] }, ph2.origIdx);
+              }),
+              known.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { margin: "20px 0 0", background: "linear-gradient(135deg, #1F3329 0%, #2a4a36 50%, #1F3329 100%)", borderRadius: 16, overflow: "hidden" }, children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { padding: "16px 16px 12px", display: "flex", alignItems: "center", justifyContent: "space-between" }, children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", alignItems: "center", gap: 10 }, children: [
+                    /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { fontSize: "1.4rem" }, children: "🏆" }),
+                    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+                      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".88rem", fontWeight: 900, color: "#fff" }, children: "Trophy Cabinet" }),
+                      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { fontSize: ".68rem", color: "var(--lime)", fontWeight: 600, marginTop: 1 }, children: [
+                        known.length,
+                        " phrase",
+                        known.length !== 1 ? "s" : "",
+                        " conquered"
+                      ] })
+                    ] })
+                  ] }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { fontSize: ".68rem", color: "rgba(255,255,255,.4)", fontWeight: 600 }, children: [
+                    Math.round(known.length / items.length * 100),
+                    "% of unit"
+                  ] })
+                ] }),
+                known.map((ph2, i) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { padding: "10px 16px", borderTop: "1px solid rgba(255,255,255,.06)", display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }, onClick: () => playPhraseMini(ph2), children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: (e) => {
+                    e.stopPropagation();
+                    playPhraseMini(ph2);
+                  }, style: { width: 32, height: 32, borderRadius: "50%", border: "none", background: "rgba(196,240,0,.15)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }, children: /* @__PURE__ */ jsxRuntimeExports.jsx("svg", { width: "8", height: "10", viewBox: "0 0 10 12", fill: "none", children: /* @__PURE__ */ jsxRuntimeExports.jsx("path", { d: "M0 0L10 6L0 12V0Z", fill: "#C4F000" }) }) }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { flex: 1, minWidth: 0 }, children: [
+                    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".78rem", fontWeight: 600, color: "rgba(255,255,255,.85)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }, children: ph2.en }),
+                    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".65rem", color: "var(--lime)", fontStyle: "italic" }, children: ph2.jyut })
+                  ] }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".85rem", color: "rgba(255,255,255,.5)", flexShrink: 0, fontWeight: 600 }, children: ph2.cn })
+                ] }, ph2.origIdx))
+              ] })
+            ] });
+          })() }),
+          miniPlayer && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { position: "fixed", bottom: 64, left: 0, right: 0, zIndex: 110, padding: "0 12px", animation: "fadeUp .2s ease" }, children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { background: "rgba(20,20,20,.95)", borderRadius: 14, padding: "10px 14px", display: "flex", alignItems: "center", gap: 12, boxShadow: "0 8px 32px rgba(0,0,0,.4)", border: "1px solid rgba(255,255,255,.06)" }, children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { width: 40, height: 40, borderRadius: 8, background: "var(--for)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, cursor: "pointer" }, onClick: () => {
+              speak(miniPlayer.cn);
+            }, children: /* @__PURE__ */ jsxRuntimeExports.jsx("svg", { width: "12", height: "14", viewBox: "0 0 10 12", fill: "none", children: /* @__PURE__ */ jsxRuntimeExports.jsx("path", { d: "M0 0L10 6L0 12V0Z", fill: "#C4F000" }) }) }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { flex: 1, minWidth: 0 }, children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".78rem", fontWeight: 600, color: "rgba(255,255,255,.85)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }, children: miniPlayer.en }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".68rem", fontStyle: "italic", color: "var(--lime)", marginTop: 1 }, children: miniPlayer.jyut })
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: "1.4rem", fontWeight: 900, color: "#fff", flexShrink: 0 }, children: miniPlayer.cn }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => {
+              stopAudio();
+              clearTimeout(miniTimer.current);
+              setMiniPlayer(null);
+            }, style: { background: "rgba(255,255,255,.08)", border: "1px solid rgba(255,255,255,.1)", borderRadius: "50%", width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center", color: "rgba(255,255,255,.5)", fontSize: 14, cursor: "pointer", flexShrink: 0 }, children: "x" })
+          ] }) }),
+          masteryConfirm && /* @__PURE__ */ jsxRuntimeExports.jsx(MasteryConfirmSheet, { phrase: masteryConfirm, onCancel: () => setMasteryConfirm(null), onMastered: () => handleMarkKnown(masteryConfirm) }),
+          showConfetti && /* @__PURE__ */ jsxRuntimeExports.jsx(ConfettiBurst, {}),
+          toastMsg && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "mastery-toast", children: [
+            "🎉 ",
+            toastMsg
+          ] })
+        ] });
+      }
+      return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { paddingBottom: 80 }, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "home-hdr", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "home-greeting", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "greeting-text", children: [
+            greeting,
+            ", ",
+            userName.split(" ")[0]
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "greeting-sub", children: "Keep going, you're building real fluency." }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "stats-row", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "stat-item", children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "stat-num", children: knownPhrases }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "stat-label", children: "Phrases Learned" })
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "stat-item", children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "stat-num", children: (progress.lessonLog || []).length }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "stat-label", children: "Lessons Done" })
+            ] })
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { className: "start-btn", onClick: () => {
+            setAutoLaunch("daily");
+            setTab("practice");
+          }, children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("svg", { width: "18", height: "18", viewBox: "0 0 18 18", fill: "none", children: /* @__PURE__ */ jsxRuntimeExports.jsx("path", { d: "M4 2.5L15 9L4 15.5V2.5Z", fill: "#111" }) }),
+            "Start Today's Lesson"
+          ] })
+        ] }) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "search-wrap", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("svg", { className: "search-icon", width: "16", height: "16", viewBox: "0 0 16 16", fill: "none", children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("circle", { cx: "6.5", cy: "6.5", r: "5.5", stroke: "#9A9A9A", strokeWidth: "1.5" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("path", { d: "M11 11L15 15", stroke: "#9A9A9A", strokeWidth: "1.5", strokeLinecap: "round" })
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("input", { className: "home-search", placeholder: "Search phrases & words", value: searchQ, onChange: (e) => setSearchQ(e.target.value), ref: searchRef }),
+            searchQ && /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => {
+              setSearchQ("");
+              if (searchRef.current) searchRef.current.focus();
+            }, style: { position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", fontSize: 16, color: "var(--ink3)", cursor: "pointer" }, children: "x" })
+          ] }),
+          searchResults.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "search-results", style: { margin: "0 16px 12px" }, children: searchResults.map(
+            (r2, ri2) => {
+              const inLib = (progress.unit10 || []).find((s) => s.cn === r2.cn);
+              return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "search-result", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "sr-top", onClick: () => {
+                  if (r2.type === "word") {
+                    speak(r2.cn);
+                  } else if (r2.unitId) {
+                    setSelUnit(r2.unitId);
+                    updateRecent(r2.unitId);
+                    setExpandedIdx(r2.idx);
+                    setSearchQ("");
+                  }
+                }, children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "search-badge", style: { background: r2.type === "phrase" ? "rgba(122,170,0,.15)" : "rgba(143,106,232,.15)", color: r2.type === "phrase" ? "var(--ld)" : "var(--plum)" }, children: r2.type === "phrase" ? "PHRASE" : "WORD" }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { flex: 1, minWidth: 0 }, children: [
+                    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".82rem", fontWeight: 700, color: "var(--ink)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }, children: r2.en || r2.cn }),
+                    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".72rem", color: "var(--plum)", fontStyle: "italic" }, children: r2.jyut })
+                  ] }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { fontSize: ".95rem", fontWeight: 700, color: "var(--ink3)", flexShrink: 0 }, children: r2.cn })
+                ] }),
+                /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "sr-bottom", children: [
+                  r2.type === "word" && /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "sr-play", onClick: () => speak(r2.cn), children: "▶ Play" }),
+                  r2.type === "phrase" && r2.unitId && /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "sr-goto", onClick: () => {
+                    setSelUnit(r2.unitId);
+                    updateRecent(r2.unitId);
+                    setExpandedIdx(r2.idx);
+                    setSearchQ("");
+                  }, children: "Go to unit ›" }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "sr-add" + (inLib ? " saved" : ""), onClick: (e) => {
+                    e.stopPropagation();
+                    if (!inLib) {
+                      const items = progress.unit10 || [];
+                      upd("unit10", [{ en: r2.en || "", jyut: r2.jyut || "", cn: r2.cn, tag: r2.unitTitle || "Search", known: false, date: (/* @__PURE__ */ new Date()).toLocaleDateString("en-GB", { day: "numeric", month: "short" }) }, ...items]);
+                    }
+                  }, children: inLib ? "✓ Saved" : "+ Add to library" })
+                ] })
+              ] }, ri2);
+            }
+          ) }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "lib-card", onClick: () => setTab("library"), children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "lib-card-icon", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("svg", { width: "24", height: "24", viewBox: "0 0 24 24", fill: "none", children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("path", { d: "M4 19V5a2 2 0 012-2h8.5L20 8.5V19a2 2 0 01-2 2H6a2 2 0 01-2-2z", stroke: "#C4F000", strokeWidth: "1.5" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("path", { d: "M14 3v6h6", stroke: "#C4F000", strokeWidth: "1.5" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("path", { d: "M8 13h8M8 17h5", stroke: "#C4F000", strokeWidth: "1.5", strokeLinecap: "round" })
+            ] }) }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "lib-card-info", children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "lib-card-title", children: "My Library" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "lib-card-sub", children: [
+                libraryCount,
+                " saved phrases"
+              ] })
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { fontSize: 18, color: "var(--ink3)" }, children: "›" })
+          ] }),
+          recentUnits.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "sec-hdr", children: /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "sec-title", children: "Most Recent" }) }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "recent-grid", children: recentUnits.slice(0, 4).map((u2) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "recent-card", onClick: () => {
+              setSelUnit(u2.id);
+              updateRecent(u2.id);
+            }, children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "recent-card-art", children: /* @__PURE__ */ jsxRuntimeExports.jsx("img", { src: TOPIC_IMAGES[u2.id] || TOPIC_IMAGES[1], alt: "" }) }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "recent-card-name", children: u2.title })
+            ] }, u2.id)) })
+          ] }),
+          continueTopics.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "sec-hdr", children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "sec-title", children: "Continue Learning" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "sec-link", children: "See all" })
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "cont-scroll", children: continueTopics.map((u2) => {
+              const k2 = u2.phrases.filter((_, i) => (progress.phrases || {})[`${u2.id}-${i}`]).length;
+              const cpct = Math.round(k2 / u2.phrases.length * 100);
+              return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "cont-card", onClick: () => {
+                setSelUnit(u2.id);
+                updateRecent(u2.id);
+              }, children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "cont-art", children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("img", { src: TOPIC_IMAGES[u2.id] || TOPIC_IMAGES[1], alt: "" }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "topic-label", children: u2.title }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "play-circle", children: "▶" })
+                ] }),
+                /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "cont-info", children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "cont-name", children: u2.title }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "cont-meta", children: [
+                    k2,
+                    " of ",
+                    u2.phrases.length,
+                    " phrases learned"
+                  ] }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "cont-pbar", children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "cont-pbar-fill", style: { width: cpct + "%" } }) })
+                ] })
+              ] }, u2.id);
+            }) })
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "sec-hdr", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "sec-title", children: "All Topics" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "sec-link", children: [
+              UNITS.length,
+              " topics"
+            ] })
+          ] }),
+          (() => {
+            const rows = 3;
+            const cols = Math.ceil(UNITS.length / rows);
+            const reordered = [];
+            for (let c = 0; c < cols; c++) {
+              for (let r2 = 0; r2 < rows; r2++) {
+                const idx = r2 * cols + c;
+                if (idx < UNITS.length) reordered.push(UNITS[idx]);
+              }
+            }
+            return /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "topics-wrap", ref: (el2) => {
+                if (!el2) return;
+                const bar = el2.nextElementSibling;
+                if (!bar) return;
+                const fill = bar.firstChild;
+                const update = () => {
+                  const pct2 = el2.scrollWidth <= el2.clientWidth ? 100 : Math.round(el2.scrollLeft / (el2.scrollWidth - el2.clientWidth) * 100);
+                  if (fill) fill.style.width = pct2 + "%";
+                };
+                el2.onscroll = update;
+                setTimeout(update, 100);
+              }, children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "topics-grid", children: reordered.map((u2) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "t-card", onClick: () => {
+                setSelUnit(u2.id);
+                updateRecent(u2.id);
+              }, children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "t-art", children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("img", { src: TOPIC_IMAGES[u2.id] || TOPIC_IMAGES[1], alt: "" }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "t-num", children: [
+                    "#",
+                    u2.id
+                  ] })
+                ] }),
+                /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "t-info", children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "t-name", children: u2.title }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "t-meta", children: [
+                    u2.phrases.length,
+                    " phrases"
+                  ] })
+                ] })
+              ] }, u2.id)) }) }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "topics-scrollbar", children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "topics-scrollbar-fill" }) })
+            ] });
+          })()
         ] })
       ] });
     }
-    const mm = String(Math.floor(timeLeft / 60)).padStart(2, "0");
-    const ss = String(timeLeft % 60).padStart(2, "0");
-    const pmm = String(Math.floor(phaseTimeLeft / 60)).padStart(2, "0");
-    const pss = String(phaseTimeLeft % 60).padStart(2, "0");
-    const cp = phaseInfo[phase];
-    const items = getPhaseItems();
-    const safeIdx = (items == null ? void 0 : items.length) ? innerIdx % items.length : 0;
-    const item = items == null ? void 0 : items[safeIdx];
-    const passNum = (items == null ? void 0 : items.length) ? Math.floor(innerIdx / items.length) : 0;
-    const round = passNum % 3;
-    const showKnowBtn = phase === 3 || phase === 4;
-    return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "sho navy", children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 16px" }, children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx("button", { style: { width: 40, height: 40, borderRadius: "50%", background: "rgba(255,255,255,.08)", border: "1px solid rgba(255,255,255,.1)", color: "rgba(255,255,255,.6)", fontSize: 15, fontFamily: "inherit", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }, onClick: onQuit, children: "✕" }),
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { textAlign: "center" }, children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { fontSize: "1.2rem", fontWeight: 900, color: "var(--lime)", fontVariantNumeric: "tabular-nums", lineHeight: 1 }, children: [
-            mm,
-            ":",
-            ss
-          ] }),
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { fontSize: ".65rem", fontWeight: 700, color: "rgba(255,255,255,.4)", marginTop: 2 }, children: [
-            cp.icon,
-            " ",
-            cp.short
-          ] })
-        ] }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { textAlign: "right" }, children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { fontSize: ".72rem", fontWeight: 700, color: "rgba(255,255,255,.45)" }, children: [
-          "Phrase ",
-          safeIdx + 1,
-          " of ",
-          (items == null ? void 0 : items.length) || 0
-        ] }) })
-      ] }),
-      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { height: 3, background: "rgba(255,255,255,.08)", margin: "0 16px", borderRadius: 2 }, children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { height: "100%", background: "var(--lime)", borderRadius: 2, width: `${Math.max(0, Math.min(100, (30 * 60 - timeLeft) / (30 * 60) * 100))}%`, transition: "width .5s" } }) }),
-      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "l-phase-bar", children: phaseInfo.map((p2, i) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "l-pb-item", style: { flex: phaseDurations[i] }, children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "l-pb-icon", style: { color: i < phase ? "var(--lime)" : i === phase ? "rgba(255,255,255,.7)" : "rgba(255,255,255,.2)" }, children: i < phase ? "✓" : p2.icon }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "l-pb-label", style: { color: i < phase ? "rgba(196,240,0,.4)" : i === phase ? "rgba(255,255,255,.6)" : "rgba(255,255,255,.18)", fontWeight: i === phase ? 700 : 600 }, children: p2.short })
-      ] }, i)) }),
-      phase !== 4 && item && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "coach-inline", children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "ci-emoji", children: phase === 2 ? ((_a = drillCoach[round]) == null ? void 0 : _a.emoji) || "🎯" : "🎯" }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "ci-text", children: /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: phase === 2 ? ((_b = drillCoach[round]) == null ? void 0 : _b.text) || cp.coach : cp.coach }) })
-      ] }),
-      phase === 1 ? (
-        /* New Learning */
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "sh-bd", children: item ? /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "sh-en", children: item.en }),
-          shadowPhase !== "play" && showJyut && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "sh-jy", children: /* @__PURE__ */ jsxRuntimeExports.jsx(JyutpingTone, { text: item.jyut }) }),
-          shadowPhase !== "play" && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "sh-cn", children: item.cn }),
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: `cue-pill ${shadowPhase === "shadow" ? "speak" : "listen"}`, children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "cue-pill-emoji", children: shadowPhase === "shadow" ? "🗣️" : "👂" }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "cue-pill-dot" }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "cue-pill-text", children: shadowPhase === "shadow" ? "Say it out loud!" : "Listen" })
-          ] }),
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { fontSize: ".68rem", color: "rgba(255,255,255,.2)", marginTop: 6 }, children: [
-            "Phrase ",
-            safeIdx + 1,
-            " of ",
-            items.length
-          ] })
-        ] }) : /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { color: "rgba(255,255,255,.4)" }, children: "Preparing..." }) })
-      ) : phase === 2 ? (
-        /* Repeat Drill with enlarged word cards (#19) */
-        /* @__PURE__ */ jsxRuntimeExports.jsx(DrillView, { item, items, innerIdx, safeIdx, showJyut })
-      ) : phase === 4 ? (
-        /* Quiz */
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "quiz-body", style: { background: "var(--navy)" }, children: item && innerIdx < items.length ? /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "quiz-sub", children: "Say this in Cantonese:" }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "quiz-prompt", children: item.en }),
-          !revealed ? /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "quiz-reveal-btn", onClick: () => setRevealed(true), children: "Reveal answer" }) : /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "quiz-answer", children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "quiz-ans-jy", children: /* @__PURE__ */ jsxRuntimeExports.jsx(JyutpingTone, { text: item.jyut }) }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "quiz-ans-cn", children: item.cn }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx("button", { style: { marginTop: 6, background: "var(--st)", border: "none", borderRadius: 999, padding: "8px 12px", fontSize: ".72rem", cursor: "pointer" }, onClick: () => speak(item.cn), children: "▶ Listen" })
-            ] }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { width: "100%", maxWidth: 440, marginBottom: 10 }, children: !isRecording && !scoring ? /* @__PURE__ */ jsxRuntimeExports.jsx(RecordBtn, { onClick: quizStartTest, label: "🎙 Test your pronunciation", style: { width: "100%", padding: "12px", borderRadius: 12, border: "2px solid var(--lime)", background: "rgba(196,240,0,.08)", color: "var(--lime)", fontSize: ".78rem", fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 } }) : scoring ? /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { width: "100%", padding: "12px", borderRadius: 12, background: "rgba(255,255,255,.06)", textAlign: "center" }, children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".75rem", fontWeight: 700, color: "rgba(255,255,255,.5)" }, children: "Scoring your pronunciation..." }) }) : /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: quizStopTest, style: { width: "100%", padding: "12px", borderRadius: 12, border: "2px solid #e74c3c", background: "rgba(231,76,60,.12)", color: "#ff7a5c", fontSize: ".78rem", fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, animation: "pulse 1s ease-in-out infinite" }, children: "⏹ Stop recording & score" }) }),
-            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "quiz-grade", children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "quiz-g-btn quiz-g-yes", onClick: () => handleQuizGrade("right"), children: "✓ Got it" }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "quiz-g-btn quiz-g-no", onClick: () => handleQuizGrade("wrong"), children: "✗ Nope" })
-            ] })
-          ] }),
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { fontSize: ".68rem", color: "rgba(255,255,255,.3)", marginTop: 6 }, children: [
-            innerIdx + 1,
-            " of ",
-            items.length
-          ] })
-        ] }) : /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { color: "rgba(255,255,255,.4)", fontSize: ".78rem", padding: 20 }, children: [
-          "Quiz done! ",
-          pmm,
-          ":",
-          pss,
-          " until next phase"
-        ] }) })
-      ) : (
-        /* Standard shadow (warmup, mix, cooldown) */
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "sh-bd", children: item ? /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "sh-tg", children: item.tag || cp.name }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "sh-en", children: item.en }),
-          showJyut && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "sh-jy", children: /* @__PURE__ */ jsxRuntimeExports.jsx(JyutpingTone, { text: item.jyut }) }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "sh-cn", children: item.cn }),
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: `cue-pill ${shadowPhase === "shadow" ? "speak" : "listen"}`, children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "cue-pill-emoji", children: shadowPhase === "shadow" ? "🗣️" : "👂" }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "cue-pill-dot" }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "cue-pill-text", children: shadowPhase === "shadow" ? "Say it out loud!" : "Listen" })
-          ] }),
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { fontSize: ".68rem", color: "rgba(255,255,255,.25)", marginTop: 8 }, children: [
-            "Phrase ",
-            safeIdx + 1,
-            "/",
-            items.length,
-            " · looping"
-          ] })
-        ] }) : /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { color: "rgba(255,255,255,.4)" }, children: "Preparing..." }) })
-      ),
-      phase !== 4 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "l-ctrl", children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "l-transport", children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "lt-wrap", children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "lt-btn sec", onClick: () => {
-              clearTimeout(shadowTimer.current);
-              setShadowPhase("play");
-            }, children: "↻" }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "lt-lbl", children: "Replay" })
-          ] }),
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "lt-wrap", children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "lt-btn pri", onClick: () => setPaused((p2) => !p2), children: paused ? "▶" : "⏸" }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "lt-lbl", children: paused ? "Resume" : "Pause" })
-          ] })
-        ] }),
-        showKnowBtn && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "l-know-row", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { className: "l-know-btn", onClick: markKnownInLesson, children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { fontSize: "1rem" }, children: "💪" }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "I know this now" })
-        ] }) }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "l-divider" }),
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "l-speed", children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "l-row-label", children: "Pause between phrases" }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "l-pill-row", children: [{ k: "slow", l: "Longer pause" }, { k: "normal", l: "Normal" }, { k: "fast", l: "Shorter pause" }].map(
-            (s) => /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: `l-pill-btn ${speed === s.k ? "on" : ""}`, onClick: () => setSpeed(s.k), children: s.l }, s.k)
-          ) })
-        ] })
-      ] }),
-      phase === 4 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "l-ctrl", children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "l-transport", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "lt-wrap", children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "lt-btn pri", onClick: () => setPaused((p2) => !p2), children: paused ? "▶" : "⏸" }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "lt-lbl", children: paused ? "Resume" : "Pause" })
-        ] }) }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "l-know-row", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { className: "l-know-btn", onClick: markKnownInLesson, children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { fontSize: "1rem" }, children: "💪" }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "I know this now" })
-        ] }) })
-      ] }),
-      scoreResult && /* @__PURE__ */ jsxRuntimeExports.jsx(
-        PronunciationScore,
-        {
-          score: scoreResult.score,
-          chars: scoreResult.chars,
-          phrase: scoreResult.phrase,
-          onRetry: () => {
-            setScoreResult(null);
-            quizStartTest();
-          },
-          onNext: () => {
-            setScoreResult(null);
-            setPaused(false);
-          },
-          onClose: () => {
-            setScoreResult(null);
-            setPaused(false);
-          }
-        }
-      )
-    ] });
-  }
-  function ConfettiBurst() {
-    const colors = ["#C4F000", "#7AAA00", "#8F6AE8", "#E8A040", "#FF6B9D", "#00C9DB"];
-    const [pieces] = reactExports.useState(() => Array.from({ length: 30 }, (_, i) => ({
-      id: i,
-      left: Math.random() * 100,
-      delay: Math.random() * 0.4,
-      color: colors[i % colors.length],
-      size: 6 + Math.random() * 6,
-      dur: 1 + Math.random() * 0.8
-    })));
-    return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "confetti-container", children: pieces.map(
-      (p2) => /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "confetti-piece", style: { left: p2.left + "%", top: -10, width: p2.size, height: p2.size, background: p2.color, animation: `confettiFall ${p2.dur}s ease-out ${p2.delay}s forwards` } }, p2.id)
-    ) });
-  }
-  function MasteryConfirmSheet({ phrase, onMastered, onCancel }) {
-    const [mode, setMode] = reactExports.useState("ask");
-    const [revealed, setRevealed] = reactExports.useState(false);
-    const romanization = phrase[LANG_CONFIG.romanizationKey] || phrase.jyut;
-    if (mode === "quiz") {
-      return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "mastery-overlay", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "mastery-card", onClick: (e) => e.stopPropagation(), style: { maxWidth: 360 }, children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { fontSize: ".68rem", fontWeight: 800, color: "var(--ink3)", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 12 }, children: [
-          "SAY THIS IN ",
-          LANG_CONFIG.name.toUpperCase(),
-          ":"
-        ] }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: "1.1rem", fontWeight: 800, color: "var(--ink)", marginBottom: 8 }, children: phrase.en }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".75rem", color: "var(--ink3)", marginBottom: 16 }, children: "Try to say it out loud first!" }),
-        !revealed ? /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => setRevealed(true), style: { width: "100%", padding: "14px", borderRadius: 12, border: "none", background: "var(--lime)", color: "var(--for)", fontSize: ".88rem", fontWeight: 800, cursor: "pointer", minHeight: 48 }, children: "Reveal answer" }) : /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { background: "var(--cream)", borderRadius: 14, padding: "16px", marginBottom: 16, display: "flex", alignItems: "center", gap: 12 }, children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => speak(phrase.cn), style: { width: 44, height: 44, borderRadius: "50%", border: "none", background: "var(--for)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }, children: /* @__PURE__ */ jsxRuntimeExports.jsx("svg", { width: "12", height: "14", viewBox: "0 0 10 12", fill: "none", children: /* @__PURE__ */ jsxRuntimeExports.jsx("path", { d: "M0 0L10 6L0 12V0Z", fill: "#C4F000" }) }) }),
-            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
-              romanization && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".85rem", fontStyle: "italic", color: "var(--plum)", fontWeight: 600, marginBottom: 2 }, children: romanization }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontFamily: LANG_CONFIG.fontFamily, fontSize: "1.1rem", fontWeight: 800, color: "var(--ink)" }, children: phrase.cn })
-            ] })
-          ] }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".78rem", fontWeight: 700, color: "var(--ink2)", marginBottom: 12 }, children: "Did you get it right?" }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: onMastered, style: { width: "100%", padding: "14px", borderRadius: 12, border: "none", background: "var(--lime)", color: "var(--for)", fontSize: ".88rem", fontWeight: 800, cursor: "pointer", marginBottom: 8, minHeight: 48 }, children: "Yes, I nailed it!" }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: onCancel, style: { width: "100%", padding: "14px", borderRadius: 12, border: "1.5px solid var(--st)", background: "var(--wh)", color: "var(--ink3)", fontSize: ".82rem", fontWeight: 700, cursor: "pointer", minHeight: 48 }, children: "Not quite yet" })
-        ] })
-      ] }) });
-    }
-    return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "mastery-overlay", onClick: onCancel, children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "mastery-card", onClick: (e) => e.stopPropagation(), children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: "2.5rem", marginBottom: 8 }, children: "🔥" }),
-      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: "1rem", fontWeight: 900, color: "var(--ink)", marginBottom: 4 }, children: "Nice — let's lock it in!" }),
-      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".78rem", color: "var(--ink3)", marginBottom: 6, lineHeight: 1.5 }, children: /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: phrase.en }) }),
-      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".82rem", fontWeight: 700, color: "var(--plum)", marginBottom: 20 }, children: phrase.cn }),
-      /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => setMode("quiz"), style: { width: "100%", padding: "14px", borderRadius: 12, border: "none", background: "var(--for)", color: "#fff", fontSize: ".84rem", fontWeight: 800, cursor: "pointer", marginBottom: 8, minHeight: 48 }, children: "🧠 Quick test to make it stick" }),
-      /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: onMastered, style: { width: "100%", padding: "14px", borderRadius: 12, border: "1.5px solid var(--st)", background: "var(--wh)", color: "var(--ink)", fontSize: ".84rem", fontWeight: 700, cursor: "pointer", minHeight: 48 }, children: "I've got this one — mark as mastered" })
-    ] }) });
-  }
-  function HomeTab({ profile, progress, upd, settings, setTab, recentTopics, setRecentTopics, practiceCount, library, selUnit, setSelUnit, markReviewed, startPlaylist, openPlBuilder, setAutoLaunch }) {
-    const [shadow, setShadow] = reactExports.useState(null);
-    const [searchQ, setSearchQ] = reactExports.useState("");
-    const [readingMode, setReadingMode] = reactExports.useState(false);
-    const [expandedIdx, setExpandedIdx] = reactExports.useState(null);
-    const [actionBarScrolled, setActionBarScrolled] = reactExports.useState(false);
-    const [miniPlayer, setMiniPlayer] = reactExports.useState(null);
-    const [masteryConfirm, setMasteryConfirm] = reactExports.useState(null);
-    const [showConfetti, setShowConfetti] = reactExports.useState(false);
-    const [toastMsg, setToastMsg] = reactExports.useState(null);
-    const miniTimer = reactExports.useRef(null);
-    const showMasteryToast = (msg) => {
-      setShowConfetti(true);
-      setToastMsg(msg);
-      setTimeout(() => setShowConfetti(false), 2e3);
-      setTimeout(() => setToastMsg(null), 2200);
-    };
-    const handleMarkKnown = reactExports.useCallback((ph2) => {
+    function LibraryTab({ library, setLibrary, progress, upd, settings, startPlaylist }) {
+      const [showAddForm, setShowAddForm] = reactExports.useState(false);
+      const [en, setEn] = reactExports.useState("");
+      const [rom, setRom] = reactExports.useState("");
+      const [cn, setCn] = reactExports.useState("");
+      const [saved, setSaved] = reactExports.useState(false);
+      const [expandedIdx, setExpandedIdx] = reactExports.useState(null);
       const items = progress.unit10 || [];
-      if (!items.find((s) => s.cn === ph2.cn)) {
-        upd("unit10", [{ en: ph2.en, jyut: ph2.jyut, cn: ph2.cn, tag: (UNITS.find((u2) => u2.id === selUnit) || UNITS[0]).title, known: true, date: (/* @__PURE__ */ new Date()).toLocaleDateString("en-GB", { day: "numeric", month: "short" }) }, ...items]);
-      } else {
-        upd("unit10", items.map((s) => s.cn === ph2.cn ? { ...s, known: true } : s));
+      const stillLearning = items.filter((s) => !s.known);
+      const mastered = items.filter((s) => s.known);
+      const romKey = LANG_CONFIG.romanizationKey;
+      const romLabel = LANG_CONFIG.romanizationLabel;
+      const handleSave = () => {
+        if (!en.trim()) return;
+        const ns = { en: en.trim(), [romKey]: rom.trim() || "", cn: cn.trim() || "", tag: "Life", date: (/* @__PURE__ */ new Date()).toLocaleDateString("en-GB", { weekday: "short" }), known: false };
+        upd("unit10", [ns, ...items]);
+        setEn("");
+        setRom("");
+        setCn("");
+        setSaved(true);
+        setTimeout(() => {
+          setSaved(false);
+          setShowAddForm(false);
+        }, 1500);
+      };
+      const toggleKnown = (idx) => {
+        const updated = items.map((s, i) => i === idx ? { ...s, known: !s.known } : s);
+        upd("unit10", updated);
+      };
+      const removeItem = (idx) => {
+        const updated = items.filter((_, i) => i !== idx);
+        upd("unit10", updated);
+      };
+      const canSpeak = (s) => s.cn && s.cn !== "(add characters)" && s.cn.trim() !== "";
+      const [masteredOpen, setMasteredOpen] = reactExports.useState(false);
+      const [libShadow, setLibShadow] = reactExports.useState(null);
+      const [readingMode, setReadingMode] = reactExports.useState(false);
+      const [masteryConfirm, setMasteryConfirm] = reactExports.useState(null);
+      const [showConfetti, setShowConfetti] = reactExports.useState(false);
+      const [toastMsg, setToastMsg] = reactExports.useState(null);
+      const showMasteryToast = (msg) => {
+        setShowConfetti(true);
+        setToastMsg(msg);
+        setTimeout(() => setShowConfetti(false), 2e3);
+        setTimeout(() => setToastMsg(null), 2200);
+      };
+      const handleLibMastery = (idx) => {
+        const updated = items.map((s, i) => i === idx ? { ...s, known: true } : s);
+        upd("unit10", updated);
+        setMasteryConfirm(null);
+        showMasteryToast("Added to Mastered!");
+      };
+      const isVocab = (s) => !s.en || s.en.split(/\s+/).length <= 2;
+      const slPhrases = stillLearning.filter((s) => !isVocab(s));
+      const slVocab = stillLearning.filter((s) => isVocab(s));
+      if (libShadow !== null) {
+        const isSingle = typeof libShadow === "number";
+        if (isSingle) {
+          const s = items[libShadow];
+          return /* @__PURE__ */ jsxRuntimeExports.jsx(ShadowMode, { unit: { title: "My Library", phrases: [{ en: s.en || s.cn, cn: s.cn, jyut: s[romKey] || s.jyut || "" }] }, progress, upd, settings, onClose: () => {
+            releaseMicStream();
+            setLibShadow(null);
+          }, startIdx: 0, single: true });
+        }
+        const shadowItems = stillLearning.length > 0 ? stillLearning : items;
+        return /* @__PURE__ */ jsxRuntimeExports.jsx(ShadowMode, { unit: { title: "My Library", phrases: shadowItems.map((s) => ({ en: s.en || s.cn, cn: s.cn, jyut: s[romKey] || s.jyut || "" })) }, progress, upd, settings, onClose: () => {
+          releaseMicStream();
+          setLibShadow(null);
+        }, startIdx: 0, single: false });
       }
-      upd("phrases", { ...progress.phrases || {}, [`${selUnit}-${ph2.origIdx}`]: true });
-      setMasteryConfirm(null);
-      showMasteryToast("Added to Mastered!");
-    }, [progress, upd, selUnit]);
-    const playPhraseMini = (ph2) => {
-      clearTimeout(miniTimer.current);
-      setMiniPlayer({ en: ph2.en, cn: ph2.cn, jyut: ph2.jyut, playing: true });
-      speak(ph2.cn);
-      miniTimer.current = setTimeout(() => setMiniPlayer(null), 6e3);
-    };
-    reactExports.useEffect(() => () => clearTimeout(miniTimer.current), []);
-    reactExports.useRef(null);
-    const searchRef = reactExports.useRef(null);
-    reactExports.useMemo(() => getStats(progress), [progress]);
-    const userName = profile;
-    UNITS.reduce((s, u2) => s + u2.phrases.length, 0);
-    const knownPhrases = Object.keys(progress.phrases || {}).filter((k2) => (progress.phrases || {})[k2]).length;
-    const hour = (/* @__PURE__ */ new Date()).getHours();
-    const greeting = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
-    const unit = UNITS.find((u2) => u2.id === selUnit) || UNITS[0];
-    unit.phrases.filter((_, i) => (progress.phrases || {})[`${unit.id}-${i}`]).length;
-    const sorted = unit.phrases.map((p2, i) => ({ ...p2, origIdx: i, known: !!(progress.phrases || {})[`${unit.id}-${i}`] })).sort((a, b2) => a.known - b2.known);
-    [...UNITS].sort((a, b2) => {
-      const aDone = a.phrases.every((_, i) => (progress.phrases || {})[`${a.id}-${i}`]);
-      const bDone = b2.phrases.every((_, i) => (progress.phrases || {})[`${b2.id}-${i}`]);
-      if (aDone && !bDone) return 1;
-      if (!aDone && bDone) return -1;
-      return a.id - b2.id;
-    });
-    const TOPIC_IMAGES = {
-      1: "https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?w=300&h=200&fit=crop",
-      2: "https://images.unsplash.com/photo-1529156069898-49953e39b3ac?w=300&h=200&fit=crop",
-      3: "https://images.unsplash.com/photo-1536640712-4d4c36ff0e4e?w=300&h=200&fit=crop",
-      4: "https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=300&h=200&fit=crop",
-      5: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=300&h=200&fit=crop",
-      6: "https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=300&h=200&fit=crop",
-      7: "https://images.unsplash.com/photo-1580582932707-520aed937b7b?w=300&h=200&fit=crop",
-      8: "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=300&h=200&fit=crop",
-      9: "https://images.unsplash.com/photo-1508739773434-c26b3d09e071?w=300&h=200&fit=crop",
-      10: "https://images.unsplash.com/photo-1518199266791-5375a83190b7?w=300&h=200&fit=crop",
-      11: "https://images.unsplash.com/photo-1470337458703-46ad1756a187?w=300&h=200&fit=crop",
-      12: "https://images.unsplash.com/photo-1501691223387-dd0500403074?w=300&h=200&fit=crop",
-      13: "https://images.unsplash.com/photo-1526304640581-d334cdbbf45e?w=300&h=200&fit=crop",
-      14: "https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=300&h=200&fit=crop",
-      15: "https://images.unsplash.com/photo-1544027993-37dbfe43562a?w=300&h=200&fit=crop",
-      16: "https://images.unsplash.com/photo-1512941937669-90a1b58e7e9c?w=300&h=200&fit=crop",
-      17: "https://images.unsplash.com/photo-1516483638261-f4dbaf036963?w=300&h=200&fit=crop",
-      18: "https://images.unsplash.com/photo-1611532736597-de2d4265fba3?w=300&h=200&fit=crop",
-      19: "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=300&h=200&fit=crop",
-      20: "https://images.unsplash.com/photo-1536599018102-9f803c140fc1?w=300&h=200&fit=crop"
-    };
-    const searchResults = reactExports.useMemo(() => {
-      const q2 = searchQ.trim().toLowerCase();
-      if (!q2) return [];
-      const results = [];
-      UNITS.forEach((u2) => {
-        u2.phrases.forEach((ph2, i) => {
-          const matchEn = (ph2.en || "").toLowerCase().includes(q2);
-          const matchCn = (ph2.cn || "").toLowerCase().includes(q2);
-          const matchJyut = (ph2.jyut || "").toLowerCase().includes(q2);
-          if (matchEn || matchCn || matchJyut) {
-            results.push({ type: "phrase", en: ph2.en, cn: ph2.cn, jyut: ph2.jyut, unitId: u2.id, unitTitle: u2.title, idx: i });
-          }
-        });
-      });
-      const seenWords = /* @__PURE__ */ new Set();
-      Object.keys(GLOSS_DATA || {}).forEach((key) => {
-        const g = GLOSS_DATA[key];
-        if (!Array.isArray(g)) return;
-        g.forEach((w2) => {
-          const matchKey = key.toLowerCase().includes(q2);
-          const matchEn = (w2.en || "").toLowerCase().includes(q2);
-          const matchCn = (w2.cn || "").toLowerCase().includes(q2);
-          const matchJy = (w2.jy || "").toLowerCase().includes(q2);
-          if (matchKey || matchEn || matchCn || matchJy) {
-            const wordId = w2.cn || key;
-            if (!seenWords.has(wordId)) {
-              seenWords.add(wordId);
-              results.push({ type: "word", en: w2.en || "", cn: w2.cn || key, jyut: w2.jy || key, unitId: null, unitTitle: null });
-            }
-          }
-        });
-      });
-      return results.slice(0, 12);
-    }, [searchQ]);
-    const inProgressTopics = reactExports.useMemo(() => {
-      return UNITS.filter((u2) => {
-        const k2 = u2.phrases.filter((_, i) => (progress.phrases || {})[`${u2.id}-${i}`]).length;
-        return k2 > 0 && k2 < u2.phrases.length;
-      });
-    }, [progress]);
-    const continueTopics = reactExports.useMemo(() => {
-      const ordered = [];
-      (recentTopics || []).forEach((rid) => {
-        const found = inProgressTopics.find((u2) => u2.id === rid);
-        if (found && !ordered.find((o) => o.id === found.id)) ordered.push(found);
-      });
-      inProgressTopics.forEach((u2) => {
-        if (!ordered.find((o) => o.id === u2.id)) ordered.push(u2);
-      });
-      return ordered.slice(0, 4);
-    }, [inProgressTopics, recentTopics]);
-    const updateRecent = (id2) => {
-      setRecentTopics((prev) => {
-        const updated = [id2, ...(prev || []).filter((x2) => x2 !== id2)].slice(0, 10);
-        localStorage.setItem(LANG_CONFIG.id + "-recent-topics", JSON.stringify(updated));
-        return updated;
-      });
-    };
-    const recentUnits = reactExports.useMemo(() => {
-      return (recentTopics || []).map((id2) => UNITS.find((u2) => u2.id === id2)).filter(Boolean);
-    }, [recentTopics]);
-    const libraryCount = (progress.unit10 || []).length;
-    reactExports.useEffect(() => {
-      preloadUnitAudio(unit.phrases);
-    }, [selUnit]);
-    if (shadow !== null) return /* @__PURE__ */ jsxRuntimeExports.jsx(ShadowMode, { unit, progress, upd, settings, onClose: () => {
-      releaseMicStream();
-      setShadow(null);
-    }, startIdx: shadow === "unit" ? 0 : shadow, single: shadow !== "unit" });
-    if (selUnit) {
-      const items = unit.phrases;
-      const knownInUnit = items.filter((_, i) => (progress.phrases || {})[`${unit.id}-${i}`]).length;
-      const unitPct = Math.round(knownInUnit / items.length * 100);
-      return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { paddingBottom: 80 }, children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "lesson-hdr", children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "lesson-hdr-top", children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "lesson-back", onClick: () => setSelUnit(null), children: "← Back" }),
-            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "lesson-stats-badge", children: [
-              knownInUnit,
-              " known · ",
-              unitPct,
-              "%"
-            ] })
-          ] }),
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "lesson-hero", children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "lesson-art", children: /* @__PURE__ */ jsxRuntimeExports.jsx("img", { src: TOPIC_IMAGES[unit.id] || TOPIC_IMAGES[1], alt: "" }) }),
-            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "lesson-meta", children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "lesson-meta-title", children: unit.title }),
-              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "lesson-meta-sub", children: [
-                items.length,
-                " phrases · Unit ",
-                unit.id
+      const renderItem = (s) => {
+        const idx = items.indexOf(s);
+        const isExp = expandedIdx === idx;
+        const gloss = canSpeak(s) ? getAutoGloss(s) : [];
+        return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "ph-item" + (isExp ? " expanded" : ""), onClick: () => setExpandedIdx(isExp ? null : idx), children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "ph-row", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "ph-play", onClick: (e) => {
+              e.stopPropagation();
+              if (canSpeak(s)) speak(s.cn);
+            }, children: /* @__PURE__ */ jsxRuntimeExports.jsx("svg", { width: "10", height: "12", viewBox: "0 0 10 12", fill: "none", children: /* @__PURE__ */ jsxRuntimeExports.jsx("path", { d: "M0 0L10 6L0 12V0Z", fill: "#fff" }) }) }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "ph-text", children: readingMode ? /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "ph-chi", style: { fontSize: 15, fontWeight: 600, color: "var(--ink)", marginBottom: 3, display: "flex", justifyContent: "space-between", alignItems: "center" }, children: [
+                s.cn || s.en,
+                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "ph-chev", children: "▾" })
               ] }),
-              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "lesson-meta-progress", children: [
-                knownInUnit,
-                " of ",
-                items.length,
-                " learned"
+              s[romKey] && s[romKey] !== `(add ${romLabel.toLowerCase()})` && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "ph-jyut", children: s[romKey] }),
+              s.en && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 13, color: "var(--ink2)" }, children: s.en })
+            ] }) : /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "ph-eng", children: [
+                s.en || s.cn,
+                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "ph-chev", children: "▾" })
+              ] }),
+              s[romKey] && s[romKey] !== `(add ${romLabel.toLowerCase()})` && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "ph-jyut", children: s[romKey] }),
+              s.cn && s.cn.trim() !== "" && s.en && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "ph-chi", children: s.cn })
+            ] }) })
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "ph-detail", children: [
+            s.tag && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "ph-context", children: [
+              "From: ",
+              s.tag
+            ] }),
+            gloss.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "gloss-row", children: gloss.filter((g) => g.cn).map((g, gi2) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "gloss-chip", onClick: (e) => {
+              e.stopPropagation();
+              speak(g.cn);
+            }, children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "gloss-chi", children: g.cn }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "gloss-jyut", children: g.jy }),
+              g.en && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "gloss-eng", children: g.en }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "gloss-actions", children: /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "gloss-action", onClick: (e) => {
+                e.stopPropagation();
+                const lib = progress.unit10 || [];
+                if (!lib.find((x2) => x2.cn === g.cn)) {
+                  upd("unit10", [{ en: g.en || "", jyut: g.jy || "", cn: g.cn, tag: s.tag || "Library", known: false, date: (/* @__PURE__ */ new Date()).toLocaleDateString("en-GB", { day: "numeric", month: "short" }) }, ...lib]);
+                }
+              }, children: (progress.unit10 || []).find((x2) => x2.cn === g.cn) ? "✓" : "+" }) })
+            ] }, gi2)) }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "ph-actions", children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "ph-action-btn know-btn", onClick: (e) => {
+                e.stopPropagation();
+                setMasteryConfirm({ ...s, _idx: idx });
+              }, children: "I know this!" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { className: "ph-action-btn", onClick: (e) => {
+                e.stopPropagation();
+                setLibShadow(idx);
+              }, children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("svg", { width: "10", height: "10", viewBox: "0 0 10 12", fill: "none", children: /* @__PURE__ */ jsxRuntimeExports.jsx("path", { d: "M0 0L10 6L0 12V0Z", fill: "#fff" }) }),
+                " Repeat"
+              ] }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "ph-action-btn", onClick: (e) => {
+                e.stopPropagation();
+                removeItem(idx);
+              }, style: { background: "transparent", color: "#e74c3c", borderColor: "rgba(231,76,60,.25)" }, children: "Remove" })
+            ] })
+          ] })
+        ] }, idx);
+      };
+      return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { paddingBottom: 80 }, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { position: "relative", overflow: "hidden", padding: "40px 20px 20px" }, children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { position: "absolute", inset: 0, background: "linear-gradient(135deg,#1F3329 0%,#2a5a3a 40%,#1A1F3D 100%)", opacity: 0.9 } }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { position: "absolute", inset: 0, background: "radial-gradient(ellipse at 80% 20%,rgba(196,240,0,.12) 0%,transparent 50%)" } }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { position: "relative", zIndex: 1 }, children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: "1.2rem", fontWeight: 900, color: "#fff", marginBottom: 4 }, children: "My Library" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".78rem", color: "rgba(255,255,255,.7)", lineHeight: 1.5, marginBottom: 12 }, children: "Your personal collection of words and phrases. Save anything you want to remember and practise." }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", gap: 12 }, children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { flex: 1, background: "rgba(255,255,255,.1)", borderRadius: 12, padding: "10px 0", textAlign: "center" }, children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: "1.1rem", fontWeight: 900, color: "var(--lime)" }, children: stillLearning.length }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".6rem", fontWeight: 700, color: "rgba(255,255,255,.65)", textTransform: "uppercase", letterSpacing: ".5px" }, children: "Learning" })
+              ] }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { flex: 1, background: "rgba(255,255,255,.1)", borderRadius: 12, padding: "10px 0", textAlign: "center" }, children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: "1.1rem", fontWeight: 900, color: "var(--lime)" }, children: mastered.length }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".6rem", fontWeight: 700, color: "rgba(255,255,255,.65)", textTransform: "uppercase", letterSpacing: ".5px" }, children: "Mastered" })
+              ] }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { flex: 1, background: "rgba(255,255,255,.1)", borderRadius: 12, padding: "10px 0", textAlign: "center" }, children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: "1.1rem", fontWeight: 900, color: "var(--lime)" }, children: items.length }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".6rem", fontWeight: 700, color: "rgba(255,255,255,.65)", textTransform: "uppercase", letterSpacing: ".5px" }, children: "Total" })
               ] })
             ] })
           ] })
         ] }),
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "ctrl-row", children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { className: "play-all-btn", onClick: () => startPlaylist(items.map((p2) => ({ en: p2.en, cn: p2.cn, jyut: p2.jyut })), unit.title), children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx("svg", { width: "14", height: "14", viewBox: "0 0 18 18", fill: "none", children: /* @__PURE__ */ jsxRuntimeExports.jsx("path", { d: "M4 2.5L15 9L4 15.5V2.5Z", fill: "#fff" }) }),
-            "Play All"
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { padding: "0 16px" }, children: [
+          !showAddForm && !saved ? /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => setShowAddForm(true), style: {
+            width: "100%",
+            padding: "14px 16px",
+            background: "var(--lime)",
+            border: "none",
+            borderRadius: 12,
+            cursor: "pointer",
+            fontSize: ".84rem",
+            fontWeight: 800,
+            color: "var(--for)",
+            marginTop: 16,
+            marginBottom: 12,
+            minHeight: 48,
+            textAlign: "center",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 8,
+            boxShadow: "0 2px 8px rgba(196,240,0,.3)"
+          }, children: "✏️ Add your own word or phrase" }) : saved ? /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { width: "100%", padding: "14px", background: "rgba(196,240,0,.1)", border: "2px solid var(--lime)", borderRadius: 12, fontSize: ".84rem", fontWeight: 800, color: "var(--for)", marginTop: 16, marginBottom: 12, textAlign: "center", minHeight: 48, display: "flex", alignItems: "center", justifyContent: "center" }, children: "Saved to your library!" }) : /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { background: "var(--wh)", borderRadius: 14, padding: 16, border: "1.5px solid var(--st)", marginTop: 16, marginBottom: 12 }, children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("input", { style: { width: "100%", background: "var(--cream)", border: "1.5px solid var(--st)", borderRadius: 8, padding: "10px 12px", fontSize: ".82rem", color: "var(--ink)", outline: "none", fontFamily: "inherit", marginBottom: 8, minHeight: 44, boxSizing: "border-box" }, placeholder: "What do you want to say?", value: en, onChange: (e) => setEn(e.target.value) }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("input", { style: { width: "100%", background: "var(--cream)", border: "1.5px solid var(--st)", borderRadius: 8, padding: "10px 12px", fontSize: ".82rem", color: "var(--ink)", outline: "none", fontFamily: LANG_CONFIG.fontFamily, marginBottom: 8, minHeight: 44, boxSizing: "border-box" }, placeholder: "Chinese characters", value: cn, onChange: (e) => setCn(e.target.value) }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("input", { style: { width: "100%", background: "var(--cream)", border: "1.5px solid var(--st)", borderRadius: 8, padding: "10px 12px", fontSize: ".82rem", color: "var(--plum)", fontStyle: "italic", outline: "none", fontFamily: "inherit", marginBottom: 12, minHeight: 44, boxSizing: "border-box" }, placeholder: romLabel, value: rom, onChange: (e) => setRom(e.target.value) }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", gap: 8 }, children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => {
+                setShowAddForm(false);
+                setEn("");
+                setRom("");
+                setCn("");
+              }, style: { flex: 1, background: "var(--cream)", color: "var(--ink3)", border: "1.5px solid var(--st)", borderRadius: 10, padding: "10px 0", fontSize: ".82rem", fontWeight: 700, cursor: "pointer", minHeight: 44 }, children: "Cancel" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: handleSave, style: { flex: 1, background: en.trim() ? "var(--lime)" : "var(--st)", color: en.trim() ? "var(--for)" : "var(--ink3)", border: "none", borderRadius: 10, padding: "10px 0", fontSize: ".82rem", fontWeight: 900, cursor: en.trim() ? "pointer" : "default", minHeight: 44 }, children: "Save" })
+            ] })
           ] }),
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { className: "shuffle-btn", onClick: () => setShadow("unit"), children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsxs("svg", { width: "16", height: "16", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2.5", strokeLinecap: "round", strokeLinejoin: "round", children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx("polyline", { points: "16 3 21 3 21 8" }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx("line", { x1: "4", y1: "20", x2: "21", y2: "3" }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx("polyline", { points: "21 16 21 21 16 21" }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx("line", { x1: "15", y1: "15", x2: "21", y2: "21" }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx("line", { x1: "4", y1: "4", x2: "9", y2: "9" })
-            ] }),
-            "Shuffle"
-          ] }),
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "filter-chip", onClick: () => setReadingMode((r2) => !r2), children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx("svg", { width: "14", height: "14", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", strokeLinecap: "round", style: { marginRight: 4 }, children: /* @__PURE__ */ jsxRuntimeExports.jsx("path", { d: "M4 6h16M4 12h16M4 18h10" }) }),
-            readingMode ? "Chinese first" : "English first"
-          ] })
-        ] }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { children: (() => {
-          const notKnown = sorted.filter((p2) => !p2.known);
-          const known = sorted.filter((p2) => p2.known);
-          return /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
-            notKnown.map((ph2, i) => {
-              const gloss = getAutoGloss(ph2);
-              const isExp = expandedIdx === ph2.origIdx;
-              return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "ph-item" + (isExp ? " expanded" : ""), onClick: () => setExpandedIdx(isExp ? null : ph2.origIdx), children: [
-                /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "ph-row", children: [
-                  /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "ph-play", onClick: (e) => {
-                    e.stopPropagation();
-                    playPhraseMini(ph2);
-                  }, children: /* @__PURE__ */ jsxRuntimeExports.jsx("svg", { width: "10", height: "12", viewBox: "0 0 10 12", fill: "none", children: /* @__PURE__ */ jsxRuntimeExports.jsx("path", { d: "M0 0L10 6L0 12V0Z", fill: "#fff" }) }) }),
-                  /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "ph-text", children: readingMode ? /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
-                    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "ph-chi", style: { fontSize: 15, fontWeight: 600, color: "var(--ink)", marginBottom: 3, display: "flex", justifyContent: "space-between", alignItems: "center" }, children: [
-                      ph2.cn,
-                      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "ph-chev", children: "▾" })
-                    ] }),
-                    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "ph-jyut", children: ph2.jyut }),
-                    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 13, color: "var(--ink2)" }, children: ph2.en })
-                  ] }) : /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
-                    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "ph-eng", children: [
-                      ph2.en,
-                      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "ph-chev", children: "▾" })
-                    ] }),
-                    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "ph-jyut", children: ph2.jyut }),
-                    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "ph-chi", children: ph2.cn })
-                  ] }) })
-                ] }),
-                /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "ph-detail", children: [
-                  ph2.tag && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "ph-context", children: [
-                    "Context: ",
-                    ph2.tag
+          mastered.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { background: "linear-gradient(135deg, #1F3329 0%, #2a4a36 50%, #1F3329 100%)", borderRadius: 16, padding: "14px 16px", marginBottom: 12, cursor: "pointer" }, onClick: () => setMasteredOpen((o) => !o), children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between" }, children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", alignItems: "center", gap: 10 }, children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { fontSize: "1.4rem" }, children: "🏆" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { color: "#fff", fontWeight: 800, fontSize: ".88rem" }, children: [
+                    mastered.length,
+                    " Mastered!"
                   ] }),
-                  gloss.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "gloss-row", children: gloss.filter((g) => g.cn).map((g, gi2) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "gloss-chip", onClick: (e) => {
-                    e.stopPropagation();
-                    speak(g.cn);
-                  }, children: [
-                    /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "gloss-chi", children: g.cn }),
-                    /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "gloss-jyut", children: g.jy }),
-                    g.en && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "gloss-eng", children: g.en }),
-                    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "gloss-actions", children: /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "gloss-action", onClick: (e) => {
-                      e.stopPropagation();
-                      const items2 = progress.unit10 || [];
-                      if (!items2.find((s) => s.cn === g.cn)) {
-                        upd("unit10", [{ en: g.en || "", jyut: g.jy || "", cn: g.cn, tag: unit.title, known: false, date: (/* @__PURE__ */ new Date()).toLocaleDateString("en-GB", { day: "numeric", month: "short" }) }, ...items2]);
-                      }
-                    }, children: (progress.unit10 || []).find((s) => s.cn === g.cn) ? "✓" : "+" }) })
-                  ] }, gi2)) }),
-                  /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "ph-actions", children: [
-                    /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "ph-action-btn" + ((progress.unit10 || []).find((s) => s.cn === ph2.cn) ? " saved-btn" : ""), onClick: (e) => {
-                      e.stopPropagation();
-                      const items2 = progress.unit10 || [];
-                      if (!items2.find((s) => s.cn === ph2.cn)) {
-                        upd("unit10", [{ en: ph2.en, jyut: ph2.jyut, cn: ph2.cn, tag: unit.title, known: false, date: (/* @__PURE__ */ new Date()).toLocaleDateString("en-GB", { day: "numeric", month: "short" }) }, ...items2]);
-                      }
-                    }, children: (progress.unit10 || []).find((s) => s.cn === ph2.cn) ? "✓ Saved!" : "Save to Library" }),
-                    /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { className: "ph-action-btn", onClick: (e) => {
-                      e.stopPropagation();
-                      setShadow(ph2.origIdx);
-                    }, children: [
-                      /* @__PURE__ */ jsxRuntimeExports.jsx("svg", { width: "10", height: "10", viewBox: "0 0 10 12", fill: "none", children: /* @__PURE__ */ jsxRuntimeExports.jsx("path", { d: "M0 0L10 6L0 12V0Z", fill: "#fff" }) }),
-                      " Repeat"
-                    ] }),
-                    !ph2.known && /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "ph-action-btn know-btn", onClick: (e) => {
-                      e.stopPropagation();
-                      setMasteryConfirm(ph2);
-                    }, children: "I know this!" })
-                  ] })
-                ] })
-              ] }, ph2.origIdx);
-            }),
-            known.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { margin: "20px 0 0", background: "linear-gradient(135deg, #1F3329 0%, #2a4a36 50%, #1F3329 100%)", borderRadius: 16, overflow: "hidden" }, children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { padding: "16px 16px 12px", display: "flex", alignItems: "center", justifyContent: "space-between" }, children: [
-                /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", alignItems: "center", gap: 10 }, children: [
-                  /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { fontSize: "1.4rem" }, children: "🏆" }),
-                  /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
-                    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".88rem", fontWeight: 900, color: "#fff" }, children: "Trophy Cabinet" }),
-                    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { fontSize: ".68rem", color: "var(--lime)", fontWeight: 600, marginTop: 1 }, children: [
-                      known.length,
-                      " phrase",
-                      known.length !== 1 ? "s" : "",
-                      " conquered"
-                    ] })
-                  ] })
-                ] }),
-                /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { fontSize: ".68rem", color: "rgba(255,255,255,.4)", fontWeight: 600 }, children: [
-                  Math.round(known.length / items.length * 100),
-                  "% of unit"
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { color: "var(--lime)", fontSize: ".7rem", fontWeight: 600, marginTop: 1 }, children: "You're crushing it — keep going!" })
                 ] })
               ] }),
-              known.map((ph2, i) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { padding: "10px 16px", borderTop: "1px solid rgba(255,255,255,.06)", display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }, onClick: () => playPhraseMini(ph2), children: [
-                /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: (e) => {
-                  e.stopPropagation();
-                  playPhraseMini(ph2);
-                }, style: { width: 32, height: 32, borderRadius: "50%", border: "none", background: "rgba(196,240,0,.15)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }, children: /* @__PURE__ */ jsxRuntimeExports.jsx("svg", { width: "8", height: "10", viewBox: "0 0 10 12", fill: "none", children: /* @__PURE__ */ jsxRuntimeExports.jsx("path", { d: "M0 0L10 6L0 12V0Z", fill: "#C4F000" }) }) }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { color: "rgba(255,255,255,.5)", fontSize: "1.1rem", transition: "transform .2s", transform: masteredOpen ? "rotate(180deg)" : "rotate(0)" }, children: "▾" })
+            ] }),
+            masteredOpen && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { marginTop: 12 }, onClick: (e) => e.stopPropagation(), children: mastered.map((s) => {
+              const idx = items.indexOf(s);
+              return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { background: "rgba(255,255,255,.08)", borderRadius: 10, padding: "10px 12px", marginBottom: 6, display: "flex", alignItems: "center", gap: 10 }, children: [
+                canSpeak(s) && /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => speak(s.cn), style: { width: 32, height: 32, borderRadius: "50%", border: "none", background: "rgba(196,240,0,.2)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: ".65rem", color: "var(--lime)", flexShrink: 0 }, children: "▶" }),
                 /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { flex: 1, minWidth: 0 }, children: [
-                  /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".78rem", fontWeight: 600, color: "rgba(255,255,255,.85)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }, children: ph2.en }),
-                  /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".65rem", color: "var(--lime)", fontStyle: "italic" }, children: ph2.jyut })
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".78rem", fontWeight: 700, color: "#fff", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }, children: s.en || s.cn }),
+                  s[romKey] && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".65rem", color: "var(--lime)", fontStyle: "italic" }, children: s[romKey] }),
+                  s.cn && s.en && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".72rem", color: "rgba(255,255,255,.5)" }, children: s.cn })
                 ] }),
-                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".85rem", color: "rgba(255,255,255,.5)", flexShrink: 0, fontWeight: 600 }, children: ph2.cn })
-              ] }, ph2.origIdx))
-            ] })
-          ] });
-        })() }),
-        miniPlayer && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { position: "fixed", bottom: 64, left: 0, right: 0, zIndex: 110, padding: "0 12px", animation: "fadeUp .2s ease" }, children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { background: "rgba(20,20,20,.95)", borderRadius: 14, padding: "10px 14px", display: "flex", alignItems: "center", gap: 12, boxShadow: "0 8px 32px rgba(0,0,0,.4)", border: "1px solid rgba(255,255,255,.06)" }, children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { width: 40, height: 40, borderRadius: 8, background: "var(--for)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, cursor: "pointer" }, onClick: () => {
-            speak(miniPlayer.cn);
-          }, children: /* @__PURE__ */ jsxRuntimeExports.jsx("svg", { width: "12", height: "14", viewBox: "0 0 10 12", fill: "none", children: /* @__PURE__ */ jsxRuntimeExports.jsx("path", { d: "M0 0L10 6L0 12V0Z", fill: "#C4F000" }) }) }),
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { flex: 1, minWidth: 0 }, children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".78rem", fontWeight: 600, color: "rgba(255,255,255,.85)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }, children: miniPlayer.en }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".68rem", fontStyle: "italic", color: "var(--lime)", marginTop: 1 }, children: miniPlayer.jyut })
+                /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => toggleKnown(idx), style: { background: "none", border: "1px solid rgba(255,255,255,.15)", color: "rgba(255,255,255,.5)", fontSize: ".65rem", fontWeight: 700, cursor: "pointer", padding: "6px 10px", borderRadius: 8, flexShrink: 0 }, children: "Relearn" })
+              ] }, idx);
+            }) })
           ] }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: "1.4rem", fontWeight: 900, color: "#fff", flexShrink: 0 }, children: miniPlayer.cn }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => {
-            stopAudio();
-            clearTimeout(miniTimer.current);
-            setMiniPlayer(null);
-          }, style: { background: "rgba(255,255,255,.08)", border: "1px solid rgba(255,255,255,.1)", borderRadius: "50%", width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center", color: "rgba(255,255,255,.5)", fontSize: 14, cursor: "pointer", flexShrink: 0 }, children: "x" })
-        ] }) }),
-        masteryConfirm && /* @__PURE__ */ jsxRuntimeExports.jsx(MasteryConfirmSheet, { phrase: masteryConfirm, onCancel: () => setMasteryConfirm(null), onMastered: () => handleMarkKnown(masteryConfirm) }),
+          stillLearning.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "ctrl-row", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { className: "play-all-btn", onClick: () => startPlaylist(stillLearning.map((s) => ({ en: s.en || s.cn, cn: s.cn, jyut: s[romKey] || s.jyut || "" })), "My Library"), children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("svg", { width: "14", height: "14", viewBox: "0 0 18 18", fill: "none", children: /* @__PURE__ */ jsxRuntimeExports.jsx("path", { d: "M4 2.5L15 9L4 15.5V2.5Z", fill: "#fff" }) }),
+              "Play All"
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { className: "shuffle-btn", onClick: () => {
+              const shuffled = [...stillLearning].sort(() => Math.random() - 0.5);
+              startPlaylist(shuffled.map((s) => ({ en: s.en || s.cn, cn: s.cn, jyut: s[romKey] || s.jyut || "" })), "My Library (Shuffled)");
+            }, children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("svg", { width: "16", height: "16", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2.5", strokeLinecap: "round", strokeLinejoin: "round", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("polyline", { points: "16 3 21 3 21 8" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("line", { x1: "4", y1: "20", x2: "21", y2: "3" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("polyline", { points: "21 16 21 21 16 21" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("line", { x1: "15", y1: "15", x2: "21", y2: "21" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("line", { x1: "4", y1: "4", x2: "9", y2: "9" })
+              ] }),
+              "Shuffle"
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "filter-chip", onClick: () => setReadingMode((r2) => !r2), children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("svg", { width: "14", height: "14", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", strokeLinecap: "round", style: { marginRight: 4 }, children: /* @__PURE__ */ jsxRuntimeExports.jsx("path", { d: "M4 6h16M4 12h16M4 18h10" }) }),
+              readingMode ? "Chinese first" : "English first"
+            ] })
+          ] }),
+          slPhrases.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { fontSize: ".7rem", fontWeight: 800, color: "var(--ink3)", letterSpacing: "1.5px", textTransform: "uppercase", marginBottom: 8 }, children: [
+            "PHRASES (",
+            slPhrases.length,
+            ")"
+          ] }),
+          slPhrases.map(renderItem),
+          slVocab.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { fontSize: ".7rem", fontWeight: 800, color: "var(--ink3)", letterSpacing: "1.5px", textTransform: "uppercase", marginBottom: 8, marginTop: slPhrases.length > 0 ? 16 : 0 }, children: [
+            "VOCABULARY (",
+            slVocab.length,
+            ")"
+          ] }),
+          slVocab.map(renderItem),
+          items.length === 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { textAlign: "center", padding: "48px 24px", color: "var(--ink3)" }, children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: "2.5rem", marginBottom: 12 }, children: "📚" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".92rem", fontWeight: 800, color: "var(--ink)", marginBottom: 6 }, children: "Your library is empty" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".78rem", lineHeight: 1.6, marginBottom: 20, maxWidth: 260, margin: "0 auto 20px" }, children: "Add words and phrases you hear in daily life. They'll become your top priority in practice." }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => setShowAddForm(true), style: { background: "var(--lime)", color: "var(--for)", border: "none", borderRadius: 12, padding: "12px 24px", fontSize: ".84rem", fontWeight: 900, cursor: "pointer", minHeight: 48 }, children: "+ Add your first phrase" })
+          ] })
+        ] }),
+        masteryConfirm && /* @__PURE__ */ jsxRuntimeExports.jsx(MasteryConfirmSheet, { phrase: masteryConfirm, onCancel: () => setMasteryConfirm(null), onMastered: () => handleLibMastery(masteryConfirm._idx) }),
         showConfetti && /* @__PURE__ */ jsxRuntimeExports.jsx(ConfettiBurst, {}),
         toastMsg && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "mastery-toast", children: [
           "🎉 ",
@@ -43258,1360 +43782,907 @@ if (_up.has("lang")) {
         ] })
       ] });
     }
-    return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { paddingBottom: 80 }, children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "home-hdr", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "home-greeting", children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "greeting-text", children: [
-          greeting,
-          ", ",
-          userName.split(" ")[0]
-        ] }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "greeting-sub", children: "Keep going, you're building real fluency." }),
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "stats-row", children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "stat-item", children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "stat-num", children: knownPhrases }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "stat-label", children: "Phrases Learned" })
+    function PracticeTab({ progress, upd, settings, library, practiceCount, setPracticeCount, autoLaunch }) {
+      const [showQuiz, setShowQuiz] = reactExports.useState(false);
+      const [showPronun, setShowPronun] = reactExports.useState(false);
+      const [showLaunch, setShowLaunch] = reactExports.useState(false);
+      const [showLesson, setShowLesson] = reactExports.useState(false);
+      reactExports.useEffect(() => {
+        if (autoLaunch === "daily") setShowLaunch(true);
+      }, [autoLaunch]);
+      reactExports.useMemo(() => getStats(progress), [progress]);
+      const mastered = Object.keys(progress.phrases || {}).filter((k2) => (progress.phrases || {})[k2]).length;
+      const totalPhrases = UNITS.reduce((s, u2) => s + u2.phrases.length, 0);
+      const practicing = totalPhrases - mastered;
+      const quizAvailable = reactExports.useMemo(() => {
+        let count = 0;
+        UNITS.forEach((u2) => {
+          u2.phrases.forEach((_, i) => {
+            const key = `${u2.id}-${i}`;
+            if ((progress.phrases || {})[key]) count++;
+          });
+        });
+        (progress.unit10 || []).forEach((s) => {
+          if (s.known) count++;
+        });
+        return count;
+      }, [progress]);
+      const nextTopic = reactExports.useMemo(() => {
+        for (const u2 of UNITS) {
+          const done = u2.phrases.every((_, i) => (progress.phrases || {})[`${u2.id}-${i}`]);
+          if (!done) return u2;
+        }
+        return UNITS[0];
+      }, [progress]);
+      const stillLearningCount = reactExports.useMemo(() => {
+        let count = 0;
+        UNITS.forEach((u2) => {
+          u2.phrases.forEach((_, i) => {
+            if (!(progress.phrases || {})[`${u2.id}-${i}`]) count++;
+          });
+        });
+        return count;
+      }, [progress]);
+      if (showLesson) return /* @__PURE__ */ jsxRuntimeExports.jsx(LessonMode, { progress, upd, profile: "", settings, onComplete: () => {
+        const log = [...progress.lessonLog || [], { date: Date.now(), mins: 30 }];
+        upd("lessonLog", log);
+        setShowLesson(false);
+      }, onQuit: () => setShowLesson(false) });
+      if (showPronun) return /* @__PURE__ */ jsxRuntimeExports.jsx(QuizTab, { progress, upd, startMode: "pronunciation", onBack: () => setShowPronun(false) });
+      if (showQuiz) return /* @__PURE__ */ jsxRuntimeExports.jsx(QuizTab, { progress, upd, startMode: "recall", onBack: () => setShowQuiz(false) });
+      if (showLaunch) {
+        const phases = [
+          { icon: "🔥", name: "Warm-up", time: "3 min", desc: "Review 5–8 mastered items" },
+          { icon: "🆕", name: "Learn new", time: "7 min", desc: "3–5 new phrases from next topic" },
+          { icon: "🗣", name: "Shadow drill", time: "8 min", desc: "Listen & repeat pattern" },
+          { icon: "🔁", name: "Mix & review", time: "5 min", desc: "Everything shuffled" },
+          { icon: "🧠", name: "Quiz", time: "5 min", desc: "Rapid-fire recall" },
+          { icon: "😌", name: "Cool-down", time: "2 min", desc: "Relaxed listen-through" }
+        ];
+        return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { position: "fixed", inset: 0, zIndex: 999, background: "linear-gradient(160deg, #1F3329 0%, #2A4A35 50%, #1F3329 100%)", display: "flex", flexDirection: "column", alignItems: "center", padding: "0 24px", overflowY: "auto" }, children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => setShowLaunch(false), style: { position: "absolute", top: 16, left: 16, background: "rgba(255,255,255,.1)", border: "none", borderRadius: 999, width: 40, height: 40, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "#fff", fontSize: "1.1rem" }, children: "‹" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { marginTop: 72, textAlign: "center" }, children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: "3rem", marginBottom: 8 }, children: "🎧" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: "1.3rem", fontWeight: 900, color: "#fff", marginBottom: 4 }, children: "Today's Practice" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".72rem", color: "rgba(255,255,255,.45)" }, children: "~30 minutes · 6 phases" })
           ] }),
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "stat-item", children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "stat-num", children: (progress.lessonLog || []).length }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "stat-label", children: "Lessons Done" })
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { width: "100%", maxWidth: 360, marginTop: 28 }, children: phases.map((p2, i) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", alignItems: "center", gap: 14, padding: "13px 0", borderBottom: i < phases.length - 1 ? "1px solid rgba(255,255,255,.08)" : "none" }, children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: "1.3rem", width: 32, textAlign: "center", flexShrink: 0 }, children: p2.icon }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { flex: 1 }, children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".82rem", fontWeight: 800, color: "#fff" }, children: p2.name }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".68rem", color: "rgba(255,255,255,.45)", marginTop: 1 }, children: p2.desc })
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".68rem", fontWeight: 700, color: "var(--lime)", flexShrink: 0 }, children: p2.time })
+          ] }, i)) }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { marginTop: 20, fontSize: ".72rem", color: "rgba(255,255,255,.4)", textAlign: "center", lineHeight: 1.5 }, children: [
+            stillLearningCount,
+            " items in Still Learning · Next topic: ",
+            nextTopic.title
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => {
+            setShowLaunch(false);
+            setShowLesson(true);
+          }, style: { marginTop: 24, marginBottom: 40, background: "var(--lime)", color: "var(--for)", border: "none", borderRadius: 999, padding: "16px 48px", fontSize: ".92rem", fontWeight: 900, cursor: "pointer", minHeight: 56, boxShadow: "0 4px 20px rgba(196,240,0,.3)" }, children: "▶ Begin practice" })
+        ] });
+      }
+      return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { paddingBottom: 80 }, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { position: "relative", overflow: "hidden", padding: "40px 20px 24px" }, children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { position: "absolute", inset: 0, background: "linear-gradient(135deg,#1F3329 0%,#2a5a3a 40%,#1A1F3D 100%)", opacity: 0.9 } }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { position: "absolute", inset: 0, background: "radial-gradient(ellipse at 80% 20%,rgba(196,240,0,.12) 0%,transparent 50%)" } }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { position: "relative", zIndex: 1 }, children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: "1.2rem", fontWeight: 900, color: "#fff", marginBottom: 4 }, children: "Practice & Quiz" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".82rem", color: "rgba(255,255,255,.75)", lineHeight: 1.4 }, children: "Build your skills with structured practice." }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", gap: 12, marginTop: 16 }, children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { flex: 1, background: "rgba(255,255,255,.1)", borderRadius: 12, padding: "12px 0", textAlign: "center" }, children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: "1.2rem", fontWeight: 900, color: "var(--lime)" }, children: mastered }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".65rem", fontWeight: 700, color: "rgba(255,255,255,.7)", textTransform: "uppercase", letterSpacing: ".5px" }, children: "Mastered" })
+              ] }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { flex: 1, background: "rgba(255,255,255,.1)", borderRadius: 12, padding: "12px 0", textAlign: "center" }, children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: "1.2rem", fontWeight: 900, color: "var(--lime)" }, children: practicing }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".65rem", fontWeight: 700, color: "rgba(255,255,255,.7)", textTransform: "uppercase", letterSpacing: ".5px" }, children: "Practicing" })
+              ] }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { flex: 1, background: "rgba(255,255,255,.1)", borderRadius: 12, padding: "12px 0", textAlign: "center" }, children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: "1.2rem", fontWeight: 900, color: "var(--lime)" }, children: new Set((progress.lessonLog || []).map((l2) => new Date(l2.date).toDateString())).size }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".65rem", fontWeight: 700, color: "rgba(255,255,255,.7)", textTransform: "uppercase", letterSpacing: ".5px" }, children: "Practice Days" })
+              ] })
+            ] })
           ] })
         ] }),
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { className: "start-btn", onClick: () => {
-          setAutoLaunch("daily");
-          setTab("practice");
-        }, children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx("svg", { width: "18", height: "18", viewBox: "0 0 18 18", fill: "none", children: /* @__PURE__ */ jsxRuntimeExports.jsx("path", { d: "M4 2.5L15 9L4 15.5V2.5Z", fill: "#111" }) }),
-          "Start Today's Lesson"
-        ] })
-      ] }) }),
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "search-wrap", children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("svg", { className: "search-icon", width: "16", height: "16", viewBox: "0 0 16 16", fill: "none", children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx("circle", { cx: "6.5", cy: "6.5", r: "5.5", stroke: "#9A9A9A", strokeWidth: "1.5" }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("path", { d: "M11 11L15 15", stroke: "#9A9A9A", strokeWidth: "1.5", strokeLinecap: "round" })
-          ] }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("input", { className: "home-search", placeholder: "Search phrases & words", value: searchQ, onChange: (e) => setSearchQ(e.target.value), ref: searchRef }),
-          searchQ && /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => {
-            setSearchQ("");
-            if (searchRef.current) searchRef.current.focus();
-          }, style: { position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", fontSize: 16, color: "var(--ink3)", cursor: "pointer" }, children: "x" })
-        ] }),
-        searchResults.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "search-results", style: { margin: "0 16px 12px" }, children: searchResults.map(
-          (r2, ri2) => {
-            const inLib = (progress.unit10 || []).find((s) => s.cn === r2.cn);
-            return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "search-result", children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "sr-top", onClick: () => {
-                if (r2.type === "word") {
-                  speak(r2.cn);
-                } else if (r2.unitId) {
-                  setSelUnit(r2.unitId);
-                  updateRecent(r2.unitId);
-                  setExpandedIdx(r2.idx);
-                  setSearchQ("");
-                }
-              }, children: [
-                /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "search-badge", style: { background: r2.type === "phrase" ? "rgba(122,170,0,.15)" : "rgba(143,106,232,.15)", color: r2.type === "phrase" ? "var(--ld)" : "var(--plum)" }, children: r2.type === "phrase" ? "PHRASE" : "WORD" }),
-                /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { flex: 1, minWidth: 0 }, children: [
-                  /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".82rem", fontWeight: 700, color: "var(--ink)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }, children: r2.en || r2.cn }),
-                  /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".72rem", color: "var(--plum)", fontStyle: "italic" }, children: r2.jyut })
-                ] }),
-                /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { fontSize: ".95rem", fontWeight: 700, color: "var(--ink3)", flexShrink: 0 }, children: r2.cn })
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { padding: "0 16px" }, children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { background: "var(--for)", borderRadius: 16, padding: 20, marginBottom: 12, cursor: "pointer", marginTop: 16 }, onClick: () => setShowLaunch(true), children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", alignItems: "center", gap: 12 }, children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { width: 48, height: 48, borderRadius: 12, background: "rgba(196,240,0,.15)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.5rem", flexShrink: 0 }, children: "🎧" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { flex: 1 }, children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".92rem", fontWeight: 900, color: "#fff", marginBottom: 2 }, children: "Daily Practice" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".76rem", color: "rgba(255,255,255,.75)", lineHeight: 1.4 }, children: "Warm-up, new phrases, shadowing, review & quiz." })
               ] }),
-              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "sr-bottom", children: [
-                r2.type === "word" && /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "sr-play", onClick: () => speak(r2.cn), children: "▶ Play" }),
-                r2.type === "phrase" && r2.unitId && /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "sr-goto", onClick: () => {
-                  setSelUnit(r2.unitId);
-                  updateRecent(r2.unitId);
-                  setExpandedIdx(r2.idx);
-                  setSearchQ("");
-                }, children: "Go to unit ›" }),
-                /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "sr-add" + (inLib ? " saved" : ""), onClick: (e) => {
-                  e.stopPropagation();
-                  if (!inLib) {
-                    const items = progress.unit10 || [];
-                    upd("unit10", [{ en: r2.en || "", jyut: r2.jyut || "", cn: r2.cn, tag: r2.unitTitle || "Search", known: false, date: (/* @__PURE__ */ new Date()).toLocaleDateString("en-GB", { day: "numeric", month: "short" }) }, ...items]);
-                  }
-                }, children: inLib ? "✓ Saved" : "+ Add to library" })
-              ] })
-            ] }, ri2);
-          }
-        ) }),
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "lib-card", onClick: () => setTab("library"), children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "lib-card-icon", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("svg", { width: "24", height: "24", viewBox: "0 0 24 24", fill: "none", children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx("path", { d: "M4 19V5a2 2 0 012-2h8.5L20 8.5V19a2 2 0 01-2 2H6a2 2 0 01-2-2z", stroke: "#C4F000", strokeWidth: "1.5" }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("path", { d: "M14 3v6h6", stroke: "#C4F000", strokeWidth: "1.5" }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("path", { d: "M8 13h8M8 17h5", stroke: "#C4F000", strokeWidth: "1.5", strokeLinecap: "round" })
-          ] }) }),
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "lib-card-info", children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "lib-card-title", children: "My Library" }),
-            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "lib-card-sub", children: [
-              libraryCount,
-              " saved phrases"
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: "1.2rem", color: "var(--lime)" }, children: "›" })
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", gap: 6, marginTop: 10 }, children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { fontSize: ".65rem", fontWeight: 700, background: "rgba(255,255,255,.12)", color: "rgba(255,255,255,.8)", padding: "4px 10px", borderRadius: 999 }, children: "30 min" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { fontSize: ".65rem", fontWeight: 700, background: "rgba(196,240,0,.15)", color: "var(--lime)", padding: "4px 10px", borderRadius: 999 }, children: "Recommended" })
             ] })
           ] }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { fontSize: 18, color: "var(--ink3)" }, children: "›" })
-        ] }),
-        recentUnits.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "sec-hdr", children: /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "sec-title", children: "Most Recent" }) }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "recent-grid", children: recentUnits.slice(0, 4).map((u2) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "recent-card", onClick: () => {
-            setSelUnit(u2.id);
-            updateRecent(u2.id);
-          }, children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "recent-card-art", children: /* @__PURE__ */ jsxRuntimeExports.jsx("img", { src: TOPIC_IMAGES[u2.id] || TOPIC_IMAGES[1], alt: "" }) }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "recent-card-name", children: u2.title })
-          ] }, u2.id)) })
-        ] }),
-        continueTopics.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "sec-hdr", children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "sec-title", children: "Continue Learning" }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "sec-link", children: "See all" })
-          ] }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "cont-scroll", children: continueTopics.map((u2) => {
-            const k2 = u2.phrases.filter((_, i) => (progress.phrases || {})[`${u2.id}-${i}`]).length;
-            const cpct = Math.round(k2 / u2.phrases.length * 100);
-            return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "cont-card", onClick: () => {
-              setSelUnit(u2.id);
-              updateRecent(u2.id);
-            }, children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "cont-art", children: [
-                /* @__PURE__ */ jsxRuntimeExports.jsx("img", { src: TOPIC_IMAGES[u2.id] || TOPIC_IMAGES[1], alt: "" }),
-                /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "topic-label", children: u2.title }),
-                /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "play-circle", children: "▶" })
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { background: "linear-gradient(135deg, #3D2A1A 0%, #2A1F15 100%)", borderRadius: 16, padding: 20, marginBottom: 12, cursor: "pointer" }, onClick: () => setShowPronun(true), children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", alignItems: "center", gap: 12 }, children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { width: 48, height: 48, borderRadius: 12, background: "rgba(232,160,64,.15)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.5rem", flexShrink: 0 }, children: "🎙" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { flex: 1 }, children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".92rem", fontWeight: 900, color: "#fff", marginBottom: 2 }, children: "Pronunciation Practice" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".76rem", color: "rgba(255,255,255,.75)", lineHeight: 1.4 }, children: "Practise saying phrases out loud and get AI scores." })
               ] }),
-              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "cont-info", children: [
-                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "cont-name", children: u2.title }),
-                /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "cont-meta", children: [
-                  k2,
-                  " of ",
-                  u2.phrases.length,
-                  " phrases learned"
-                ] }),
-                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "cont-pbar", children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "cont-pbar-fill", style: { width: cpct + "%" } }) })
-              ] })
-            ] }, u2.id);
-          }) })
-        ] }),
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "sec-hdr", children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "sec-title", children: "All Topics" }),
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "sec-link", children: [
-            UNITS.length,
-            " topics"
-          ] })
-        ] }),
-        (() => {
-          const rows = 3;
-          const cols = Math.ceil(UNITS.length / rows);
-          const reordered = [];
-          for (let c = 0; c < cols; c++) {
-            for (let r2 = 0; r2 < rows; r2++) {
-              const idx = r2 * cols + c;
-              if (idx < UNITS.length) reordered.push(UNITS[idx]);
-            }
-          }
-          return /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "topics-wrap", ref: (el2) => {
-              if (!el2) return;
-              const bar = el2.nextElementSibling;
-              if (!bar) return;
-              const fill = bar.firstChild;
-              const update = () => {
-                const pct2 = el2.scrollWidth <= el2.clientWidth ? 100 : Math.round(el2.scrollLeft / (el2.scrollWidth - el2.clientWidth) * 100);
-                if (fill) fill.style.width = pct2 + "%";
-              };
-              el2.onscroll = update;
-              setTimeout(update, 100);
-            }, children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "topics-grid", children: reordered.map((u2) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "t-card", onClick: () => {
-              setSelUnit(u2.id);
-              updateRecent(u2.id);
-            }, children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "t-art", children: [
-                /* @__PURE__ */ jsxRuntimeExports.jsx("img", { src: TOPIC_IMAGES[u2.id] || TOPIC_IMAGES[1], alt: "" }),
-                /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "t-num", children: [
-                  "#",
-                  u2.id
-                ] })
-              ] }),
-              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "t-info", children: [
-                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "t-name", children: u2.title }),
-                /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "t-meta", children: [
-                  u2.phrases.length,
-                  " phrases"
-                ] })
-              ] })
-            ] }, u2.id)) }) }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "topics-scrollbar", children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "topics-scrollbar-fill" }) })
-          ] });
-        })()
-      ] })
-    ] });
-  }
-  function LibraryTab({ library, setLibrary, progress, upd, settings, startPlaylist }) {
-    const [showAddForm, setShowAddForm] = reactExports.useState(false);
-    const [en, setEn] = reactExports.useState("");
-    const [rom, setRom] = reactExports.useState("");
-    const [cn, setCn] = reactExports.useState("");
-    const [saved, setSaved] = reactExports.useState(false);
-    const [expandedIdx, setExpandedIdx] = reactExports.useState(null);
-    const items = progress.unit10 || [];
-    const stillLearning = items.filter((s) => !s.known);
-    const mastered = items.filter((s) => s.known);
-    const romKey = LANG_CONFIG.romanizationKey;
-    const romLabel = LANG_CONFIG.romanizationLabel;
-    const handleSave = () => {
-      if (!en.trim()) return;
-      const ns = { en: en.trim(), [romKey]: rom.trim() || "", cn: cn.trim() || "", tag: "Life", date: (/* @__PURE__ */ new Date()).toLocaleDateString("en-GB", { weekday: "short" }), known: false };
-      upd("unit10", [ns, ...items]);
-      setEn("");
-      setRom("");
-      setCn("");
-      setSaved(true);
-      setTimeout(() => {
-        setSaved(false);
-        setShowAddForm(false);
-      }, 1500);
-    };
-    const toggleKnown = (idx) => {
-      const updated = items.map((s, i) => i === idx ? { ...s, known: !s.known } : s);
-      upd("unit10", updated);
-    };
-    const removeItem = (idx) => {
-      const updated = items.filter((_, i) => i !== idx);
-      upd("unit10", updated);
-    };
-    const canSpeak = (s) => s.cn && s.cn !== "(add characters)" && s.cn.trim() !== "";
-    const [masteredOpen, setMasteredOpen] = reactExports.useState(false);
-    const [libShadow, setLibShadow] = reactExports.useState(null);
-    const [readingMode, setReadingMode] = reactExports.useState(false);
-    const [masteryConfirm, setMasteryConfirm] = reactExports.useState(null);
-    const [showConfetti, setShowConfetti] = reactExports.useState(false);
-    const [toastMsg, setToastMsg] = reactExports.useState(null);
-    const showMasteryToast = (msg) => {
-      setShowConfetti(true);
-      setToastMsg(msg);
-      setTimeout(() => setShowConfetti(false), 2e3);
-      setTimeout(() => setToastMsg(null), 2200);
-    };
-    const handleLibMastery = (idx) => {
-      const updated = items.map((s, i) => i === idx ? { ...s, known: true } : s);
-      upd("unit10", updated);
-      setMasteryConfirm(null);
-      showMasteryToast("Added to Mastered!");
-    };
-    const isVocab = (s) => !s.en || s.en.split(/\s+/).length <= 2;
-    const slPhrases = stillLearning.filter((s) => !isVocab(s));
-    const slVocab = stillLearning.filter((s) => isVocab(s));
-    if (libShadow !== null) {
-      const isSingle = typeof libShadow === "number";
-      if (isSingle) {
-        const s = items[libShadow];
-        return /* @__PURE__ */ jsxRuntimeExports.jsx(ShadowMode, { unit: { title: "My Library", phrases: [{ en: s.en || s.cn, cn: s.cn, jyut: s[romKey] || s.jyut || "" }] }, progress, upd, settings, onClose: () => {
-          releaseMicStream();
-          setLibShadow(null);
-        }, startIdx: 0, single: true });
-      }
-      const shadowItems = stillLearning.length > 0 ? stillLearning : items;
-      return /* @__PURE__ */ jsxRuntimeExports.jsx(ShadowMode, { unit: { title: "My Library", phrases: shadowItems.map((s) => ({ en: s.en || s.cn, cn: s.cn, jyut: s[romKey] || s.jyut || "" })) }, progress, upd, settings, onClose: () => {
-        releaseMicStream();
-        setLibShadow(null);
-      }, startIdx: 0, single: false });
-    }
-    const renderItem = (s) => {
-      const idx = items.indexOf(s);
-      const isExp = expandedIdx === idx;
-      const gloss = canSpeak(s) ? getAutoGloss(s) : [];
-      return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "ph-item" + (isExp ? " expanded" : ""), onClick: () => setExpandedIdx(isExp ? null : idx), children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "ph-row", children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "ph-play", onClick: (e) => {
-            e.stopPropagation();
-            if (canSpeak(s)) speak(s.cn);
-          }, children: /* @__PURE__ */ jsxRuntimeExports.jsx("svg", { width: "10", height: "12", viewBox: "0 0 10 12", fill: "none", children: /* @__PURE__ */ jsxRuntimeExports.jsx("path", { d: "M0 0L10 6L0 12V0Z", fill: "#fff" }) }) }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "ph-text", children: readingMode ? /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "ph-chi", style: { fontSize: 15, fontWeight: 600, color: "var(--ink)", marginBottom: 3, display: "flex", justifyContent: "space-between", alignItems: "center" }, children: [
-              s.cn || s.en,
-              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "ph-chev", children: "▾" })
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: "1.2rem", color: "rgba(255,200,120,.8)" }, children: "›" })
             ] }),
-            s[romKey] && s[romKey] !== `(add ${romLabel.toLowerCase()})` && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "ph-jyut", children: s[romKey] }),
-            s.en && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 13, color: "var(--ink2)" }, children: s.en })
-          ] }) : /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "ph-eng", children: [
-              s.en || s.cn,
-              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "ph-chev", children: "▾" })
-            ] }),
-            s[romKey] && s[romKey] !== `(add ${romLabel.toLowerCase()})` && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "ph-jyut", children: s[romKey] }),
-            s.cn && s.cn.trim() !== "" && s.en && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "ph-chi", children: s.cn })
-          ] }) })
-        ] }),
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "ph-detail", children: [
-          s.tag && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "ph-context", children: [
-            "From: ",
-            s.tag
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { display: "flex", gap: 6, marginTop: 10 }, children: /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { fontSize: ".65rem", fontWeight: 700, background: "rgba(255,255,255,.1)", color: "rgba(255,255,255,.8)", padding: "4px 10px", borderRadius: 999 }, children: "Pick any units" }) })
           ] }),
-          gloss.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "gloss-row", children: gloss.filter((g) => g.cn).map((g, gi2) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "gloss-chip", onClick: (e) => {
-            e.stopPropagation();
-            speak(g.cn);
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { background: quizAvailable >= 3 ? "linear-gradient(135deg, #2D2545 0%, #1A1F3D 100%)" : "#E8E5E0", borderRadius: 16, padding: 20, cursor: quizAvailable >= 3 ? "pointer" : "default", border: "none" }, onClick: () => {
+            if (quizAvailable >= 3) setShowQuiz(true);
           }, children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "gloss-chi", children: g.cn }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "gloss-jyut", children: g.jy }),
-            g.en && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "gloss-eng", children: g.en }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "gloss-actions", children: /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "gloss-action", onClick: (e) => {
-              e.stopPropagation();
-              const lib = progress.unit10 || [];
-              if (!lib.find((x2) => x2.cn === g.cn)) {
-                upd("unit10", [{ en: g.en || "", jyut: g.jy || "", cn: g.cn, tag: s.tag || "Library", known: false, date: (/* @__PURE__ */ new Date()).toLocaleDateString("en-GB", { day: "numeric", month: "short" }) }, ...lib]);
-              }
-            }, children: (progress.unit10 || []).find((x2) => x2.cn === g.cn) ? "✓" : "+" }) })
-          ] }, gi2)) }),
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "ph-actions", children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "ph-action-btn know-btn", onClick: (e) => {
-              e.stopPropagation();
-              setMasteryConfirm({ ...s, _idx: idx });
-            }, children: "I know this!" }),
-            /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { className: "ph-action-btn", onClick: (e) => {
-              e.stopPropagation();
-              setLibShadow(idx);
-            }, children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx("svg", { width: "10", height: "10", viewBox: "0 0 10 12", fill: "none", children: /* @__PURE__ */ jsxRuntimeExports.jsx("path", { d: "M0 0L10 6L0 12V0Z", fill: "#fff" }) }),
-              " Repeat"
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", alignItems: "center", gap: 12 }, children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { width: 48, height: 48, borderRadius: 12, background: quizAvailable >= 3 ? "rgba(143,106,232,.2)" : "rgba(0,0,0,.06)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.5rem", flexShrink: 0 }, children: quizAvailable >= 3 ? "🧠" : "🔒" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { flex: 1 }, children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".92rem", fontWeight: 900, color: quizAvailable >= 3 ? "#fff" : "var(--ink)", marginBottom: 2 }, children: "Quick Quiz" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".76rem", color: quizAvailable >= 3 ? "rgba(255,255,255,.75)" : "var(--ink3)", lineHeight: 1.4 }, children: quizAvailable >= 3 ? "Test your recall on 10 items from your library." : "Mark at least 3 phrases as known to unlock." })
+              ] }),
+              quizAvailable >= 3 && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: "1.2rem", color: "rgba(179,153,255,.8)" }, children: "›" })
             ] }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "ph-action-btn", onClick: (e) => {
-              e.stopPropagation();
-              removeItem(idx);
-            }, style: { background: "transparent", color: "#e74c3c", borderColor: "rgba(231,76,60,.25)" }, children: "Remove" })
-          ] })
-        ] })
-      ] }, idx);
-    };
-    return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { paddingBottom: 80 }, children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { position: "relative", overflow: "hidden", padding: "40px 20px 20px" }, children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { position: "absolute", inset: 0, background: "linear-gradient(135deg,#1F3329 0%,#2a5a3a 40%,#1A1F3D 100%)", opacity: 0.9 } }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { position: "absolute", inset: 0, background: "radial-gradient(ellipse at 80% 20%,rgba(196,240,0,.12) 0%,transparent 50%)" } }),
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { position: "relative", zIndex: 1 }, children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: "1.2rem", fontWeight: 900, color: "#fff", marginBottom: 4 }, children: "My Library" }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".78rem", color: "rgba(255,255,255,.7)", lineHeight: 1.5, marginBottom: 12 }, children: "Your personal collection of words and phrases. Save anything you want to remember and practise." }),
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", gap: 12 }, children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { flex: 1, background: "rgba(255,255,255,.1)", borderRadius: 12, padding: "10px 0", textAlign: "center" }, children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: "1.1rem", fontWeight: 900, color: "var(--lime)" }, children: stillLearning.length }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".6rem", fontWeight: 700, color: "rgba(255,255,255,.65)", textTransform: "uppercase", letterSpacing: ".5px" }, children: "Learning" })
-            ] }),
-            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { flex: 1, background: "rgba(255,255,255,.1)", borderRadius: 12, padding: "10px 0", textAlign: "center" }, children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: "1.1rem", fontWeight: 900, color: "var(--lime)" }, children: mastered.length }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".6rem", fontWeight: 700, color: "rgba(255,255,255,.65)", textTransform: "uppercase", letterSpacing: ".5px" }, children: "Mastered" })
-            ] }),
-            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { flex: 1, background: "rgba(255,255,255,.1)", borderRadius: 12, padding: "10px 0", textAlign: "center" }, children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: "1.1rem", fontWeight: 900, color: "var(--lime)" }, children: items.length }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".6rem", fontWeight: 700, color: "rgba(255,255,255,.65)", textTransform: "uppercase", letterSpacing: ".5px" }, children: "Total" })
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", gap: 6, marginTop: 10 }, children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { fontSize: ".65rem", fontWeight: 700, background: quizAvailable >= 3 ? "rgba(255,255,255,.1)" : "rgba(0,0,0,.06)", color: quizAvailable >= 3 ? "rgba(255,255,255,.8)" : "var(--ink3)", padding: "4px 10px", borderRadius: 999 }, children: "5 min" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { fontSize: ".65rem", fontWeight: 700, background: quizAvailable >= 3 ? "rgba(143,106,232,.2)" : "rgba(0,0,0,.06)", color: quizAvailable >= 3 ? "rgba(179,153,255,.9)" : "var(--ink3)", padding: "4px 10px", borderRadius: 999 }, children: quizAvailable >= 3 ? quizAvailable + " items available" : "🔒 " + quizAvailable + "/3 needed" })
             ] })
           ] })
         ] })
-      ] }),
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { padding: "0 16px" }, children: [
-        !showAddForm && !saved ? /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => setShowAddForm(true), style: {
-          width: "100%",
-          padding: "14px 16px",
-          background: "var(--lime)",
-          border: "none",
-          borderRadius: 12,
-          cursor: "pointer",
-          fontSize: ".84rem",
-          fontWeight: 800,
-          color: "var(--for)",
-          marginTop: 16,
-          marginBottom: 12,
-          minHeight: 48,
-          textAlign: "center",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: 8,
-          boxShadow: "0 2px 8px rgba(196,240,0,.3)"
-        }, children: "✏️ Add your own word or phrase" }) : saved ? /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { width: "100%", padding: "14px", background: "rgba(196,240,0,.1)", border: "2px solid var(--lime)", borderRadius: 12, fontSize: ".84rem", fontWeight: 800, color: "var(--for)", marginTop: 16, marginBottom: 12, textAlign: "center", minHeight: 48, display: "flex", alignItems: "center", justifyContent: "center" }, children: "Saved to your library!" }) : /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { background: "var(--wh)", borderRadius: 14, padding: 16, border: "1.5px solid var(--st)", marginTop: 16, marginBottom: 12 }, children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx("input", { style: { width: "100%", background: "var(--cream)", border: "1.5px solid var(--st)", borderRadius: 8, padding: "10px 12px", fontSize: ".82rem", color: "var(--ink)", outline: "none", fontFamily: "inherit", marginBottom: 8, minHeight: 44, boxSizing: "border-box" }, placeholder: "What do you want to say?", value: en, onChange: (e) => setEn(e.target.value) }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("input", { style: { width: "100%", background: "var(--cream)", border: "1.5px solid var(--st)", borderRadius: 8, padding: "10px 12px", fontSize: ".82rem", color: "var(--ink)", outline: "none", fontFamily: LANG_CONFIG.fontFamily, marginBottom: 8, minHeight: 44, boxSizing: "border-box" }, placeholder: "Chinese characters", value: cn, onChange: (e) => setCn(e.target.value) }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("input", { style: { width: "100%", background: "var(--cream)", border: "1.5px solid var(--st)", borderRadius: 8, padding: "10px 12px", fontSize: ".82rem", color: "var(--plum)", fontStyle: "italic", outline: "none", fontFamily: "inherit", marginBottom: 12, minHeight: 44, boxSizing: "border-box" }, placeholder: romLabel, value: rom, onChange: (e) => setRom(e.target.value) }),
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", gap: 8 }, children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => {
-              setShowAddForm(false);
-              setEn("");
-              setRom("");
-              setCn("");
-            }, style: { flex: 1, background: "var(--cream)", color: "var(--ink3)", border: "1.5px solid var(--st)", borderRadius: 10, padding: "10px 0", fontSize: ".82rem", fontWeight: 700, cursor: "pointer", minHeight: 44 }, children: "Cancel" }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: handleSave, style: { flex: 1, background: en.trim() ? "var(--lime)" : "var(--st)", color: en.trim() ? "var(--for)" : "var(--ink3)", border: "none", borderRadius: 10, padding: "10px 0", fontSize: ".82rem", fontWeight: 900, cursor: en.trim() ? "pointer" : "default", minHeight: 44 }, children: "Save" })
-          ] })
-        ] }),
-        mastered.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { background: "linear-gradient(135deg, #1F3329 0%, #2a4a36 50%, #1F3329 100%)", borderRadius: 16, padding: "14px 16px", marginBottom: 12, cursor: "pointer" }, onClick: () => setMasteredOpen((o) => !o), children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between" }, children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", alignItems: "center", gap: 10 }, children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { fontSize: "1.4rem" }, children: "🏆" }),
-              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
-                /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { color: "#fff", fontWeight: 800, fontSize: ".88rem" }, children: [
-                  mastered.length,
-                  " Mastered!"
-                ] }),
-                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { color: "var(--lime)", fontSize: ".7rem", fontWeight: 600, marginTop: 1 }, children: "You're crushing it — keep going!" })
-              ] })
-            ] }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { color: "rgba(255,255,255,.5)", fontSize: "1.1rem", transition: "transform .2s", transform: masteredOpen ? "rotate(180deg)" : "rotate(0)" }, children: "▾" })
-          ] }),
-          masteredOpen && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { marginTop: 12 }, onClick: (e) => e.stopPropagation(), children: mastered.map((s) => {
-            const idx = items.indexOf(s);
-            return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { background: "rgba(255,255,255,.08)", borderRadius: 10, padding: "10px 12px", marginBottom: 6, display: "flex", alignItems: "center", gap: 10 }, children: [
-              canSpeak(s) && /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => speak(s.cn), style: { width: 32, height: 32, borderRadius: "50%", border: "none", background: "rgba(196,240,0,.2)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: ".65rem", color: "var(--lime)", flexShrink: 0 }, children: "▶" }),
-              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { flex: 1, minWidth: 0 }, children: [
-                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".78rem", fontWeight: 700, color: "#fff", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }, children: s.en || s.cn }),
-                s[romKey] && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".65rem", color: "var(--lime)", fontStyle: "italic" }, children: s[romKey] }),
-                s.cn && s.en && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".72rem", color: "rgba(255,255,255,.5)" }, children: s.cn })
-              ] }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => toggleKnown(idx), style: { background: "none", border: "1px solid rgba(255,255,255,.15)", color: "rgba(255,255,255,.5)", fontSize: ".65rem", fontWeight: 700, cursor: "pointer", padding: "6px 10px", borderRadius: 8, flexShrink: 0 }, children: "Relearn" })
-            ] }, idx);
-          }) })
-        ] }),
-        stillLearning.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "ctrl-row", children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { className: "play-all-btn", onClick: () => startPlaylist(stillLearning.map((s) => ({ en: s.en || s.cn, cn: s.cn, jyut: s[romKey] || s.jyut || "" })), "My Library"), children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx("svg", { width: "14", height: "14", viewBox: "0 0 18 18", fill: "none", children: /* @__PURE__ */ jsxRuntimeExports.jsx("path", { d: "M4 2.5L15 9L4 15.5V2.5Z", fill: "#fff" }) }),
-            "Play All"
-          ] }),
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { className: "shuffle-btn", onClick: () => {
-            const shuffled = [...stillLearning].sort(() => Math.random() - 0.5);
-            startPlaylist(shuffled.map((s) => ({ en: s.en || s.cn, cn: s.cn, jyut: s[romKey] || s.jyut || "" })), "My Library (Shuffled)");
-          }, children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsxs("svg", { width: "16", height: "16", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2.5", strokeLinecap: "round", strokeLinejoin: "round", children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx("polyline", { points: "16 3 21 3 21 8" }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx("line", { x1: "4", y1: "20", x2: "21", y2: "3" }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx("polyline", { points: "21 16 21 21 16 21" }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx("line", { x1: "15", y1: "15", x2: "21", y2: "21" }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx("line", { x1: "4", y1: "4", x2: "9", y2: "9" })
-            ] }),
-            "Shuffle"
-          ] }),
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "filter-chip", onClick: () => setReadingMode((r2) => !r2), children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx("svg", { width: "14", height: "14", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", strokeLinecap: "round", style: { marginRight: 4 }, children: /* @__PURE__ */ jsxRuntimeExports.jsx("path", { d: "M4 6h16M4 12h16M4 18h10" }) }),
-            readingMode ? "Chinese first" : "English first"
-          ] })
-        ] }),
-        slPhrases.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { fontSize: ".7rem", fontWeight: 800, color: "var(--ink3)", letterSpacing: "1.5px", textTransform: "uppercase", marginBottom: 8 }, children: [
-          "PHRASES (",
-          slPhrases.length,
-          ")"
-        ] }),
-        slPhrases.map(renderItem),
-        slVocab.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { fontSize: ".7rem", fontWeight: 800, color: "var(--ink3)", letterSpacing: "1.5px", textTransform: "uppercase", marginBottom: 8, marginTop: slPhrases.length > 0 ? 16 : 0 }, children: [
-          "VOCABULARY (",
-          slVocab.length,
-          ")"
-        ] }),
-        slVocab.map(renderItem),
-        items.length === 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { textAlign: "center", padding: "48px 24px", color: "var(--ink3)" }, children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: "2.5rem", marginBottom: 12 }, children: "📚" }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".92rem", fontWeight: 800, color: "var(--ink)", marginBottom: 6 }, children: "Your library is empty" }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".78rem", lineHeight: 1.6, marginBottom: 20, maxWidth: 260, margin: "0 auto 20px" }, children: "Add words and phrases you hear in daily life. They'll become your top priority in practice." }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => setShowAddForm(true), style: { background: "var(--lime)", color: "var(--for)", border: "none", borderRadius: 12, padding: "12px 24px", fontSize: ".84rem", fontWeight: 900, cursor: "pointer", minHeight: 48 }, children: "+ Add your first phrase" })
-        ] })
-      ] }),
-      masteryConfirm && /* @__PURE__ */ jsxRuntimeExports.jsx(MasteryConfirmSheet, { phrase: masteryConfirm, onCancel: () => setMasteryConfirm(null), onMastered: () => handleLibMastery(masteryConfirm._idx) }),
-      showConfetti && /* @__PURE__ */ jsxRuntimeExports.jsx(ConfettiBurst, {}),
-      toastMsg && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "mastery-toast", children: [
-        "🎉 ",
-        toastMsg
-      ] })
-    ] });
-  }
-  function PracticeTab({ progress, upd, settings, library, practiceCount, setPracticeCount, autoLaunch }) {
-    const [showQuiz, setShowQuiz] = reactExports.useState(false);
-    const [showPronun, setShowPronun] = reactExports.useState(false);
-    const [showLaunch, setShowLaunch] = reactExports.useState(false);
-    const [showLesson, setShowLesson] = reactExports.useState(false);
-    reactExports.useEffect(() => {
-      if (autoLaunch === "daily") setShowLaunch(true);
-    }, [autoLaunch]);
-    reactExports.useMemo(() => getStats(progress), [progress]);
-    const mastered = Object.keys(progress.phrases || {}).filter((k2) => (progress.phrases || {})[k2]).length;
-    const totalPhrases = UNITS.reduce((s, u2) => s + u2.phrases.length, 0);
-    const practicing = totalPhrases - mastered;
-    const quizAvailable = reactExports.useMemo(() => {
-      let count = 0;
-      UNITS.forEach((u2) => {
-        u2.phrases.forEach((_, i) => {
-          const key = `${u2.id}-${i}`;
-          if ((progress.phrases || {})[key]) count++;
-        });
-      });
-      (progress.unit10 || []).forEach((s) => {
-        if (s.known) count++;
-      });
-      return count;
-    }, [progress]);
-    const nextTopic = reactExports.useMemo(() => {
-      for (const u2 of UNITS) {
-        const done = u2.phrases.every((_, i) => (progress.phrases || {})[`${u2.id}-${i}`]);
-        if (!done) return u2;
-      }
-      return UNITS[0];
-    }, [progress]);
-    const stillLearningCount = reactExports.useMemo(() => {
-      let count = 0;
-      UNITS.forEach((u2) => {
-        u2.phrases.forEach((_, i) => {
-          if (!(progress.phrases || {})[`${u2.id}-${i}`]) count++;
-        });
-      });
-      return count;
-    }, [progress]);
-    if (showLesson) return /* @__PURE__ */ jsxRuntimeExports.jsx(LessonMode, { progress, upd, profile: "", settings, onComplete: () => {
-      const log = [...progress.lessonLog || [], { date: Date.now(), mins: 30 }];
-      upd("lessonLog", log);
-      setShowLesson(false);
-    }, onQuit: () => setShowLesson(false) });
-    if (showPronun) return /* @__PURE__ */ jsxRuntimeExports.jsx(QuizTab, { progress, upd, startMode: "pronunciation", onBack: () => setShowPronun(false) });
-    if (showQuiz) return /* @__PURE__ */ jsxRuntimeExports.jsx(QuizTab, { progress, upd, startMode: "recall", onBack: () => setShowQuiz(false) });
-    if (showLaunch) {
-      const phases = [
-        { icon: "🔥", name: "Warm-up", time: "3 min", desc: "Review 5–8 mastered items" },
-        { icon: "🆕", name: "Learn new", time: "7 min", desc: "3–5 new phrases from next topic" },
-        { icon: "🗣", name: "Shadow drill", time: "8 min", desc: "Listen & repeat pattern" },
-        { icon: "🔁", name: "Mix & review", time: "5 min", desc: "Everything shuffled" },
-        { icon: "🧠", name: "Quiz", time: "5 min", desc: "Rapid-fire recall" },
-        { icon: "😌", name: "Cool-down", time: "2 min", desc: "Relaxed listen-through" }
-      ];
-      return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { position: "fixed", inset: 0, zIndex: 999, background: "linear-gradient(160deg, #1F3329 0%, #2A4A35 50%, #1F3329 100%)", display: "flex", flexDirection: "column", alignItems: "center", padding: "0 24px", overflowY: "auto" }, children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => setShowLaunch(false), style: { position: "absolute", top: 16, left: 16, background: "rgba(255,255,255,.1)", border: "none", borderRadius: 999, width: 40, height: 40, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "#fff", fontSize: "1.1rem" }, children: "‹" }),
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { marginTop: 72, textAlign: "center" }, children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: "3rem", marginBottom: 8 }, children: "🎧" }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: "1.3rem", fontWeight: 900, color: "#fff", marginBottom: 4 }, children: "Today's Practice" }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".72rem", color: "rgba(255,255,255,.45)" }, children: "~30 minutes · 6 phases" })
-        ] }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { width: "100%", maxWidth: 360, marginTop: 28 }, children: phases.map((p2, i) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", alignItems: "center", gap: 14, padding: "13px 0", borderBottom: i < phases.length - 1 ? "1px solid rgba(255,255,255,.08)" : "none" }, children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: "1.3rem", width: 32, textAlign: "center", flexShrink: 0 }, children: p2.icon }),
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { flex: 1 }, children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".82rem", fontWeight: 800, color: "#fff" }, children: p2.name }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".68rem", color: "rgba(255,255,255,.45)", marginTop: 1 }, children: p2.desc })
-          ] }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".68rem", fontWeight: 700, color: "var(--lime)", flexShrink: 0 }, children: p2.time })
-        ] }, i)) }),
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { marginTop: 20, fontSize: ".72rem", color: "rgba(255,255,255,.4)", textAlign: "center", lineHeight: 1.5 }, children: [
-          stillLearningCount,
-          " items in Still Learning · Next topic: ",
-          nextTopic.title
-        ] }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => {
-          setShowLaunch(false);
-          setShowLesson(true);
-        }, style: { marginTop: 24, marginBottom: 40, background: "var(--lime)", color: "var(--for)", border: "none", borderRadius: 999, padding: "16px 48px", fontSize: ".92rem", fontWeight: 900, cursor: "pointer", minHeight: 56, boxShadow: "0 4px 20px rgba(196,240,0,.3)" }, children: "▶ Begin practice" })
       ] });
     }
-    return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { paddingBottom: 80 }, children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { position: "relative", overflow: "hidden", padding: "40px 20px 24px" }, children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { position: "absolute", inset: 0, background: "linear-gradient(135deg,#1F3329 0%,#2a5a3a 40%,#1A1F3D 100%)", opacity: 0.9 } }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { position: "absolute", inset: 0, background: "radial-gradient(ellipse at 80% 20%,rgba(196,240,0,.12) 0%,transparent 50%)" } }),
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { position: "relative", zIndex: 1 }, children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: "1.2rem", fontWeight: 900, color: "#fff", marginBottom: 4 }, children: "Practice & Quiz" }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".82rem", color: "rgba(255,255,255,.75)", lineHeight: 1.4 }, children: "Build your skills with structured practice." }),
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", gap: 12, marginTop: 16 }, children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { flex: 1, background: "rgba(255,255,255,.1)", borderRadius: 12, padding: "12px 0", textAlign: "center" }, children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: "1.2rem", fontWeight: 900, color: "var(--lime)" }, children: mastered }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".65rem", fontWeight: 700, color: "rgba(255,255,255,.7)", textTransform: "uppercase", letterSpacing: ".5px" }, children: "Mastered" })
-            ] }),
-            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { flex: 1, background: "rgba(255,255,255,.1)", borderRadius: 12, padding: "12px 0", textAlign: "center" }, children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: "1.2rem", fontWeight: 900, color: "var(--lime)" }, children: practicing }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".65rem", fontWeight: 700, color: "rgba(255,255,255,.7)", textTransform: "uppercase", letterSpacing: ".5px" }, children: "Practicing" })
-            ] }),
-            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { flex: 1, background: "rgba(255,255,255,.1)", borderRadius: 12, padding: "12px 0", textAlign: "center" }, children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: "1.2rem", fontWeight: 900, color: "var(--lime)" }, children: new Set((progress.lessonLog || []).map((l2) => new Date(l2.date).toDateString())).size }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".65rem", fontWeight: 700, color: "rgba(255,255,255,.7)", textTransform: "uppercase", letterSpacing: ".5px" }, children: "Practice Days" })
-            ] })
-          ] })
-        ] })
-      ] }),
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { padding: "0 16px" }, children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { background: "var(--for)", borderRadius: 16, padding: 20, marginBottom: 12, cursor: "pointer", marginTop: 16 }, onClick: () => setShowLaunch(true), children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", alignItems: "center", gap: 12 }, children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { width: 48, height: 48, borderRadius: 12, background: "rgba(196,240,0,.15)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.5rem", flexShrink: 0 }, children: "🎧" }),
-            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { flex: 1 }, children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".92rem", fontWeight: 900, color: "#fff", marginBottom: 2 }, children: "Daily Practice" }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".76rem", color: "rgba(255,255,255,.75)", lineHeight: 1.4 }, children: "Warm-up, new phrases, shadowing, review & quiz." })
-            ] }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: "1.2rem", color: "var(--lime)" }, children: "›" })
-          ] }),
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", gap: 6, marginTop: 10 }, children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { fontSize: ".65rem", fontWeight: 700, background: "rgba(255,255,255,.12)", color: "rgba(255,255,255,.8)", padding: "4px 10px", borderRadius: 999 }, children: "30 min" }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { fontSize: ".65rem", fontWeight: 700, background: "rgba(196,240,0,.15)", color: "var(--lime)", padding: "4px 10px", borderRadius: 999 }, children: "Recommended" })
-          ] })
-        ] }),
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { background: "linear-gradient(135deg, #3D2A1A 0%, #2A1F15 100%)", borderRadius: 16, padding: 20, marginBottom: 12, cursor: "pointer" }, onClick: () => setShowPronun(true), children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", alignItems: "center", gap: 12 }, children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { width: 48, height: 48, borderRadius: 12, background: "rgba(232,160,64,.15)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.5rem", flexShrink: 0 }, children: "🎙" }),
-            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { flex: 1 }, children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".92rem", fontWeight: 900, color: "#fff", marginBottom: 2 }, children: "Pronunciation Practice" }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".76rem", color: "rgba(255,255,255,.75)", lineHeight: 1.4 }, children: "Practise saying phrases out loud and get AI scores." })
-            ] }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: "1.2rem", color: "rgba(255,200,120,.8)" }, children: "›" })
-          ] }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { display: "flex", gap: 6, marginTop: 10 }, children: /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { fontSize: ".65rem", fontWeight: 700, background: "rgba(255,255,255,.1)", color: "rgba(255,255,255,.8)", padding: "4px 10px", borderRadius: 999 }, children: "Pick any units" }) })
-        ] }),
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { background: quizAvailable >= 3 ? "linear-gradient(135deg, #2D2545 0%, #1A1F3D 100%)" : "#E8E5E0", borderRadius: 16, padding: 20, cursor: quizAvailable >= 3 ? "pointer" : "default", border: "none" }, onClick: () => {
-          if (quizAvailable >= 3) setShowQuiz(true);
-        }, children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", alignItems: "center", gap: 12 }, children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { width: 48, height: 48, borderRadius: 12, background: quizAvailable >= 3 ? "rgba(143,106,232,.2)" : "rgba(0,0,0,.06)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.5rem", flexShrink: 0 }, children: quizAvailable >= 3 ? "🧠" : "🔒" }),
-            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { flex: 1 }, children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".92rem", fontWeight: 900, color: quizAvailable >= 3 ? "#fff" : "var(--ink)", marginBottom: 2 }, children: "Quick Quiz" }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".76rem", color: quizAvailable >= 3 ? "rgba(255,255,255,.75)" : "var(--ink3)", lineHeight: 1.4 }, children: quizAvailable >= 3 ? "Test your recall on 10 items from your library." : "Mark at least 3 phrases as known to unlock." })
-            ] }),
-            quizAvailable >= 3 && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: "1.2rem", color: "rgba(179,153,255,.8)" }, children: "›" })
-          ] }),
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", gap: 6, marginTop: 10 }, children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { fontSize: ".65rem", fontWeight: 700, background: quizAvailable >= 3 ? "rgba(255,255,255,.1)" : "rgba(0,0,0,.06)", color: quizAvailable >= 3 ? "rgba(255,255,255,.8)" : "var(--ink3)", padding: "4px 10px", borderRadius: 999 }, children: "5 min" }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { fontSize: ".65rem", fontWeight: 700, background: quizAvailable >= 3 ? "rgba(143,106,232,.2)" : "rgba(0,0,0,.06)", color: quizAvailable >= 3 ? "rgba(179,153,255,.9)" : "var(--ink3)", padding: "4px 10px", borderRadius: 999 }, children: quizAvailable >= 3 ? quizAvailable + " items available" : "🔒 " + quizAvailable + "/3 needed" })
-          ] })
-        ] })
-      ] })
-    ] });
-  }
-  function ShadowMode({ unit, progress, upd, settings, onClose, startIdx = 0, single = false }) {
-    const [idx, setIdx] = reactExports.useState(startIdx);
-    const [phase, setPhase] = reactExports.useState("play");
-    const [playing, setPlaying] = reactExports.useState(true);
-    const [showCn, setShowCn] = reactExports.useState(true);
-    const [peeking, setPeeking] = reactExports.useState(false);
-    const [speed, setSpeed] = reactExports.useState((settings == null ? void 0 : settings.defaultSpeed) || "normal");
-    const [complete, setComplete] = reactExports.useState(false);
-    const [isRecording, setIsRecording] = reactExports.useState(false);
-    const [scoring, setScoring] = reactExports.useState(false);
-    const [scoreResult, setScoreResult] = reactExports.useState(null);
-    const timer = reactExports.useRef(null);
-    const peekTimer = reactExports.useRef(null);
-    const knownN = reactExports.useRef(0);
-    const doPeek = () => {
-      setPeeking(true);
-      clearTimeout(peekTimer.current);
-      peekTimer.current = setTimeout(() => setPeeking(false), 2500);
-    };
-    reactExports.useEffect(() => () => clearTimeout(peekTimer.current), []);
-    const phrases = single ? [unit.phrases[startIdx]] : unit.phrases;
-    reactExports.useEffect(() => {
-      preloadUnitAudio(phrases);
-    }, []);
-    const ph2 = phrases[single ? 0 : idx];
-    const realIdx = single ? startIdx : idx;
-    const total = phrases.length;
-    const isKn = (progress.phrases || {})[`${unit.id}-${realIdx}`];
-    const phraseLen = ph2 ? (ph2.cn || "").length : 4;
-    const lenBonus = Math.max(0, (phraseLen - 4) * 400);
-    const gaps = { slow: [4e3 + lenBonus, 5e3 + lenBonus], normal: [2800 + lenBonus, 3500 + lenBonus], fast: [1500 + lenBonus, 2e3 + lenBonus] };
-    const clear = () => {
-      if (timer.current) clearTimeout(timer.current);
-    };
-    const playingRef = reactExports.useRef(playing);
-    playingRef.current = playing;
-    reactExports.useEffect(() => {
-      if (!playing || complete) return;
-      clear();
-      let cancelled = false;
-      async function playSequence() {
-        if (phase === "play" && ph2) {
-          try {
-            await speakPhrase(ph2);
-          } catch (e) {
-          }
-          if (cancelled || !playingRef.current) return;
-          await new Promise((r2) => setTimeout(r2, 600));
-          if (cancelled || !playingRef.current) return;
-          setPhase("shadow");
-        } else if (phase === "shadow") {
-          const [, shadowGap] = gaps[speed];
-          timer.current = setTimeout(() => {
-            if (single) {
-              setPhase("play");
-            } else if (idx + 1 >= total) setComplete(true);
-            else {
-              setIdx((i) => i + 1);
-              setPhase("play");
-            }
-          }, shadowGap);
-        }
-      }
-      playSequence();
-      return () => {
-        cancelled = true;
-        clear();
-        stopAudio();
+    function ShadowMode({ unit, progress, upd, settings, onClose, startIdx = 0, single = false }) {
+      const [idx, setIdx] = reactExports.useState(startIdx);
+      const [phase, setPhase] = reactExports.useState("play");
+      const [playing, setPlaying] = reactExports.useState(true);
+      const [showCn, setShowCn] = reactExports.useState(true);
+      const [peeking, setPeeking] = reactExports.useState(false);
+      const [speed, setSpeed] = reactExports.useState((settings == null ? void 0 : settings.defaultSpeed) || "normal");
+      const [complete, setComplete] = reactExports.useState(false);
+      const [isRecording, setIsRecording] = reactExports.useState(false);
+      const [scoring, setScoring] = reactExports.useState(false);
+      const [scoreResult, setScoreResult] = reactExports.useState(null);
+      const timer = reactExports.useRef(null);
+      const peekTimer = reactExports.useRef(null);
+      const knownN = reactExports.useRef(0);
+      const doPeek = () => {
+        setPeeking(true);
+        clearTimeout(peekTimer.current);
+        peekTimer.current = setTimeout(() => setPeeking(false), 2500);
       };
-    }, [phase, playing, idx, complete, single, speed]);
-    const markKn = () => {
-      if (!isKn) {
-        knownN.current++;
-        upd(`phrases.${unit.id}-${realIdx}`, true);
-      }
-    };
-    const startTest = async () => {
-      setPlaying(false);
-      stopAudio();
-      const ok2 = await startRecording();
-      if (ok2) setIsRecording(true);
-    };
-    if (complete) return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "comp-ov", children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "comp-em", children: "🎉" }),
-      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "comp-t", children: "Session complete!" }),
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "comp-s", children: [
-        "Unit ",
-        unit.id,
-        ": ",
-        unit.title,
-        " · ",
-        knownN.current,
-        " marked known"
-      ] }),
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", gap: 8 }, children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "comp-btn", style: { background: "rgba(255,255,255,.1)", color: "#fff" }, onClick: () => {
-          setIdx(0);
-          setPhase("play");
-          setComplete(false);
-          setPlaying(true);
-          knownN.current = 0;
-        }, children: "Again" }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "comp-btn", onClick: onClose, children: "Done" })
-      ] })
-    ] });
-    return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "sho", children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "sh-hd", children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { className: "sh-cl", onClick: onClose, children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { fontSize: ".8rem" }, children: "‹" }),
-          " Close"
-        ] }),
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { textAlign: "center", flex: 1 }, children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".72rem", fontWeight: 800, color: "rgba(255,255,255,.6)" }, children: unit.title }),
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { fontSize: ".62rem", fontWeight: 700, color: "rgba(255,255,255,.3)", marginTop: 1 }, children: [
-            "Phrase ",
-            single ? 1 : idx + 1,
-            " of ",
-            total
-          ] })
-        ] }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => setShowCn((v2) => !v2), style: { background: "rgba(255,255,255,.08)", border: "1px solid rgba(255,255,255,.12)", borderRadius: 999, width: 40, height: 40, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "rgba(255,255,255,.5)", fontSize: "1.1rem" }, children: showCn ? /* @__PURE__ */ jsxRuntimeExports.jsxs("svg", { width: "20", height: "20", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx("path", { d: "M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("circle", { cx: "12", cy: "12", r: "3" })
-        ] }) : /* @__PURE__ */ jsxRuntimeExports.jsxs("svg", { width: "20", height: "20", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx("path", { d: "M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("line", { x1: "1", y1: "1", x2: "23", y2: "23" })
-        ] }) })
-      ] }),
-      !single && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "sh-bar", children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "sh-bf", style: { width: (idx + 1) / total * 100 + "%" } }) }),
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "sh-bd", style: { position: "relative" }, children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { onClick: markKn, style: { position: "absolute", top: 12, right: 12, background: isKn ? "rgba(196,240,0,.08)" : "rgba(196,240,0,.15)", border: isKn ? "1.5px solid rgba(196,240,0,.15)" : "1.5px solid rgba(196,240,0,.3)", borderRadius: 999, padding: "8px 14px", fontSize: ".72rem", fontWeight: 800, color: isKn ? "rgba(196,240,0,.4)" : "var(--lime)", cursor: "pointer", display: "flex", alignItems: "center", gap: 5, minHeight: 36 }, children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { fontSize: ".9rem" }, children: isKn ? "✓" : "💪" }),
-          " ",
-          isKn ? "Known" : "I know this!"
-        ] }),
-        ph2.tag && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "sh-ctx", children: [
-          "Context: ",
-          ph2.tag
-        ] }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "sh-en", children: ph2.en }),
-        showCn ? /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "sh-jy", children: /* @__PURE__ */ jsxRuntimeExports.jsx(JyutpingTone, { text: ph2.jyut }) }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "sh-cn", children: ph2.cn })
-        ] }) : /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "sh-peek", onClick: doPeek, children: peeking ? /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "sh-jy", style: { marginBottom: 4 }, children: /* @__PURE__ */ jsxRuntimeExports.jsx(JyutpingTone, { text: ph2.jyut }) }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "sh-cn", style: { marginBottom: 0 }, children: ph2.cn })
-        ] }) : /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "sh-peek-text", children: "Tap to peek" }) }),
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: `cue-pill ${phase === "shadow" ? "speak" : "listen"}`, children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "cue-pill-emoji", children: phase === "shadow" ? "👄" : "👂" }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "cue-pill-dot" }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "cue-pill-text", children: phase === "shadow" ? "Repeat out loud" : "Listen" })
-        ] })
-      ] }),
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "l-ctrl", children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "l-transport", children: [
-          !single && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "lt-wrap", children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "lt-btn sec", disabled: idx === 0, style: idx === 0 ? { opacity: 0.3 } : {}, onClick: () => {
-              if (idx > 0) {
-                clear();
-                setScoreResult(null);
-                setIdx((i) => i - 1);
+      reactExports.useEffect(() => () => clearTimeout(peekTimer.current), []);
+      const phrases = single ? [unit.phrases[startIdx]] : unit.phrases;
+      reactExports.useEffect(() => {
+        preloadUnitAudio(phrases);
+      }, []);
+      const ph2 = phrases[single ? 0 : idx];
+      const realIdx = single ? startIdx : idx;
+      const total = phrases.length;
+      const isKn = (progress.phrases || {})[`${unit.id}-${realIdx}`];
+      const phraseLen = ph2 ? (ph2.cn || "").length : 4;
+      const lenBonus = Math.max(0, (phraseLen - 4) * 400);
+      const gaps = { slow: [4e3 + lenBonus, 5e3 + lenBonus], normal: [2800 + lenBonus, 3500 + lenBonus], fast: [1500 + lenBonus, 2e3 + lenBonus] };
+      const clear = () => {
+        if (timer.current) clearTimeout(timer.current);
+      };
+      const playingRef = reactExports.useRef(playing);
+      playingRef.current = playing;
+      reactExports.useEffect(() => {
+        if (!playing || complete) return;
+        clear();
+        let cancelled = false;
+        async function playSequence() {
+          if (phase === "play" && ph2) {
+            try {
+              await speakPhrase(ph2);
+            } catch (e) {
+            }
+            if (cancelled || !playingRef.current) return;
+            await new Promise((r2) => setTimeout(r2, 600));
+            if (cancelled || !playingRef.current) return;
+            setPhase("shadow");
+          } else if (phase === "shadow") {
+            const [, shadowGap] = gaps[speed];
+            timer.current = setTimeout(() => {
+              if (single) {
                 setPhase("play");
-              }
-            }, children: "⏮" }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "lt-lbl", children: "Back" })
-          ] }),
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "lt-wrap", children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "lt-btn sec", onClick: () => {
-              clear();
-              setPhase("play");
-            }, children: "↻" }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "lt-lbl", children: "Replay" })
-          ] }),
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "lt-wrap", children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "lt-btn pri", onClick: () => setPlaying((p2) => !p2), children: playing ? "⏸" : "▶" }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "lt-lbl", children: playing ? "Pause" : "Play" })
-          ] }),
-          !single && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "lt-wrap", children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "lt-btn sec", onClick: () => {
-              clear();
-              setScoreResult(null);
-              if (idx + 1 >= total) setComplete(true);
+              } else if (idx + 1 >= total) setComplete(true);
               else {
                 setIdx((i) => i + 1);
                 setPhase("play");
               }
-            }, children: "⏭" }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "lt-lbl", children: "Next" })
-          ] })
-        ] }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "l-divider" }),
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "l-speed", children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "l-row-label", children: "Pause between phrases" }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "l-pill-row", children: [{ k: "slow", l: "Longer pause" }, { k: "normal", l: "Normal" }, { k: "fast", l: "Shorter pause" }].map(
-            (s) => /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: `l-pill-btn ${speed === s.k ? "on" : ""}`, onClick: () => setSpeed(s.k), children: s.l }, s.k)
-          ) })
-        ] })
-      ] }),
-      scoreResult && /* @__PURE__ */ jsxRuntimeExports.jsx(
-        PronunciationScore,
-        {
-          score: scoreResult.score,
-          chars: scoreResult.chars,
-          phrase: scoreResult.phrase,
-          onRetry: () => {
-            setScoreResult(null);
-            startTest();
-          },
-          onNext: () => {
-            setScoreResult(null);
-            if (!single && idx + 1 < total) {
-              setIdx((i) => i + 1);
-              setPhase("play");
-              setPlaying(true);
-            } else {
-              setPhase("play");
-              setPlaying(true);
-            }
-          },
-          onClose: () => {
-            setScoreResult(null);
-            setPlaying(true);
+            }, shadowGap);
           }
         }
-      )
-    ] });
-  }
-  function PlaylistBuilder({ onClose, onPlay, progress }) {
-    const [selUnits, setSelUnits] = reactExports.useState(/* @__PURE__ */ new Set());
-    const [selPhrases, setSelPhrases] = reactExports.useState(/* @__PURE__ */ new Set());
-    const [selLife, setSelLife] = reactExports.useState(/* @__PURE__ */ new Set());
-    const [selAllLife, setSelAllLife] = reactExports.useState(false);
-    const [selVocabCats, setSelVocabCats] = reactExports.useState(/* @__PURE__ */ new Set());
-    const [expanded, setExpanded] = reactExports.useState(null);
-    const lifeItems = ((progress == null ? void 0 : progress.unit10) || []).filter((s) => s.cn && s.cn !== "(add characters)");
-    const toggleUnit = (uid) => {
-      var _a;
-      const next = new Set(selUnits);
-      if (next.has(uid)) {
-        next.delete(uid);
-        const nextP = new Set(selPhrases);
-        (_a = UNITS.find((u2) => u2.id === uid)) == null ? void 0 : _a.phrases.forEach((_, i) => nextP.delete(`${uid}-${i}`));
-        setSelPhrases(nextP);
-      } else {
-        next.add(uid);
-      }
-      setSelUnits(next);
-    };
-    const togglePhrase = (uid, idx) => {
-      const key = `${uid}-${idx}`;
-      const next = new Set(selPhrases);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
-      setSelPhrases(next);
-    };
-    const toggleAllLife = () => {
-      if (selAllLife) {
-        setSelAllLife(false);
-        setSelLife(/* @__PURE__ */ new Set());
-      } else {
-        setSelAllLife(true);
-        setSelLife(new Set(lifeItems.map((_, i) => i)));
-      }
-    };
-    const toggleLifeItem = (idx) => {
-      const next = new Set(selLife);
-      if (next.has(idx)) next.delete(idx);
-      else next.add(idx);
-      setSelLife(next);
-      setSelAllLife(next.size === lifeItems.length);
-    };
-    const getSelectedItems = () => {
-      const items = [];
-      UNITS.forEach((u2) => {
-        u2.phrases.forEach((p2, i) => {
-          const key = `${u2.id}-${i}`;
-          if (selUnits.has(u2.id) || selPhrases.has(key)) {
-            items.push({ ...p2, unitId: u2.id, unitTitle: u2.title });
+        playSequence();
+        return () => {
+          cancelled = true;
+          clear();
+          stopAudio();
+        };
+      }, [phase, playing, idx, complete, single, speed]);
+      const markKn = () => {
+        if (!isKn) {
+          knownN.current++;
+          upd(`phrases.${unit.id}-${realIdx}`, true);
+        }
+      };
+      const startTest = async () => {
+        setPlaying(false);
+        stopAudio();
+        const ok2 = await startRecording();
+        if (ok2) setIsRecording(true);
+      };
+      if (complete) return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "comp-ov", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "comp-em", children: "🎉" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "comp-t", children: "Session complete!" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "comp-s", children: [
+          "Unit ",
+          unit.id,
+          ": ",
+          unit.title,
+          " · ",
+          knownN.current,
+          " marked known"
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", gap: 8 }, children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "comp-btn", style: { background: "rgba(255,255,255,.1)", color: "#fff" }, onClick: () => {
+            setIdx(0);
+            setPhase("play");
+            setComplete(false);
+            setPlaying(true);
+            knownN.current = 0;
+          }, children: "Again" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "comp-btn", onClick: onClose, children: "Done" })
+        ] })
+      ] });
+      return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "sho", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "sh-hd", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { className: "sh-cl", onClick: onClose, children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { fontSize: ".8rem" }, children: "‹" }),
+            " Close"
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { textAlign: "center", flex: 1 }, children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".72rem", fontWeight: 800, color: "rgba(255,255,255,.6)" }, children: unit.title }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { fontSize: ".62rem", fontWeight: 700, color: "rgba(255,255,255,.3)", marginTop: 1 }, children: [
+              "Phrase ",
+              single ? 1 : idx + 1,
+              " of ",
+              total
+            ] })
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => setShowCn((v2) => !v2), style: { background: "rgba(255,255,255,.08)", border: "1px solid rgba(255,255,255,.12)", borderRadius: 999, width: 40, height: 40, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "rgba(255,255,255,.5)", fontSize: "1.1rem" }, children: showCn ? /* @__PURE__ */ jsxRuntimeExports.jsxs("svg", { width: "20", height: "20", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("path", { d: "M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("circle", { cx: "12", cy: "12", r: "3" })
+          ] }) : /* @__PURE__ */ jsxRuntimeExports.jsxs("svg", { width: "20", height: "20", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("path", { d: "M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("line", { x1: "1", y1: "1", x2: "23", y2: "23" })
+          ] }) })
+        ] }),
+        !single && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "sh-bar", children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "sh-bf", style: { width: (idx + 1) / total * 100 + "%" } }) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "sh-bd", style: { position: "relative" }, children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { onClick: markKn, style: { position: "absolute", top: 12, right: 12, background: isKn ? "rgba(196,240,0,.08)" : "rgba(196,240,0,.15)", border: isKn ? "1.5px solid rgba(196,240,0,.15)" : "1.5px solid rgba(196,240,0,.3)", borderRadius: 999, padding: "8px 14px", fontSize: ".72rem", fontWeight: 800, color: isKn ? "rgba(196,240,0,.4)" : "var(--lime)", cursor: "pointer", display: "flex", alignItems: "center", gap: 5, minHeight: 36 }, children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { fontSize: ".9rem" }, children: isKn ? "✓" : "💪" }),
+            " ",
+            isKn ? "Known" : "I know this!"
+          ] }),
+          ph2.tag && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "sh-ctx", children: [
+            "Context: ",
+            ph2.tag
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "sh-en", children: ph2.en }),
+          showCn ? /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "sh-jy", children: /* @__PURE__ */ jsxRuntimeExports.jsx(JyutpingTone, { text: ph2.jyut }) }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "sh-cn", children: ph2.cn })
+          ] }) : /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "sh-peek", onClick: doPeek, children: peeking ? /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "sh-jy", style: { marginBottom: 4 }, children: /* @__PURE__ */ jsxRuntimeExports.jsx(JyutpingTone, { text: ph2.jyut }) }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "sh-cn", style: { marginBottom: 0 }, children: ph2.cn })
+          ] }) : /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "sh-peek-text", children: "Tap to peek" }) }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: `cue-pill ${phase === "shadow" ? "speak" : "listen"}`, children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "cue-pill-emoji", children: phase === "shadow" ? "👄" : "👂" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "cue-pill-dot" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "cue-pill-text", children: phase === "shadow" ? "Repeat out loud" : "Listen" })
+          ] })
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "l-ctrl", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "l-transport", children: [
+            !single && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "lt-wrap", children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "lt-btn sec", disabled: idx === 0, style: idx === 0 ? { opacity: 0.3 } : {}, onClick: () => {
+                if (idx > 0) {
+                  clear();
+                  setScoreResult(null);
+                  setIdx((i) => i - 1);
+                  setPhase("play");
+                }
+              }, children: "⏮" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "lt-lbl", children: "Back" })
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "lt-wrap", children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "lt-btn sec", onClick: () => {
+                clear();
+                setPhase("play");
+              }, children: "↻" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "lt-lbl", children: "Replay" })
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "lt-wrap", children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "lt-btn pri", onClick: () => setPlaying((p2) => !p2), children: playing ? "⏸" : "▶" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "lt-lbl", children: playing ? "Pause" : "Play" })
+            ] }),
+            !single && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "lt-wrap", children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "lt-btn sec", onClick: () => {
+                clear();
+                setScoreResult(null);
+                if (idx + 1 >= total) setComplete(true);
+                else {
+                  setIdx((i) => i + 1);
+                  setPhase("play");
+                }
+              }, children: "⏭" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "lt-lbl", children: "Next" })
+            ] })
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "l-divider" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "l-speed", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "l-row-label", children: "Pause between phrases" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "l-pill-row", children: [{ k: "slow", l: "Longer pause" }, { k: "normal", l: "Normal" }, { k: "fast", l: "Shorter pause" }].map(
+              (s) => /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: `l-pill-btn ${speed === s.k ? "on" : ""}`, onClick: () => setSpeed(s.k), children: s.l }, s.k)
+            ) })
+          ] })
+        ] }),
+        scoreResult && /* @__PURE__ */ jsxRuntimeExports.jsx(
+          PronunciationScore,
+          {
+            score: scoreResult.score,
+            chars: scoreResult.chars,
+            phrase: scoreResult.phrase,
+            onRetry: () => {
+              setScoreResult(null);
+              startTest();
+            },
+            onNext: () => {
+              setScoreResult(null);
+              if (!single && idx + 1 < total) {
+                setIdx((i) => i + 1);
+                setPhase("play");
+                setPlaying(true);
+              } else {
+                setPhase("play");
+                setPlaying(true);
+              }
+            },
+            onClose: () => {
+              setScoreResult(null);
+              setPlaying(true);
+            }
+          }
+        )
+      ] });
+    }
+    function PlaylistBuilder({ onClose, onPlay, progress }) {
+      const [selUnits, setSelUnits] = reactExports.useState(/* @__PURE__ */ new Set());
+      const [selPhrases, setSelPhrases] = reactExports.useState(/* @__PURE__ */ new Set());
+      const [selLife, setSelLife] = reactExports.useState(/* @__PURE__ */ new Set());
+      const [selAllLife, setSelAllLife] = reactExports.useState(false);
+      const [selVocabCats, setSelVocabCats] = reactExports.useState(/* @__PURE__ */ new Set());
+      const [expanded, setExpanded] = reactExports.useState(null);
+      const lifeItems = ((progress == null ? void 0 : progress.unit10) || []).filter((s) => s.cn && s.cn !== "(add characters)");
+      const toggleUnit = (uid) => {
+        var _a;
+        const next = new Set(selUnits);
+        if (next.has(uid)) {
+          next.delete(uid);
+          const nextP = new Set(selPhrases);
+          (_a = UNITS.find((u2) => u2.id === uid)) == null ? void 0 : _a.phrases.forEach((_, i) => nextP.delete(`${uid}-${i}`));
+          setSelPhrases(nextP);
+        } else {
+          next.add(uid);
+        }
+        setSelUnits(next);
+      };
+      const togglePhrase = (uid, idx) => {
+        const key = `${uid}-${idx}`;
+        const next = new Set(selPhrases);
+        if (next.has(key)) next.delete(key);
+        else next.add(key);
+        setSelPhrases(next);
+      };
+      const toggleAllLife = () => {
+        if (selAllLife) {
+          setSelAllLife(false);
+          setSelLife(/* @__PURE__ */ new Set());
+        } else {
+          setSelAllLife(true);
+          setSelLife(new Set(lifeItems.map((_, i) => i)));
+        }
+      };
+      const toggleLifeItem = (idx) => {
+        const next = new Set(selLife);
+        if (next.has(idx)) next.delete(idx);
+        else next.add(idx);
+        setSelLife(next);
+        setSelAllLife(next.size === lifeItems.length);
+      };
+      const getSelectedItems = () => {
+        const items = [];
+        UNITS.forEach((u2) => {
+          u2.phrases.forEach((p2, i) => {
+            const key = `${u2.id}-${i}`;
+            if (selUnits.has(u2.id) || selPhrases.has(key)) {
+              items.push({ ...p2, unitId: u2.id, unitTitle: u2.title });
+            }
+          });
+        });
+        lifeItems.forEach((s, i) => {
+          if (selAllLife || selLife.has(i)) {
+            items.push({ en: s.en, jyut: s.jyut, cn: s.cn, tag: s.tag, unitId: 11, unitTitle: "Life Sentences" });
           }
         });
-      });
-      lifeItems.forEach((s, i) => {
-        if (selAllLife || selLife.has(i)) {
-          items.push({ en: s.en, jyut: s.jyut, cn: s.cn, tag: s.tag, unitId: 11, unitTitle: "Life Sentences" });
-        }
-      });
-      VOCAB_CATS.forEach((cat) => {
-        if (selVocabCats.has(cat.id)) {
-          cat.words.forEach((w2) => items.push({ en: w2.en, cn: w2.cn, jyut: w2.jyut, tag: cat.label }));
-        }
-      });
-      return items;
-    };
-    const count = getSelectedItems().length;
-    return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "plb-ov", children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "plb-hd", children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "plb-cl", onClick: onClose, children: "✕ Cancel" }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "plb-ti", children: "Build Playlist" }),
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { className: "plb-play", disabled: count === 0, onClick: () => onPlay(getSelectedItems(), "My playlist"), children: [
-          "▶ Play ",
-          count
-        ] })
-      ] }),
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "plb-body", children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "plb-sec", children: "Fixed units" }),
-        UNITS.map((u2) => {
-          const isSel = selUnits.has(u2.id);
-          return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: `plb-unit ${isSel ? "sel" : ""}`, onClick: () => toggleUnit(u2.id), children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "plb-chk", children: isSel ? "✓" : "" }),
-              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "plb-nm", children: [
-                "Unit ",
-                u2.id,
-                ": ",
-                u2.title
+        VOCAB_CATS.forEach((cat) => {
+          if (selVocabCats.has(cat.id)) {
+            cat.words.forEach((w2) => items.push({ en: w2.en, cn: w2.cn, jyut: w2.jyut, tag: cat.label }));
+          }
+        });
+        return items;
+      };
+      const count = getSelectedItems().length;
+      return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "plb-ov", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "plb-hd", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "plb-cl", onClick: onClose, children: "✕ Cancel" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "plb-ti", children: "Build Playlist" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { className: "plb-play", disabled: count === 0, onClick: () => onPlay(getSelectedItems(), "My playlist"), children: [
+            "▶ Play ",
+            count
+          ] })
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "plb-body", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "plb-sec", children: "Fixed units" }),
+          UNITS.map((u2) => {
+            const isSel = selUnits.has(u2.id);
+            return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: `plb-unit ${isSel ? "sel" : ""}`, onClick: () => toggleUnit(u2.id), children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "plb-chk", children: isSel ? "✓" : "" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "plb-nm", children: [
+                  "Unit ",
+                  u2.id,
+                  ": ",
+                  u2.title
+                ] }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "plb-ct", children: u2.phrases.length }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("button", { style: { background: "none", border: "none", color: "var(--ink3)", fontSize: 10, cursor: "pointer", padding: 4 }, onClick: (e) => {
+                  e.stopPropagation();
+                  setExpanded(expanded === u2.id ? null : u2.id);
+                }, children: expanded === u2.id ? "▲" : "▼" })
               ] }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "plb-ct", children: u2.phrases.length }),
+              expanded === u2.id && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { paddingLeft: 8, paddingBottom: 4 }, children: u2.phrases.map((p2, i) => {
+                const key = `${u2.id}-${i}`;
+                const pSel = selUnits.has(u2.id) || selPhrases.has(key);
+                return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: `plb-phrase ${pSel ? "sel" : ""}`, onClick: () => togglePhrase(u2.id, i), children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "plb-ph-chk", children: pSel ? "✓" : "" }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "plb-ph-en", children: p2.en })
+                ] }, i);
+              }) })
+            ] }, u2.id);
+          }),
+          lifeItems.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "plb-sec", children: "Your life sentences" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: `plb-unit ${selAllLife ? "sel" : ""}`, onClick: toggleAllLife, children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "plb-chk", children: selAllLife ? "✓" : "" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "plb-nm", children: "Life Sentences" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "plb-ct", children: lifeItems.length }),
               /* @__PURE__ */ jsxRuntimeExports.jsx("button", { style: { background: "none", border: "none", color: "var(--ink3)", fontSize: 10, cursor: "pointer", padding: 4 }, onClick: (e) => {
                 e.stopPropagation();
-                setExpanded(expanded === u2.id ? null : u2.id);
-              }, children: expanded === u2.id ? "▲" : "▼" })
+                setExpanded(expanded === "life" ? null : "life");
+              }, children: expanded === "life" ? "▲" : "▼" })
             ] }),
-            expanded === u2.id && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { paddingLeft: 8, paddingBottom: 4 }, children: u2.phrases.map((p2, i) => {
-              const key = `${u2.id}-${i}`;
-              const pSel = selUnits.has(u2.id) || selPhrases.has(key);
-              return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: `plb-phrase ${pSel ? "sel" : ""}`, onClick: () => togglePhrase(u2.id, i), children: [
-                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "plb-ph-chk", children: pSel ? "✓" : "" }),
-                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "plb-ph-en", children: p2.en })
+            expanded === "life" && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { paddingLeft: 8, paddingBottom: 4 }, children: lifeItems.map((s, i) => {
+              const isSel = selAllLife || selLife.has(i);
+              return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: `plb-phrase ${isSel ? "sel" : ""}`, onClick: () => toggleLifeItem(i), children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "plb-ph-chk", children: isSel ? "✓" : "" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "plb-ph-en", children: s.en })
               ] }, i);
             }) })
-          ] }, u2.id);
-        }),
-        lifeItems.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "plb-sec", children: "Your life sentences" }),
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: `plb-unit ${selAllLife ? "sel" : ""}`, onClick: toggleAllLife, children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "plb-chk", children: selAllLife ? "✓" : "" }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "plb-nm", children: "Life Sentences" }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "plb-ct", children: lifeItems.length }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("button", { style: { background: "none", border: "none", color: "var(--ink3)", fontSize: 10, cursor: "pointer", padding: 4 }, onClick: (e) => {
-              e.stopPropagation();
-              setExpanded(expanded === "life" ? null : "life");
-            }, children: expanded === "life" ? "▲" : "▼" })
           ] }),
-          expanded === "life" && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { paddingLeft: 8, paddingBottom: 4 }, children: lifeItems.map((s, i) => {
-            const isSel = selAllLife || selLife.has(i);
-            return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: `plb-phrase ${isSel ? "sel" : ""}`, onClick: () => toggleLifeItem(i), children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "plb-ph-chk", children: isSel ? "✓" : "" }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "plb-ph-en", children: s.en })
-            ] }, i);
-          }) })
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "plb-sec", children: "Vocabulary categories" }),
+          VOCAB_CATS.map((cat) => {
+            const isSel = selVocabCats.has(cat.id);
+            return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: `plb-unit ${isSel ? "sel" : ""}`, onClick: () => {
+              const next = new Set(selVocabCats);
+              if (next.has(cat.id)) next.delete(cat.id);
+              else next.add(cat.id);
+              setSelVocabCats(next);
+            }, children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "plb-chk", children: isSel ? "✓" : "" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "plb-nm", children: cat.label }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "plb-ct", children: [
+                cat.words.length,
+                " words"
+              ] })
+            ] }, cat.id);
+          })
         ] }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "plb-sec", children: "Vocabulary categories" }),
-        VOCAB_CATS.map((cat) => {
-          const isSel = selVocabCats.has(cat.id);
-          return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: `plb-unit ${isSel ? "sel" : ""}`, onClick: () => {
-            const next = new Set(selVocabCats);
-            if (next.has(cat.id)) next.delete(cat.id);
-            else next.add(cat.id);
-            setSelVocabCats(next);
-          }, children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "plb-chk", children: isSel ? "✓" : "" }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "plb-nm", children: cat.label }),
-            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "plb-ct", children: [
-              cat.words.length,
-              " words"
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "plb-summary", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "plb-sum-txt", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "plb-sum-n", children: count }),
+            " phrases selected"
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "plb-play", disabled: count === 0, onClick: () => onPlay(getSelectedItems(), "My playlist"), children: "▶ Play" })
+        ] })
+      ] });
+    }
+    function PronunciationScore({ score, chars, phrase, onRetry, onNext, onClose }) {
+      const [animDone, setAnimDone] = reactExports.useState(false);
+      const type = score >= 90 ? "perfect" : score >= 70 ? "good" : "try-again";
+      const label = score >= 90 ? "Perfect pronunciation!" : score >= 70 ? "Good effort! Almost there." : "Keep practicing! You got this.";
+      const circ = 2 * Math.PI * 58;
+      const offset = circ - score / 100 * circ;
+      reactExports.useEffect(() => {
+        const t2 = setTimeout(() => {
+          setAnimDone(true);
+          playScoreSound(type);
+        }, 700);
+        return () => clearTimeout(t2);
+      }, []);
+      const chunk = (a, n2) => {
+        const r2 = [];
+        for (let i = 0; i < a.length; i += n2) r2.push(a.slice(i, i + n2));
+        return r2;
+      };
+      const chunks = chunk(chars || [], 5);
+      return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,.6)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }, children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { width: "100%", maxWidth: 420, background: "var(--wh)", borderRadius: 24, overflow: "hidden", boxShadow: "0 8px 40px rgba(0,0,0,.15)" }, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: {
+          padding: "24px 20px 18px",
+          textAlign: "center",
+          position: "relative",
+          overflow: "hidden",
+          background: type === "perfect" ? "var(--for)" : type === "good" ? "#1a3a2a" : "#3a2020"
+        }, children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: onClose, style: { position: "absolute", top: 12, right: 12, width: 36, height: 36, borderRadius: "50%", border: "none", background: "rgba(255,255,255,.15)", color: "#fff", fontSize: "1.1rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1 }, children: "✕" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { width: 110, height: 110, margin: "0 auto 10px", position: "relative" }, children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("svg", { viewBox: "0 0 140 140", style: { width: "100%", height: "100%" }, children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("circle", { cx: "70", cy: "70", r: "58", fill: "none", stroke: "rgba(255,255,255,.1)", strokeWidth: "8" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx(
+                "circle",
+                {
+                  cx: "70",
+                  cy: "70",
+                  r: "58",
+                  fill: "none",
+                  strokeWidth: "8",
+                  strokeLinecap: "round",
+                  stroke: type === "perfect" ? "var(--lime)" : type === "good" ? "#7AAA00" : "var(--cor)",
+                  strokeDasharray: circ,
+                  strokeDashoffset: animDone ? offset : circ,
+                  style: { transform: "rotate(-90deg)", transformOrigin: "center", transition: "stroke-dashoffset 1s cubic-bezier(.4,0,.2,1)" }
+                }
+              )
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)", fontSize: "1.8rem", fontWeight: 900, color: "#fff" }, children: [
+              score,
+              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { fontSize: ".75rem", fontWeight: 600, opacity: 0.5 }, children: "%" })
             ] })
-          ] }, cat.id);
-        })
-      ] }),
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "plb-summary", children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "plb-sum-txt", children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "plb-sum-n", children: count }),
-          " phrases selected"
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: {
+            display: "inline-block",
+            fontSize: ".75rem",
+            fontWeight: 800,
+            padding: "6px 16px",
+            borderRadius: 999,
+            background: type === "perfect" ? "rgba(196,240,0,.15)" : type === "good" ? "rgba(122,170,0,.15)" : "rgba(240,90,58,.15)",
+            color: type === "perfect" ? "var(--lime)" : type === "good" ? "#9dcc33" : "#ff7a5c",
+            opacity: animDone ? 1 : 0,
+            transform: animDone ? "translateY(0)" : "translateY(10px)",
+            transition: "all .3s"
+          }, children: label })
         ] }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "plb-play", disabled: count === 0, onClick: () => onPlay(getSelectedItems(), "My playlist"), children: "▶ Play" })
-      ] })
-    ] });
-  }
-  function PronunciationScore({ score, chars, phrase, onRetry, onNext, onClose }) {
-    const [animDone, setAnimDone] = reactExports.useState(false);
-    const type = score >= 90 ? "perfect" : score >= 70 ? "good" : "try-again";
-    const label = score >= 90 ? "Perfect pronunciation!" : score >= 70 ? "Good effort! Almost there." : "Keep practicing! You got this.";
-    const circ = 2 * Math.PI * 58;
-    const offset = circ - score / 100 * circ;
-    reactExports.useEffect(() => {
-      const t2 = setTimeout(() => {
-        setAnimDone(true);
-        playScoreSound(type);
-      }, 700);
-      return () => clearTimeout(t2);
-    }, []);
-    const chunk = (a, n2) => {
-      const r2 = [];
-      for (let i = 0; i < a.length; i += n2) r2.push(a.slice(i, i + n2));
-      return r2;
-    };
-    const chunks = chunk(chars || [], 5);
-    return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,.6)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }, children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { width: "100%", maxWidth: 420, background: "var(--wh)", borderRadius: 24, overflow: "hidden", boxShadow: "0 8px 40px rgba(0,0,0,.15)" }, children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: {
-        padding: "24px 20px 18px",
-        textAlign: "center",
-        position: "relative",
-        overflow: "hidden",
-        background: type === "perfect" ? "var(--for)" : type === "good" ? "#1a3a2a" : "#3a2020"
-      }, children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: onClose, style: { position: "absolute", top: 12, right: 12, width: 36, height: 36, borderRadius: "50%", border: "none", background: "rgba(255,255,255,.15)", color: "#fff", fontSize: "1.1rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1 }, children: "✕" }),
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { width: 110, height: 110, margin: "0 auto 10px", position: "relative" }, children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("svg", { viewBox: "0 0 140 140", style: { width: "100%", height: "100%" }, children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx("circle", { cx: "70", cy: "70", r: "58", fill: "none", stroke: "rgba(255,255,255,.1)", strokeWidth: "8" }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx(
-              "circle",
-              {
-                cx: "70",
-                cy: "70",
-                r: "58",
-                fill: "none",
-                strokeWidth: "8",
-                strokeLinecap: "round",
-                stroke: type === "perfect" ? "var(--lime)" : type === "good" ? "#7AAA00" : "var(--cor)",
-                strokeDasharray: circ,
-                strokeDashoffset: animDone ? offset : circ,
-                style: { transform: "rotate(-90deg)", transformOrigin: "center", transition: "stroke-dashoffset 1s cubic-bezier(.4,0,.2,1)" }
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { padding: "16px 20px 8px" }, children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontFamily: "${LANG_CONFIG.fontFamily.replace(/'/g, '')}", fontSize: "1.3rem", fontWeight: 900, color: "var(--ink)", marginBottom: 2 }, children: phrase == null ? void 0 : phrase.cn }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".75rem", color: "var(--plum)", fontWeight: 600, fontStyle: "italic", marginBottom: 2 }, children: (phrase == null ? void 0 : phrase[LANG_CONFIG.romanizationKey]) || (phrase == null ? void 0 : phrase.jyut) || (phrase == null ? void 0 : phrase.jy) }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".7rem", color: "var(--ink3)", marginBottom: 12 }, children: phrase == null ? void 0 : phrase.en }),
+          chars && chars.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { fontSize: ".55rem", fontWeight: 700, color: "var(--ink3)", textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }, children: [
+              "Your pronunciation ",
+              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { fontWeight: 500, textTransform: "none", letterSpacing: 0 }, children: "(tap to hear)" })
+            ] }),
+            chunks.map((ch2, ci2) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { marginBottom: 8 }, children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", gap: 2 }, children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { width: 28 } }),
+                ch2.map((c, i) => /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { flex: 1, textAlign: "center", fontFamily: "${LANG_CONFIG.fontFamily.replace(/'/g, '')}", fontSize: "1.1rem", fontWeight: 900, color: "var(--ink)", cursor: "pointer", padding: "2px 0" }, onClick: () => googleTTS(c.cn, LANG_CONFIG.id === "mandarin" ? "zh-CN" : "yue-HK"), children: c.cn }, i))
+              ] }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", gap: 2, marginTop: 2 }, children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { width: 28, fontSize: ".42rem", fontWeight: 700, color: "var(--ink3)", display: "flex", alignItems: "center" }, children: "EXP" }),
+                ch2.map((c, i) => /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { flex: 1, textAlign: "center" }, children: /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { display: "inline-block", fontSize: ".58rem", fontWeight: 700, padding: "3px 5px", borderRadius: 6, background: "rgba(143,106,232,.08)", color: "var(--plum)", cursor: "pointer" }, onClick: () => googleTTS(c.cn, LANG_CONFIG.id === "mandarin" ? "zh-CN" : "yue-HK"), children: c.expected || c.e }) }, i))
+              ] }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", gap: 2, marginTop: 2 }, children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { width: 28, fontSize: ".42rem", fontWeight: 700, color: "var(--ink3)", display: "flex", alignItems: "center" }, children: "YOU" }),
+                ch2.map((c, i) => {
+                  const match = c.match || c.m;
+                  return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { flex: 1, textAlign: "center" }, children: /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: {
+                    display: "inline-block",
+                    fontSize: ".58rem",
+                    fontWeight: 700,
+                    padding: "3px 5px",
+                    borderRadius: 6,
+                    cursor: "pointer",
+                    background: match ? "rgba(196,240,0,.12)" : "rgba(240,90,58,.1)",
+                    color: match ? "var(--ld)" : "var(--cor)",
+                    border: match ? "1.5px solid rgba(196,240,0,.3)" : "1.5px solid rgba(240,90,58,.25)"
+                  }, onClick: () => googleTTS(c.cn, LANG_CONFIG.id === "mandarin" ? "zh-CN" : "yue-HK"), children: c.yours || c.y }) }, i);
+                })
+              ] }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", gap: 2, marginTop: 2 }, children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { width: 28 } }),
+                ch2.map((c, i) => /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { flex: 1, textAlign: "center", fontSize: ".55rem" }, children: c.match || c.m ? "✅" : "❌" }, i))
+              ] })
+            ] }, ci2))
+          ] })
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { padding: "0 20px 20px", display: "flex", gap: 8 }, children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("button", { style: { flex: 1, padding: 12, borderRadius: 14, border: "none", background: "var(--st)", color: "var(--ink)", fontSize: ".78rem", fontWeight: 800, cursor: "pointer" }, onClick: onRetry, children: "🔄 Try again" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("button", { style: { flex: 1, padding: 12, borderRadius: 14, border: "none", background: "var(--for)", color: "var(--lime)", fontSize: ".78rem", fontWeight: 800, cursor: "pointer" }, onClick: score >= 70 ? onNext : onClose, children: score >= 70 ? "→ Next phrase" : "👂 Listen again" })
+        ] })
+      ] }) });
+    }
+    function VoiceOnboarding({ onComplete }) {
+      const [selectedEn, setSelectedEn] = reactExports.useState(DEFAULT_EN_VOICE);
+      const [selectedCn, setSelectedCn] = reactExports.useState(DEFAULT_CN_VOICE);
+      const [step, setStep] = reactExports.useState(1);
+      const [playing, setPlaying] = reactExports.useState(null);
+      const previewEnVoice = async (voiceId) => {
+        setPlaying(voiceId);
+        try {
+          stopAudio();
+          const orig = _activeEnVoiceId;
+          _activeEnVoiceId = voiceId;
+          await elevenLabsTTS("Hello! I'll be your English voice throughout your Cantonese learning journey.", "en");
+          _activeEnVoiceId = orig;
+        } catch (e) {
+          console.warn("Preview failed:", e);
+        }
+        setPlaying(null);
+      };
+      const previewCnVoice = async (voiceId) => {
+        setPlaying(voiceId);
+        try {
+          stopAudio();
+          const orig = _activeCnVoiceId;
+          _activeCnVoiceId = voiceId;
+          await cantoneseAiTTS("你好！我會陪你一齊學廣東話。");
+          _activeCnVoiceId = orig;
+        } catch (e) {
+          console.warn("Preview failed:", e);
+        }
+        setPlaying(null);
+      };
+      const voices = step === 1 ? EN_VOICES : CN_VOICES;
+      const selected = step === 1 ? selectedEn : selectedCn;
+      const setSelected = step === 1 ? setSelectedEn : setSelectedCn;
+      const previewFn = step === 1 ? previewEnVoice : previewCnVoice;
+      return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "ca", style: { display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: "100vh", padding: 24 }, children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { maxWidth: 400, width: "100%" }, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: "2rem", marginBottom: 8 }, children: step === 1 ? "🎧" : "🗣" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: "1.3rem", fontWeight: 900, color: "var(--ink)", marginBottom: 6 }, children: step === 1 ? "Choose your English voice" : "Choose your Cantonese voice" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { fontSize: ".78rem", color: "var(--ink2)", lineHeight: 1.5, marginBottom: 24 }, children: [
+          step === 1 ? "This voice will speak English translations and instructions." : "This voice will speak Cantonese phrases.",
+          " You can change this later in Settings."
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", gap: 6, marginBottom: 16 }, children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { flex: 1, height: 3, borderRadius: 2, background: "var(--lime)" } }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { flex: 1, height: 3, borderRadius: 2, background: step === 2 ? "var(--lime)" : "var(--st)" } })
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { display: "flex", flexDirection: "column", gap: 8, marginBottom: 28 }, children: voices.map((v2) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { onClick: () => setSelected(v2.id), style: { display: "flex", alignItems: "center", gap: 12, padding: "14px 16px", borderRadius: 14, border: selected === v2.id ? "2px solid var(--lime)" : "1.5px solid var(--st)", background: selected === v2.id ? "rgba(196,240,0,.08)" : "var(--wh)", cursor: "pointer", transition: "all .15s" }, children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { width: 40, height: 40, borderRadius: "50%", background: selected === v2.id ? "var(--lime)" : "var(--st)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: ".9rem", flexShrink: 0 }, children: v2.gender === "female" ? "👩" : "👨" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { flex: 1 }, children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".82rem", fontWeight: 700, color: "var(--ink)" }, children: v2.label }),
+            v2.accent && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { fontSize: ".65rem", color: "var(--ink3)" }, children: [
+              v2.accent,
+              " accent"
+            ] })
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: (e) => {
+            e.stopPropagation();
+            previewFn(v2.id);
+          }, style: { background: "var(--for)", color: "var(--lime)", border: "none", borderRadius: 999, padding: "8px 14px", fontSize: ".68rem", fontWeight: 700, cursor: "pointer" }, children: playing === v2.id ? "..." : "▶ Preview" })
+        ] }, v2.id)) }),
+        step === 1 ? /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => setStep(2), style: { width: "100%", padding: "16px", borderRadius: 14, border: "none", background: "var(--lime)", color: "var(--for)", fontSize: ".9rem", fontWeight: 800, cursor: "pointer" }, children: "Next →" }) : /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", gap: 8 }, children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => setStep(1), style: { flex: 1, padding: "16px", borderRadius: 14, border: "1.5px solid var(--st)", background: "var(--wh)", color: "var(--ink)", fontSize: ".9rem", fontWeight: 800, cursor: "pointer" }, children: "← Back" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => onComplete(selectedEn, selectedCn), style: { flex: 2, padding: "16px", borderRadius: 14, border: "none", background: "var(--lime)", color: "var(--for)", fontSize: ".9rem", fontWeight: 800, cursor: "pointer" }, children: "Continue →" })
+        ] })
+      ] }) });
+    }
+    function SettingsTab({ settings, updSettings }) {
+      const [playing, setPlaying] = reactExports.useState(null);
+      const [confirmReset, setConfirmReset] = reactExports.useState(false);
+      const [dlState, setDlState] = reactExports.useState(() => localStorage.getItem(LANG_CONFIG.audioDownloadedKey) === "true" ? "done" : "idle");
+      const [dlProgress, setDlProgress] = reactExports.useState({ done: 0, total: 0 });
+      const downloadOfflineAudio = async () => {
+        var _a;
+        setDlState("loading");
+        try {
+          const manifest = await loadAudioManifest();
+          if (!manifest) {
+            setDlState("error");
+            return;
+          }
+          const urls = [];
+          for (const app of Object.values(manifest)) {
+            for (const lang of Object.values(app)) {
+              for (const path of Object.values(lang)) {
+                urls.push(path);
               }
-            )
-          ] }),
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)", fontSize: "1.8rem", fontWeight: 900, color: "#fff" }, children: [
-            score,
-            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { fontSize: ".75rem", fontWeight: 600, opacity: 0.5 }, children: "%" })
-          ] })
-        ] }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: {
-          display: "inline-block",
-          fontSize: ".75rem",
-          fontWeight: 800,
-          padding: "6px 16px",
-          borderRadius: 999,
-          background: type === "perfect" ? "rgba(196,240,0,.15)" : type === "good" ? "rgba(122,170,0,.15)" : "rgba(240,90,58,.15)",
-          color: type === "perfect" ? "var(--lime)" : type === "good" ? "#9dcc33" : "#ff7a5c",
-          opacity: animDone ? 1 : 0,
-          transform: animDone ? "translateY(0)" : "translateY(10px)",
-          transition: "all .3s"
-        }, children: label })
-      ] }),
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { padding: "16px 20px 8px" }, children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontFamily: "${LANG_CONFIG.fontFamily.replace(/'/g, '')}", fontSize: "1.3rem", fontWeight: 900, color: "var(--ink)", marginBottom: 2 }, children: phrase == null ? void 0 : phrase.cn }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".75rem", color: "var(--plum)", fontWeight: 600, fontStyle: "italic", marginBottom: 2 }, children: (phrase == null ? void 0 : phrase[LANG_CONFIG.romanizationKey]) || (phrase == null ? void 0 : phrase.jyut) || (phrase == null ? void 0 : phrase.jy) }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".7rem", color: "var(--ink3)", marginBottom: 12 }, children: phrase == null ? void 0 : phrase.en }),
-        chars && chars.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { fontSize: ".55rem", fontWeight: 700, color: "var(--ink3)", textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }, children: [
-            "Your pronunciation ",
-            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { fontWeight: 500, textTransform: "none", letterSpacing: 0 }, children: "(tap to hear)" })
-          ] }),
-          chunks.map((ch2, ci2) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { marginBottom: 8 }, children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", gap: 2 }, children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { width: 28 } }),
-              ch2.map((c, i) => /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { flex: 1, textAlign: "center", fontFamily: "${LANG_CONFIG.fontFamily.replace(/'/g, '')}", fontSize: "1.1rem", fontWeight: 900, color: "var(--ink)", cursor: "pointer", padding: "2px 0" }, onClick: () => googleTTS(c.cn, LANG_CONFIG.id === "mandarin" ? "zh-CN" : "yue-HK"), children: c.cn }, i))
-            ] }),
-            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", gap: 2, marginTop: 2 }, children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { width: 28, fontSize: ".42rem", fontWeight: 700, color: "var(--ink3)", display: "flex", alignItems: "center" }, children: "EXP" }),
-              ch2.map((c, i) => /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { flex: 1, textAlign: "center" }, children: /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { display: "inline-block", fontSize: ".58rem", fontWeight: 700, padding: "3px 5px", borderRadius: 6, background: "rgba(143,106,232,.08)", color: "var(--plum)", cursor: "pointer" }, onClick: () => googleTTS(c.cn, LANG_CONFIG.id === "mandarin" ? "zh-CN" : "yue-HK"), children: c.expected || c.e }) }, i))
-            ] }),
-            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", gap: 2, marginTop: 2 }, children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { width: 28, fontSize: ".42rem", fontWeight: 700, color: "var(--ink3)", display: "flex", alignItems: "center" }, children: "YOU" }),
-              ch2.map((c, i) => {
-                const match = c.match || c.m;
-                return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { flex: 1, textAlign: "center" }, children: /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: {
-                  display: "inline-block",
-                  fontSize: ".58rem",
-                  fontWeight: 700,
-                  padding: "3px 5px",
-                  borderRadius: 6,
-                  cursor: "pointer",
-                  background: match ? "rgba(196,240,0,.12)" : "rgba(240,90,58,.1)",
-                  color: match ? "var(--ld)" : "var(--cor)",
-                  border: match ? "1.5px solid rgba(196,240,0,.3)" : "1.5px solid rgba(240,90,58,.25)"
-                }, onClick: () => googleTTS(c.cn, LANG_CONFIG.id === "mandarin" ? "zh-CN" : "yue-HK"), children: c.yours || c.y }) }, i);
-              })
-            ] }),
-            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", gap: 2, marginTop: 2 }, children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { width: 28 } }),
-              ch2.map((c, i) => /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { flex: 1, textAlign: "center", fontSize: ".55rem" }, children: c.match || c.m ? "✅" : "❌" }, i))
-            ] })
-          ] }, ci2))
-        ] })
-      ] }),
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { padding: "0 20px 20px", display: "flex", gap: 8 }, children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx("button", { style: { flex: 1, padding: 12, borderRadius: 14, border: "none", background: "var(--st)", color: "var(--ink)", fontSize: ".78rem", fontWeight: 800, cursor: "pointer" }, onClick: onRetry, children: "🔄 Try again" }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("button", { style: { flex: 1, padding: 12, borderRadius: 14, border: "none", background: "var(--for)", color: "var(--lime)", fontSize: ".78rem", fontWeight: 800, cursor: "pointer" }, onClick: score >= 70 ? onNext : onClose, children: score >= 70 ? "→ Next phrase" : "👂 Listen again" })
-      ] })
-    ] }) });
-  }
-  function VoiceOnboarding({ onComplete }) {
-    const [selectedEn, setSelectedEn] = reactExports.useState(DEFAULT_EN_VOICE);
-    const [selectedCn, setSelectedCn] = reactExports.useState(DEFAULT_CN_VOICE);
-    const [step, setStep] = reactExports.useState(1);
-    const [playing, setPlaying] = reactExports.useState(null);
-    const previewEnVoice = async (voiceId) => {
-      setPlaying(voiceId);
-      try {
-        stopAudio();
-        const orig = _activeEnVoiceId;
-        _activeEnVoiceId = voiceId;
-        await elevenLabsTTS("Hello! I'll be your English voice throughout your Cantonese learning journey.", "en");
-        _activeEnVoiceId = orig;
-      } catch (e) {
-        console.warn("Preview failed:", e);
-      }
-      setPlaying(null);
-    };
-    const previewCnVoice = async (voiceId) => {
-      setPlaying(voiceId);
-      try {
-        stopAudio();
-        const orig = _activeCnVoiceId;
-        _activeCnVoiceId = voiceId;
-        await cantoneseAiTTS("你好！我會陪你一齊學廣東話。");
-        _activeCnVoiceId = orig;
-      } catch (e) {
-        console.warn("Preview failed:", e);
-      }
-      setPlaying(null);
-    };
-    const voices = step === 1 ? EN_VOICES : CN_VOICES;
-    const selected = step === 1 ? selectedEn : selectedCn;
-    const setSelected = step === 1 ? setSelectedEn : setSelectedCn;
-    const previewFn = step === 1 ? previewEnVoice : previewCnVoice;
-    return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "ca", style: { display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: "100vh", padding: 24 }, children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { maxWidth: 400, width: "100%" }, children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: "2rem", marginBottom: 8 }, children: step === 1 ? "🎧" : "🗣" }),
-      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: "1.3rem", fontWeight: 900, color: "var(--ink)", marginBottom: 6 }, children: step === 1 ? "Choose your English voice" : "Choose your Cantonese voice" }),
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { fontSize: ".78rem", color: "var(--ink2)", lineHeight: 1.5, marginBottom: 24 }, children: [
-        step === 1 ? "This voice will speak English translations and instructions." : "This voice will speak Cantonese phrases.",
-        " You can change this later in Settings."
-      ] }),
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", gap: 6, marginBottom: 16 }, children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { flex: 1, height: 3, borderRadius: 2, background: "var(--lime)" } }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { flex: 1, height: 3, borderRadius: 2, background: step === 2 ? "var(--lime)" : "var(--st)" } })
-      ] }),
-      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { display: "flex", flexDirection: "column", gap: 8, marginBottom: 28 }, children: voices.map((v2) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { onClick: () => setSelected(v2.id), style: { display: "flex", alignItems: "center", gap: 12, padding: "14px 16px", borderRadius: 14, border: selected === v2.id ? "2px solid var(--lime)" : "1.5px solid var(--st)", background: selected === v2.id ? "rgba(196,240,0,.08)" : "var(--wh)", cursor: "pointer", transition: "all .15s" }, children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { width: 40, height: 40, borderRadius: "50%", background: selected === v2.id ? "var(--lime)" : "var(--st)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: ".9rem", flexShrink: 0 }, children: v2.gender === "female" ? "👩" : "👨" }),
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { flex: 1 }, children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".82rem", fontWeight: 700, color: "var(--ink)" }, children: v2.label }),
-          v2.accent && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { fontSize: ".65rem", color: "var(--ink3)" }, children: [
-            v2.accent,
-            " accent"
-          ] })
-        ] }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: (e) => {
-          e.stopPropagation();
-          previewFn(v2.id);
-        }, style: { background: "var(--for)", color: "var(--lime)", border: "none", borderRadius: 999, padding: "8px 14px", fontSize: ".68rem", fontWeight: 700, cursor: "pointer" }, children: playing === v2.id ? "..." : "▶ Preview" })
-      ] }, v2.id)) }),
-      step === 1 ? /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => setStep(2), style: { width: "100%", padding: "16px", borderRadius: 14, border: "none", background: "var(--lime)", color: "var(--for)", fontSize: ".9rem", fontWeight: 800, cursor: "pointer" }, children: "Next →" }) : /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", gap: 8 }, children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => setStep(1), style: { flex: 1, padding: "16px", borderRadius: 14, border: "1.5px solid var(--st)", background: "var(--wh)", color: "var(--ink)", fontSize: ".9rem", fontWeight: 800, cursor: "pointer" }, children: "← Back" }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => onComplete(selectedEn, selectedCn), style: { flex: 2, padding: "16px", borderRadius: 14, border: "none", background: "var(--lime)", color: "var(--for)", fontSize: ".9rem", fontWeight: 800, cursor: "pointer" }, children: "Continue →" })
-      ] })
-    ] }) });
-  }
-  function SettingsTab({ settings, updSettings }) {
-    const [playing, setPlaying] = reactExports.useState(null);
-    const [confirmReset, setConfirmReset] = reactExports.useState(false);
-    const [dlState, setDlState] = reactExports.useState(() => localStorage.getItem(LANG_CONFIG.audioDownloadedKey) === "true" ? "done" : "idle");
-    const [dlProgress, setDlProgress] = reactExports.useState({ done: 0, total: 0 });
-    const downloadOfflineAudio = async () => {
-      var _a;
-      setDlState("loading");
-      try {
-        const manifest = await loadAudioManifest();
-        if (!manifest) {
+            }
+          }
+          setDlProgress({ done: 0, total: urls.length });
+          const batchSize = 20;
+          let done = 0;
+          for (let i = 0; i < urls.length; i += batchSize) {
+            const batch = urls.slice(i, i + batchSize);
+            if ((_a = navigator.serviceWorker) == null ? void 0 : _a.controller) {
+              navigator.serviceWorker.controller.postMessage({ type: "precache-audio", urls: batch });
+            }
+            await new Promise((r2) => setTimeout(r2, 500));
+            done += batch.length;
+            setDlProgress({ done: Math.min(done, urls.length), total: urls.length });
+          }
+          localStorage.setItem(LANG_CONFIG.audioDownloadedKey, "true");
+          setDlState("done");
+        } catch (e) {
+          console.warn("Offline download failed:", e);
           setDlState("error");
-          return;
         }
-        const urls = [];
-        for (const app of Object.values(manifest)) {
-          for (const lang of Object.values(app)) {
-            for (const path of Object.values(lang)) {
-              urls.push(path);
-            }
-          }
+      };
+      const previewEnVoice = async (voiceId) => {
+        setPlaying(voiceId);
+        try {
+          const orig = _activeEnVoiceId;
+          _activeEnVoiceId = voiceId;
+          await elevenLabsTTS("Hello! This is what I sound like.", "en");
+          _activeEnVoiceId = orig;
+        } catch (e) {
         }
-        setDlProgress({ done: 0, total: urls.length });
-        const batchSize = 20;
-        let done = 0;
-        for (let i = 0; i < urls.length; i += batchSize) {
-          const batch = urls.slice(i, i + batchSize);
-          if ((_a = navigator.serviceWorker) == null ? void 0 : _a.controller) {
-            navigator.serviceWorker.controller.postMessage({ type: "precache-audio", urls: batch });
-          }
-          await new Promise((r2) => setTimeout(r2, 500));
-          done += batch.length;
-          setDlProgress({ done: Math.min(done, urls.length), total: urls.length });
+        setPlaying(null);
+      };
+      const previewCnVoice = async (voiceId) => {
+        setPlaying(voiceId);
+        try {
+          const orig = _activeCnVoiceId;
+          _activeCnVoiceId = voiceId;
+          await cantoneseAiTTS("你好！我係你嘅廣東話老師。");
+          _activeCnVoiceId = orig;
+        } catch (e) {
         }
-        localStorage.setItem(LANG_CONFIG.audioDownloadedKey, "true");
-        setDlState("done");
-      } catch (e) {
-        console.warn("Offline download failed:", e);
-        setDlState("error");
-      }
-    };
-    const previewEnVoice = async (voiceId) => {
-      setPlaying(voiceId);
-      try {
-        const orig = _activeEnVoiceId;
-        _activeEnVoiceId = voiceId;
-        await elevenLabsTTS("Hello! This is what I sound like.", "en");
-        _activeEnVoiceId = orig;
-      } catch (e) {
-      }
-      setPlaying(null);
-    };
-    const previewCnVoice = async (voiceId) => {
-      setPlaying(voiceId);
-      try {
-        const orig = _activeCnVoiceId;
-        _activeCnVoiceId = voiceId;
-        await cantoneseAiTTS("你好！我係你嘅廣東話老師。");
-        _activeCnVoiceId = orig;
-      } catch (e) {
-      }
-      setPlaying(null);
-    };
-    return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "mc", children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "pt", children: "Settings" }),
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "set-card", children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "set-lb", children: "Learning focus" }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".68rem", color: "var(--ink2)", lineHeight: 1.5, marginBottom: 10 }, children: "Speaking mode shows jyutping large for pronunciation practice. Reading mode shows Chinese characters large for character recognition." }),
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", gap: 8 }, children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { style: { flex: 1, padding: "12px 10px", borderRadius: 12, border: settings.learnMode !== "reading" ? "2px solid var(--lime)" : "1.5px solid var(--st)", background: settings.learnMode !== "reading" ? "rgba(196,240,0,.1)" : "var(--wh)", cursor: "pointer", textAlign: "center" }, onClick: () => updSettings("learnMode", "speaking"), children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: "1.1rem", marginBottom: 4 }, children: "🗣" }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".72rem", fontWeight: 700, color: "var(--ink)" }, children: "Speaking" }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".58rem", color: "var(--ink3)", marginTop: 2 }, children: "Jyutping first" })
-          ] }),
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { style: { flex: 1, padding: "12px 10px", borderRadius: 12, border: settings.learnMode === "reading" ? "2px solid var(--lime)" : "1.5px solid var(--st)", background: settings.learnMode === "reading" ? "rgba(196,240,0,.1)" : "var(--wh)", cursor: "pointer", textAlign: "center" }, onClick: () => updSettings("learnMode", "reading"), children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: "1.1rem", marginBottom: 4 }, children: "📖" }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".72rem", fontWeight: 700, color: "var(--ink)" }, children: "Reading" }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".58rem", color: "var(--ink3)", marginTop: 2 }, children: "Characters first" })
+        setPlaying(null);
+      };
+      return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "mc", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "pt", children: "Settings" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "set-card", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "set-lb", children: "Learning focus" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".68rem", color: "var(--ink2)", lineHeight: 1.5, marginBottom: 10 }, children: "Speaking mode shows jyutping large for pronunciation practice. Reading mode shows Chinese characters large for character recognition." }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", gap: 8 }, children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { style: { flex: 1, padding: "12px 10px", borderRadius: 12, border: settings.learnMode !== "reading" ? "2px solid var(--lime)" : "1.5px solid var(--st)", background: settings.learnMode !== "reading" ? "rgba(196,240,0,.1)" : "var(--wh)", cursor: "pointer", textAlign: "center" }, onClick: () => updSettings("learnMode", "speaking"), children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: "1.1rem", marginBottom: 4 }, children: "🗣" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".72rem", fontWeight: 700, color: "var(--ink)" }, children: "Speaking" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".58rem", color: "var(--ink3)", marginTop: 2 }, children: "Jyutping first" })
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { style: { flex: 1, padding: "12px 10px", borderRadius: 12, border: settings.learnMode === "reading" ? "2px solid var(--lime)" : "1.5px solid var(--st)", background: settings.learnMode === "reading" ? "rgba(196,240,0,.1)" : "var(--wh)", cursor: "pointer", textAlign: "center" }, onClick: () => updSettings("learnMode", "reading"), children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: "1.1rem", marginBottom: 4 }, children: "📖" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".72rem", fontWeight: 700, color: "var(--ink)" }, children: "Reading" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".58rem", color: "var(--ink3)", marginTop: 2 }, children: "Characters first" })
+            ] })
           ] })
-        ] })
-      ] }),
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "set-card", children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "set-lb", children: "English voice" }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { display: "flex", flexDirection: "column", gap: 6 }, children: EN_VOICES.map((v2) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { onClick: () => updSettings("enVoice", v2.id), style: { display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 12, border: (settings.enVoice || DEFAULT_EN_VOICE) === v2.id ? "2px solid var(--lime)" : "1.5px solid var(--st)", background: (settings.enVoice || DEFAULT_EN_VOICE) === v2.id ? "rgba(196,240,0,.08)" : "var(--wh)", cursor: "pointer" }, children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".85rem" }, children: v2.gender === "female" ? "👩" : "👨" }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { flex: 1 }, children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".75rem", fontWeight: 700, color: "var(--ink)" }, children: v2.label }) }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: (e) => {
-            e.stopPropagation();
-            previewEnVoice(v2.id);
-          }, style: { background: "var(--for)", color: "var(--lime)", border: "none", borderRadius: 999, padding: "6px 12px", fontSize: ".62rem", fontWeight: 700, cursor: "pointer" }, children: playing === v2.id ? "..." : "▶" })
-        ] }, v2.id)) })
-      ] }),
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "set-card", children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "set-lb", children: "Cantonese voice" }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".68rem", color: "var(--ink2)", lineHeight: 1.5, marginBottom: 10 }, children: "AI voice for Cantonese phrases." }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { display: "flex", flexDirection: "column", gap: 6 }, children: CN_VOICES.map((v2) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { onClick: () => updSettings("cnVoice", v2.id), style: { display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 12, border: (settings.cnVoice || DEFAULT_CN_VOICE) === v2.id ? "2px solid var(--lime)" : "1.5px solid var(--st)", background: (settings.cnVoice || DEFAULT_CN_VOICE) === v2.id ? "rgba(196,240,0,.08)" : "var(--wh)", cursor: "pointer" }, children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".85rem" }, children: v2.gender === "female" ? "👩" : "👨" }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { flex: 1 }, children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".75rem", fontWeight: 700, color: "var(--ink)" }, children: v2.label }) }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: (e) => {
-            e.stopPropagation();
-            previewCnVoice(v2.id);
-          }, style: { background: "var(--for)", color: "var(--lime)", border: "none", borderRadius: 999, padding: "6px 12px", fontSize: ".62rem", fontWeight: 700, cursor: "pointer" }, children: playing === v2.id ? "..." : "▶" })
-        ] }, v2.id)) })
-      ] }),
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "set-card", children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "set-lb", children: "Default speed" }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".68rem", color: "var(--ink2)", lineHeight: 1.5, marginBottom: 10 }, children: "Sets the starting speed for lessons and shadow mode." }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { display: "flex", gap: 8 }, children: [{ k: "slow", l: "🐢 Slow" }, { k: "normal", l: "Normal" }, { k: "fast", l: "🐇 Fast" }].map(
-          (s) => /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => updSettings("defaultSpeed", s.k), style: { flex: 1, padding: "10px 8px", borderRadius: 12, border: (settings.defaultSpeed || "normal") === s.k ? "2px solid var(--lime)" : "1.5px solid var(--st)", background: (settings.defaultSpeed || "normal") === s.k ? "rgba(196,240,0,.1)" : "var(--wh)", cursor: "pointer", fontSize: ".72rem", fontWeight: 700, color: "var(--ink)", textAlign: "center" }, children: s.l }, s.k)
-        ) })
-      ] }),
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "set-card", children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "set-lb", children: "Offline audio" }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".68rem", color: "var(--ink2)", lineHeight: 1.5, marginBottom: 10 }, children: "Download all audio files so you can use the app without internet. This only needs to be done once." }),
-        dlState === "idle" && /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: downloadOfflineAudio, style: { width: "100%", padding: "12px", borderRadius: 12, border: "none", background: "var(--for)", cursor: "pointer", fontSize: ".78rem", fontWeight: 700, color: "var(--lime)", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }, children: "Download for offline use" }),
-        dlState === "loading" && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { fontSize: ".72rem", fontWeight: 700, color: "var(--ink)", marginBottom: 6 }, children: [
-            "Downloading... ",
-            dlProgress.done,
-            "/",
-            dlProgress.total
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "set-card", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "set-lb", children: "English voice" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { display: "flex", flexDirection: "column", gap: 6 }, children: EN_VOICES.map((v2) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { onClick: () => updSettings("enVoice", v2.id), style: { display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 12, border: (settings.enVoice || DEFAULT_EN_VOICE) === v2.id ? "2px solid var(--lime)" : "1.5px solid var(--st)", background: (settings.enVoice || DEFAULT_EN_VOICE) === v2.id ? "rgba(196,240,0,.08)" : "var(--wh)", cursor: "pointer" }, children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".85rem" }, children: v2.gender === "female" ? "👩" : "👨" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { flex: 1 }, children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".75rem", fontWeight: 700, color: "var(--ink)" }, children: v2.label }) }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: (e) => {
+              e.stopPropagation();
+              previewEnVoice(v2.id);
+            }, style: { background: "var(--for)", color: "var(--lime)", border: "none", borderRadius: 999, padding: "6px 12px", fontSize: ".62rem", fontWeight: 700, cursor: "pointer" }, children: playing === v2.id ? "..." : "▶" })
+          ] }, v2.id)) })
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "set-card", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "set-lb", children: "Cantonese voice" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".68rem", color: "var(--ink2)", lineHeight: 1.5, marginBottom: 10 }, children: "AI voice for Cantonese phrases." }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { display: "flex", flexDirection: "column", gap: 6 }, children: CN_VOICES.map((v2) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { onClick: () => updSettings("cnVoice", v2.id), style: { display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 12, border: (settings.cnVoice || DEFAULT_CN_VOICE) === v2.id ? "2px solid var(--lime)" : "1.5px solid var(--st)", background: (settings.cnVoice || DEFAULT_CN_VOICE) === v2.id ? "rgba(196,240,0,.08)" : "var(--wh)", cursor: "pointer" }, children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".85rem" }, children: v2.gender === "female" ? "👩" : "👨" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { flex: 1 }, children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".75rem", fontWeight: 700, color: "var(--ink)" }, children: v2.label }) }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: (e) => {
+              e.stopPropagation();
+              previewCnVoice(v2.id);
+            }, style: { background: "var(--for)", color: "var(--lime)", border: "none", borderRadius: 999, padding: "6px 12px", fontSize: ".62rem", fontWeight: 700, cursor: "pointer" }, children: playing === v2.id ? "..." : "▶" })
+          ] }, v2.id)) })
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "set-card", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "set-lb", children: "Default speed" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".68rem", color: "var(--ink2)", lineHeight: 1.5, marginBottom: 10 }, children: "Sets the starting speed for lessons and shadow mode." }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { display: "flex", gap: 8 }, children: [{ k: "slow", l: "🐢 Slow" }, { k: "normal", l: "Normal" }, { k: "fast", l: "🐇 Fast" }].map(
+            (s) => /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => updSettings("defaultSpeed", s.k), style: { flex: 1, padding: "10px 8px", borderRadius: 12, border: (settings.defaultSpeed || "normal") === s.k ? "2px solid var(--lime)" : "1.5px solid var(--st)", background: (settings.defaultSpeed || "normal") === s.k ? "rgba(196,240,0,.1)" : "var(--wh)", cursor: "pointer", fontSize: ".72rem", fontWeight: 700, color: "var(--ink)", textAlign: "center" }, children: s.l }, s.k)
+          ) })
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "set-card", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "set-lb", children: "Offline audio" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".68rem", color: "var(--ink2)", lineHeight: 1.5, marginBottom: 10 }, children: "Download all audio files so you can use the app without internet. This only needs to be done once." }),
+          dlState === "idle" && /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: downloadOfflineAudio, style: { width: "100%", padding: "12px", borderRadius: 12, border: "none", background: "var(--for)", cursor: "pointer", fontSize: ".78rem", fontWeight: 700, color: "var(--lime)", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }, children: "Download for offline use" }),
+          dlState === "loading" && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { fontSize: ".72rem", fontWeight: 700, color: "var(--ink)", marginBottom: 6 }, children: [
+              "Downloading... ",
+              dlProgress.done,
+              "/",
+              dlProgress.total
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { width: "100%", height: 8, borderRadius: 4, background: "var(--st)", overflow: "hidden" }, children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { width: `${dlProgress.total ? dlProgress.done / dlProgress.total * 100 : 0}%`, height: "100%", background: "var(--lime)", borderRadius: 4, transition: "width .3s" } }) })
           ] }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { width: "100%", height: 8, borderRadius: 4, background: "var(--st)", overflow: "hidden" }, children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { width: `${dlProgress.total ? dlProgress.done / dlProgress.total * 100 : 0}%`, height: "100%", background: "var(--lime)", borderRadius: 4, transition: "width .3s" } }) })
+          dlState === "done" && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".72rem", fontWeight: 700, color: "#27ae60" }, children: "All audio downloaded! You can now use the app offline." }),
+          dlState === "error" && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".72rem", fontWeight: 700, color: "#e74c3c", marginBottom: 6 }, children: "Download failed. Make sure you're online and try again." }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => {
+              setDlState("idle");
+            }, style: { padding: "8px 16px", borderRadius: 10, border: "1.5px solid var(--st)", background: "var(--wh)", fontSize: ".72rem", fontWeight: 700, color: "var(--ink)", cursor: "pointer" }, children: "Retry" })
+          ] })
         ] }),
-        dlState === "done" && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".72rem", fontWeight: 700, color: "#27ae60" }, children: "All audio downloaded! You can now use the app offline." }),
-        dlState === "error" && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".72rem", fontWeight: 700, color: "#e74c3c", marginBottom: 6 }, children: "Download failed. Make sure you're online and try again." }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => {
-            setDlState("idle");
-          }, style: { padding: "8px 16px", borderRadius: 10, border: "1.5px solid var(--st)", background: "var(--wh)", fontSize: ".72rem", fontWeight: 700, color: "var(--ink)", cursor: "pointer" }, children: "Retry" })
-        ] })
-      ] }),
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "set-card", children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "set-lb", children: "Switch language" }),
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { onClick: () => window.location.href = "app.html?lang=" + LANG_CONFIG.switchTo.lang, style: { width: "100%", padding: "12px", borderRadius: 12, border: "1.5px solid var(--st)", background: "var(--wh)", cursor: "pointer", fontSize: ".78rem", fontWeight: 700, color: "var(--ink)", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }, children: [
-          LANG_CONFIG.switchTo.flag,
-          " ",
-          LANG_CONFIG.switchTo.label
-        ] })
-      ] }),
-      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "set-card", children: !confirmReset ? /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => setConfirmReset(true), style: { background: "none", border: "none", cursor: "pointer", fontSize: ".75rem", fontWeight: 600, color: "#e74c3c", padding: 0 }, children: "Reset all progress" }) : /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".72rem", color: "#e74c3c", fontWeight: 700, marginBottom: 8 }, children: "Are you sure? This will erase all your progress and cannot be undone." }),
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", gap: 8 }, children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => {
-            var _a;
-            const uid = (_a = fbAuth.currentUser) == null ? void 0 : _a.uid;
-            if (uid) {
-              fbDb.collection(PROGRESS_COLLECTION).doc(uid).delete();
-              fbDb.collection("settings").doc(uid + LANG_CONFIG.settingsKeySuffix).delete();
-            }
-            localStorage.removeItem(LANG_CONFIG.localStorageSettingsKey);
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "set-card", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "set-lb", children: "Switch language" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { onClick: () => {
+            localStorage.setItem("shadowspeak-lang", LANG_CONFIG.switchTo.lang);
             window.location.reload();
-          }, style: { flex: 1, padding: "10px", borderRadius: 10, border: "none", background: "#e74c3c", color: "#fff", fontSize: ".72rem", fontWeight: 700, cursor: "pointer" }, children: "Yes, reset everything" }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => setConfirmReset(false), style: { flex: 1, padding: "10px", borderRadius: 10, border: "1.5px solid var(--st)", background: "var(--wh)", fontSize: ".72rem", fontWeight: 700, color: "var(--ink)", cursor: "pointer" }, children: "Cancel" })
-        ] })
-      ] }) }),
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "set-card", children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "set-lb", children: "About" }),
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { fontSize: ".68rem", color: "var(--ink2)", lineHeight: 1.5 }, children: [
-          "ShadowSpeak ",
-          LANG_CONFIG.name,
-          " v3.9.6. Shadowing method + spaced repetition. ",
-          ALL_WORDS.length,
-          " vocabulary words across ",
-          VOCAB_CATS.length,
-          " categories. ",
-          UNITS.reduce((s, u2) => s + u2.phrases.length, 0),
-          " phrases across ",
-          UNITS.length,
-          " units."
+          }, style: { width: "100%", padding: "12px", borderRadius: 12, border: "1.5px solid var(--st)", background: "var(--wh)", cursor: "pointer", fontSize: ".78rem", fontWeight: 700, color: "var(--ink)", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }, children: [
+            LANG_CONFIG.switchTo.flag,
+            " ",
+            LANG_CONFIG.switchTo.label
+          ] })
         ] }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => window.location.href = "index.html", style: { marginTop: 8, background: "none", border: "none", cursor: "pointer", fontSize: ".68rem", fontWeight: 600, color: "var(--lime)", padding: 0 }, children: "← Back to landing page" })
-      ] })
-    ] });
-  }
-  class ErrorBoundary extends React.Component {
-    constructor(props) {
-      super(props);
-      this.state = { error: null };
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "set-card", children: !confirmReset ? /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => setConfirmReset(true), style: { background: "none", border: "none", cursor: "pointer", fontSize: ".75rem", fontWeight: 600, color: "#e74c3c", padding: 0 }, children: "Reset all progress" }) : /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".72rem", color: "#e74c3c", fontWeight: 700, marginBottom: 8 }, children: "Are you sure? This will erase all your progress and cannot be undone." }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", gap: 8 }, children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => {
+              var _a;
+              const uid = (_a = fbAuth.currentUser) == null ? void 0 : _a.uid;
+              if (uid) {
+                fbDb.collection(PROGRESS_COLLECTION).doc(uid).delete();
+                fbDb.collection("settings").doc(uid + LANG_CONFIG.settingsKeySuffix).delete();
+              }
+              localStorage.removeItem(LANG_CONFIG.localStorageSettingsKey);
+              window.location.reload();
+            }, style: { flex: 1, padding: "10px", borderRadius: 10, border: "none", background: "#e74c3c", color: "#fff", fontSize: ".72rem", fontWeight: 700, cursor: "pointer" }, children: "Yes, reset everything" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => setConfirmReset(false), style: { flex: 1, padding: "10px", borderRadius: 10, border: "1.5px solid var(--st)", background: "var(--wh)", fontSize: ".72rem", fontWeight: 700, color: "var(--ink)", cursor: "pointer" }, children: "Cancel" })
+          ] })
+        ] }) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "set-card", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "set-lb", children: "About" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { fontSize: ".68rem", color: "var(--ink2)", lineHeight: 1.5 }, children: [
+            "ShadowSpeak ",
+            LANG_CONFIG.name,
+            " v3.9.6. Shadowing method + spaced repetition. ",
+            ALL_WORDS.length,
+            " vocabulary words across ",
+            VOCAB_CATS.length,
+            " categories. ",
+            UNITS.reduce((s, u2) => s + u2.phrases.length, 0),
+            " phrases across ",
+            UNITS.length,
+            " units."
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => window.location.href = "index.html", style: { marginTop: 8, background: "none", border: "none", cursor: "pointer", fontSize: ".68rem", fontWeight: 600, color: "var(--lime)", padding: 0 }, children: "← Back to landing page" })
+        ] })
+      ] });
     }
-    static getDerivedStateFromError(error) {
-      return { error };
+    class ErrorBoundary extends React.Component {
+      constructor(props) {
+        super(props);
+        this.state = { error: null };
+      }
+      static getDerivedStateFromError(error) {
+        return { error };
+      }
+      render() {
+        if (this.state.error) return React.createElement("div", { style: { padding: 40, fontFamily: "monospace", color: "red", background: "#fff", minHeight: "100vh" } }, React.createElement("h2", null, "App Error"), React.createElement("pre", { style: { whiteSpace: "pre-wrap" } }, this.state.error.toString()), React.createElement("pre", { style: { whiteSpace: "pre-wrap", fontSize: 12, color: "#666" } }, this.state.error.stack));
+        return this.props.children;
+      }
     }
-    render() {
-      if (this.state.error) return React.createElement("div", { style: { padding: 40, fontFamily: "monospace", color: "red", background: "#fff", minHeight: "100vh" } }, React.createElement("h2", null, "App Error"), React.createElement("pre", { style: { whiteSpace: "pre-wrap" } }, this.state.error.toString()), React.createElement("pre", { style: { whiteSpace: "pre-wrap", fontSize: 12, color: "#666" } }, this.state.error.stack));
-      return this.props.children;
-    }
-  }
-  const root = client.createRoot(document.getElementById("root"));
-  root.render(React.createElement(ErrorBoundary, null, React.createElement(App)));
-})();
-//# sourceMappingURL=app-C3j45ET9.js.map
+    const root = client.createRoot(document.getElementById("root"));
+    root.render(React.createElement(ErrorBoundary, null, React.createElement(App)));
+  })();
+}
+//# sourceMappingURL=app-CveY8PBk.js.map

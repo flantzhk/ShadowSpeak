@@ -4,13 +4,70 @@ import firebase from "firebase/compat/app";
 import "firebase/compat/auth";
 import "firebase/compat/firestore";
 
-// Language selection
+// Language selection — check URL param, localStorage, or show picker
 const _up = new URLSearchParams(window.location.search);
-const _lang = _up.get("lang") || localStorage.getItem("shadowspeak-lang") || "canto";
-localStorage.setItem("shadowspeak-lang", _lang);
-if (_up.has("lang")) { const u = new URL(window.location.href); u.searchParams.delete("lang"); window.history.replaceState({}, "", u.pathname + u.hash); }
+let _lang = _up.get("lang") || localStorage.getItem("shadowspeak-lang") || null;
+// Clean ?lang= from URL if present
+if (_up.has("lang")) {
+  if (_lang) localStorage.setItem("shadowspeak-lang", _lang);
+  const u = new URL(window.location.href);
+  u.searchParams.delete("lang");
+  window.history.replaceState({}, "", u.pathname + u.hash);
+}
 
+// Language Picker component — shown on first launch when no language is stored
+function LanguagePicker() {
+  const pick = (lang) => {
+    localStorage.setItem("shadowspeak-lang", lang);
+    window.location.reload();
+  };
+  return React.createElement("div", {
+    style: { minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#1F3329", padding: 24, fontFamily: "'DM Sans',-apple-system,sans-serif" }
+  },
+    React.createElement("div", { style: { maxWidth: 420, width: "100%", textAlign: "center" } },
+      React.createElement("div", { style: { fontSize: 40, marginBottom: 12 } }, "\u{1F5E3}"),
+      React.createElement("div", { style: { fontSize: 28, fontWeight: 900, color: "#fff", marginBottom: 4 } },
+        "Shadow", React.createElement("span", { style: { color: "#C4F000" } }, "Speak")
+      ),
+      React.createElement("div", { style: { fontSize: 15, color: "rgba(255,255,255,.6)", marginBottom: 32, lineHeight: 1.5 } }, "Choose your language to get started."),
+      React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 12, marginBottom: 24 } },
+        React.createElement("button", {
+          onClick: () => pick("canto"),
+          style: { display: "flex", alignItems: "center", gap: 16, padding: "20px 24px", background: "#fff", border: "2px solid #EDE8E0", borderRadius: 16, cursor: "pointer", textAlign: "left", transition: "all .15s", fontFamily: "inherit" }
+        },
+          React.createElement("span", { style: { fontSize: "2rem" } }, "\u{1F1ED}\u{1F1F0}"),
+          React.createElement("div", null,
+            React.createElement("div", { style: { fontSize: 17, fontWeight: 800, color: "#1F3329" } }, "Cantonese"),
+            React.createElement("div", { style: { fontSize: 22, fontWeight: 800, color: "#2C2C2C", fontFamily: "'Noto Sans HK',sans-serif" } }, "\u5EE3\u6771\u8A71"),
+            React.createElement("div", { style: { fontSize: 13, color: "#7A756E", marginTop: 2 } }, "85 million speakers")
+          )
+        ),
+        React.createElement("button", {
+          onClick: () => pick("mandarin"),
+          style: { display: "flex", alignItems: "center", gap: 16, padding: "20px 24px", background: "#fff", border: "2px solid #EDE8E0", borderRadius: 16, cursor: "pointer", textAlign: "left", transition: "all .15s", fontFamily: "inherit" }
+        },
+          React.createElement("span", { style: { fontSize: "2rem" } }, "\u{1F1E8}\u{1F1F3}"),
+          React.createElement("div", null,
+            React.createElement("div", { style: { fontSize: 17, fontWeight: 800, color: "#1F3329" } }, "Mandarin"),
+            React.createElement("div", { style: { fontSize: 22, fontWeight: 800, color: "#2C2C2C", fontFamily: "'Noto Sans SC',sans-serif" } }, "\u666E\u901A\u8BDD"),
+            React.createElement("div", { style: { fontSize: 13, color: "#7A756E", marginTop: 2 } }, "920 million speakers")
+          )
+        )
+      ),
+      React.createElement("div", { style: { fontSize: 13, color: "rgba(255,255,255,.35)", lineHeight: 1.5 } }, "More languages coming soon.")
+    )
+  );
+}
+
+// If no language selected, show picker immediately
+if (!_lang) {
+  const root = ReactDOM.createRoot(document.getElementById("root"));
+  root.render(React.createElement(LanguagePicker));
+} else {
+
+// Boot the app with the selected language
 (async function boot() {
+  localStorage.setItem("shadowspeak-lang", _lang);
   // Load language data
   const mod = _lang === "mandarin" ? await import("./data-mandarin.js") : await import("./data-canto.js");
   window.LANG_CONFIG = mod.default;
@@ -1835,7 +1892,7 @@ function App() {
                   <div style={{fontSize:".78rem",fontWeight:800,color:"var(--ink)"}}>{displayName}</div>
                   <div style={{fontSize:".62rem",color:"var(--ink2)"}}>{activeUser.email}</div>
                 </div>
-                <button onClick={()=>{setProfileMenu(false);window.location.href="app.html?lang=" + LANG_CONFIG.switchTo.lang;}} style={{width:"100%",padding:"14px 16px",background:"none",border:"none",cursor:"pointer",fontSize:".82rem",fontWeight:700,color:"var(--ink)",textAlign:"left",display:"flex",alignItems:"center",gap:10,minHeight:48}}>{LANG_CONFIG.switchTo.flag} {LANG_CONFIG.switchTo.label}</button>
+                <button onClick={()=>{setProfileMenu(false);{localStorage.setItem("shadowspeak-lang",LANG_CONFIG.switchTo.lang);window.location.reload();};}} style={{width:"100%",padding:"14px 16px",background:"none",border:"none",cursor:"pointer",fontSize:".82rem",fontWeight:700,color:"var(--ink)",textAlign:"left",display:"flex",alignItems:"center",gap:10,minHeight:48}}>{LANG_CONFIG.switchTo.flag} {LANG_CONFIG.switchTo.label}</button>
                 <button onClick={()=>{setProfileMenu(false);setTab("settings");}} style={{width:"100%",padding:"14px 16px",background:"none",border:"none",cursor:"pointer",fontSize:".82rem",fontWeight:700,color:"var(--ink)",textAlign:"left",display:"flex",alignItems:"center",gap:10,minHeight:48}}>⚙️ Settings</button>
                 <button onClick={()=>{setProfileMenu(false);window.location.href="index.html";}} style={{width:"100%",padding:"14px 16px",background:"none",border:"none",cursor:"pointer",fontSize:".82rem",fontWeight:700,color:"var(--ink)",textAlign:"left",display:"flex",alignItems:"center",gap:10,minHeight:48}}>🏠 Back to home</button>
                 <div style={{borderTop:"1px solid var(--st)",margin:"2px 0"}} />
@@ -5128,7 +5185,7 @@ function SettingsTab({ settings, updSettings }) {
       {/* Switch language */}
       <div className="set-card">
         <div className="set-lb">Switch language</div>
-        <button onClick={()=>window.location.href="app.html?lang=" + LANG_CONFIG.switchTo.lang} style={{width:"100%",padding:"12px",borderRadius:12,border:"1.5px solid var(--st)",background:"var(--wh)",cursor:"pointer",fontSize:".78rem",fontWeight:700,color:"var(--ink)",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>{LANG_CONFIG.switchTo.flag} {LANG_CONFIG.switchTo.label}</button>
+        <button onClick={()=>{localStorage.setItem("shadowspeak-lang",LANG_CONFIG.switchTo.lang);window.location.reload();}} style={{width:"100%",padding:"12px",borderRadius:12,border:"1.5px solid var(--st)",background:"var(--wh)",cursor:"pointer",fontSize:".78rem",fontWeight:700,color:"var(--ink)",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>{LANG_CONFIG.switchTo.flag} {LANG_CONFIG.switchTo.label}</button>
       </div>
 
       {/* Reset progress */}
@@ -5179,3 +5236,5 @@ function SettingsTab({ settings, updSettings }) {
   const root = ReactDOM.createRoot(document.getElementById("root"));
   root.render(React.createElement(ErrorBoundary, null, React.createElement(App)));
 })();
+
+} // end else (language was already selected)

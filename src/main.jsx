@@ -17,7 +17,7 @@ if (_refParam) {
 }
 
 // ---- ANALYTICS ----
-const APP_VERSION = "4.2.0";
+const APP_VERSION = "4.2.1";
 let _analyticsClient = null;
 function trackEvent(name, props = {}) {
   const uid = window._ssUser?.uid || null;
@@ -166,6 +166,7 @@ loadAudioManifest();
 
 // Reusable audio element — avoids Safari's restriction on new Audio() after first gesture
 let _reusableAudio = null;
+let _playbackRate = 1.0; // 1.0 = natural, 0.75 = slower, 0.5 = very slow
 function getReusableAudio() {
   if (!_reusableAudio) {
     _reusableAudio = new Audio();
@@ -173,6 +174,7 @@ function getReusableAudio() {
   }
   return _reusableAudio;
 }
+function setPlaybackRate(rate) { _playbackRate = rate; }
 
 // Play a local MP3 file, returns a Promise
 function playLocalAudio(url) {
@@ -190,6 +192,7 @@ function playLocalAudio(url) {
     setTimeout(done, 10000);
     audio.src = url;
     audio.currentTime = 0;
+    audio.playbackRate = _playbackRate;
     audio.play().then(() => {
       // Playing successfully
     }).catch(e => {
@@ -328,7 +331,7 @@ if (typeof document !== "undefined") {
   unlockEvents.forEach(e => document.addEventListener(e, handleUnlock, true));
 }
 
-function speakAsync(text, lang, rate=0.85) {
+function speakAsync(text, lang, rate=0.85 * _playbackRate) {
   return new Promise(resolve => {
     if ("speechSynthesis" in window) {
       speechSynthesis.cancel();
@@ -403,6 +406,7 @@ function _playCachedBlob(blob) {
     setTimeout(() => { if (settled) return; settled = true; resolve(); }, 10000);
     audio.src = url;
     audio.currentTime = 0;
+    audio.playbackRate = _playbackRate;
     audio.play().catch(e => { if (settled) return; settled = true; reject(e); });
   });
 }
@@ -1888,11 +1892,15 @@ function App() {
         localStorage.setItem(LANG_CONFIG.localStorageSettingsKey, JSON.stringify(cloudSettings));
         _activeEnVoiceId = cloudSettings.enVoice || DEFAULT_EN_VOICE;
         _activeCnVoiceId = cloudSettings.cnVoice || DEFAULT_CN_VOICE;
+        const vs = cloudSettings.voiceSpeed || "natural";
+        setPlaybackRate(vs === "slower" ? 0.75 : vs === "very-slow" ? 0.5 : 1.0);
       } else if (ls.onboardingDone) {
         // Cloud failed but localStorage has completed onboarding — use it
         setSettings(ls);
         _activeEnVoiceId = ls.enVoice || DEFAULT_EN_VOICE;
         _activeCnVoiceId = ls.cnVoice || DEFAULT_CN_VOICE;
+        const vs = ls.voiceSpeed || "natural";
+        setPlaybackRate(vs === "slower" ? 0.75 : vs === "very-slow" ? 0.5 : 1.0);
       } else {
         const defaults = { learnMode: ls.learnMode||"speaking", enVoice: DEFAULT_EN_VOICE, cnVoice: DEFAULT_CN_VOICE, defaultSpeed: "normal", onboardingDone: false };
         setSettings(defaults);
@@ -2003,7 +2011,8 @@ function App() {
   }, [playlist?.idx, playlist?.playing, playlist?.speed]);
 
   const startPlaylist = useCallback((items, title) => {
-    setPlaylist({ items, title, idx: 0, playing: true, speed: "normal" });
+    setPlaybackRate(1.0); // reset voice speed
+    setPlaylist({ items, title, idx: 0, playing: true, speed: "normal", voiceSpeed: "natural" });
   }, []);
 
   const activeUser = user || offlineUser;
@@ -2103,8 +2112,14 @@ function App() {
           <div className="pl-v2-counter">Word {playlist.idx+1} of {playlist.items.length}</div>
           <div className="pl-v2-prog"><div className="pl-v2-prog-fill" style={{width:`${((playlist.idx+1)/playlist.items.length)*100}%`}} /></div>
           <div className="pl-v2-speeds">
-            <span className="pl-v2-speed-label">Speed</span>
-            {[{k:"slow",l:"🐢"},{k:"normal",l:"Normal"},{k:"fast",l:"🐇"}].map(s=>
+            <span className="pl-v2-speed-label">Voice</span>
+            {[{k:"natural",l:"Natural",r:1.0},{k:"slower",l:"Slower",r:0.75},{k:"very-slow",l:"Very slow",r:0.5}].map(s=>
+              <button key={s.k} style={{padding:"4px 10px",borderRadius:999,border:playlist.voiceSpeed===s.k?"1px solid var(--lime)":"1px solid rgba(255,255,255,.1)",background:playlist.voiceSpeed===s.k?"rgba(196,240,0,.12)":"transparent",color:playlist.voiceSpeed===s.k?"var(--lime)":"rgba(255,255,255,.4)",fontSize:".62rem",fontWeight:700,cursor:"pointer"}} onClick={()=>{setPlaybackRate(s.r);setPlaylist(p=>p?{...p,voiceSpeed:s.k}:null);}}>{s.l}</button>
+            )}
+          </div>
+          <div className="pl-v2-speeds" style={{marginTop:4}}>
+            <span className="pl-v2-speed-label">Pace</span>
+            {[{k:"slow",l:"🐢 Slow"},{k:"normal",l:"Normal"},{k:"fast",l:"🐇 Fast"}].map(s=>
               <button key={s.k} style={{padding:"4px 10px",borderRadius:999,border:playlist.speed===s.k?"1px solid var(--lime)":"1px solid rgba(255,255,255,.1)",background:playlist.speed===s.k?"rgba(196,240,0,.12)":"transparent",color:playlist.speed===s.k?"var(--lime)":"rgba(255,255,255,.4)",fontSize:".62rem",fontWeight:700,cursor:"pointer"}} onClick={()=>setPlaylist(p=>p?{...p,speed:s.k}:null)}>{s.l}</button>
             )}
           </div>
@@ -5401,13 +5416,24 @@ function SettingsTab({ settings, updSettings, isPremium, setShowPremiumGate }) {
         </div>
       </div>
 
-      {/* Default speed */}
+      {/* Lesson pace */}
       <div className="set-card">
-        <div className="set-lb">Default speed</div>
-        <div style={{fontSize:".68rem",color:"var(--ink2)",lineHeight:1.5,marginBottom:10}}>Sets the starting speed for lessons and shadow mode.</div>
+        <div className="set-lb">Lesson pace</div>
+        <div style={{fontSize:".68rem",color:"var(--ink2)",lineHeight:1.5,marginBottom:10}}>How quickly lessons move between phrases. Affects lessons, shadow mode, and playlists.</div>
         <div style={{display:"flex",gap:8}}>
           {[{k:"slow",l:"🐢 Slow"},{k:"normal",l:"Normal"},{k:"fast",l:"🐇 Fast"}].map(s=>
             <button key={s.k} onClick={()=>updSettings("defaultSpeed",s.k)} style={{flex:1,padding:"10px 8px",borderRadius:12,border:(settings.defaultSpeed||"normal")===s.k?"2px solid var(--lime)":"1.5px solid var(--st)",background:(settings.defaultSpeed||"normal")===s.k?"rgba(196,240,0,.1)":"var(--wh)",cursor:"pointer",fontSize:".72rem",fontWeight:700,color:"var(--ink)",textAlign:"center"}}>{s.l}</button>
+          )}
+        </div>
+      </div>
+
+      {/* Voice speed */}
+      <div className="set-card">
+        <div className="set-lb">Voice speed</div>
+        <div style={{fontSize:".68rem",color:"var(--ink2)",lineHeight:1.5,marginBottom:10}}>How fast the {LANG_CONFIG.name} voice speaks. Slower speeds help you catch every tone and syllable.</div>
+        <div style={{display:"flex",gap:8}}>
+          {[{k:"natural",l:"Natural",r:1.0},{k:"slower",l:"Slower",r:0.75},{k:"very-slow",l:"Very slow",r:0.5}].map(s=>
+            <button key={s.k} onClick={()=>{updSettings("voiceSpeed",s.k);setPlaybackRate(s.r);}} style={{flex:1,padding:"10px 8px",borderRadius:12,border:(settings.voiceSpeed||"natural")===s.k?"2px solid var(--lime)":"1.5px solid var(--st)",background:(settings.voiceSpeed||"natural")===s.k?"rgba(196,240,0,.1)":"var(--wh)",cursor:"pointer",fontSize:".72rem",fontWeight:700,color:"var(--ink)",textAlign:"center"}}>{s.l}</button>
           )}
         </div>
       </div>

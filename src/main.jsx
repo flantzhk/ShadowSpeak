@@ -17,7 +17,7 @@ if (_refParam) {
 }
 
 // ---- ANALYTICS ----
-const APP_VERSION = "4.1.1";
+const APP_VERSION = "4.1.2";
 let _analyticsClient = null;
 function trackEvent(name, props = {}) {
   const uid = window._ssUser?.uid || null;
@@ -164,21 +164,38 @@ async function loadAudioManifest() {
 // Start loading manifest immediately
 loadAudioManifest();
 
+// Reusable audio element — avoids Safari's restriction on new Audio() after first gesture
+let _reusableAudio = null;
+function getReusableAudio() {
+  if (!_reusableAudio) {
+    _reusableAudio = new Audio();
+    _reusableAudio.preload = "auto";
+  }
+  return _reusableAudio;
+}
+
 // Play a local MP3 file, returns a Promise
 function playLocalAudio(url) {
   return new Promise((resolve, reject) => {
     stopAudio();
-    const audio = new Audio(url);
+    const audio = getReusableAudio();
     _currentAudio = audio;
     if (_audioCtx && _audioCtx.state === "suspended") _audioCtx.resume();
     let settled = false;
-    const done = () => { if (settled) return; settled = true; _currentAudio = null; resolve(); };
+    const done = () => { if (settled) return; settled = true; resolve(); };
+    const fail = (e) => { if (settled) return; settled = true; reject(e || new Error("Local audio failed: " + url)); };
     audio.onended = done;
-    audio.onpause = done; // resolve if externally paused (e.g. stopAudio)
-    audio.onerror = () => { if (settled) return; settled = true; _currentAudio = null; reject(new Error("Local audio failed: " + url)); };
-    // Safety timeout — resolve after 15s max to prevent hanging
-    setTimeout(done, 15000);
-    audio.play().catch(e => { if (settled) return; settled = true; _currentAudio = null; reject(e); });
+    audio.onerror = () => fail();
+    // Safety timeout — 10s max per audio clip
+    setTimeout(done, 10000);
+    audio.src = url;
+    audio.currentTime = 0;
+    audio.play().then(() => {
+      // Playing successfully
+    }).catch(e => {
+      console.warn("[Audio] play() rejected:", e.message, "url:", url);
+      fail(e);
+    });
   });
 }
 
@@ -332,7 +349,13 @@ let _currentAudio = null;
 
 function stopAudio() {
   unlockAudio();
-  if (_currentAudio) { _currentAudio.pause(); _currentAudio.currentTime = 0; _currentAudio = null; }
+  if (_currentAudio) {
+    _currentAudio.pause();
+    _currentAudio.currentTime = 0;
+    _currentAudio.onended = null;
+    _currentAudio.onerror = null;
+    _currentAudio = null;
+  }
   if ("speechSynthesis" in window) speechSynthesis.cancel();
 }
 
@@ -360,12 +383,16 @@ function _playCachedBlob(blob) {
   return new Promise((resolve, reject) => {
     stopAudio();
     const url = URL.createObjectURL(blob);
-    const audio = new Audio(url);
+    const audio = getReusableAudio();
     _currentAudio = audio;
     if (_audioCtx && _audioCtx.state === "suspended") _audioCtx.resume();
-    audio.onended = () => { _currentAudio = null; resolve(); };
-    audio.onerror = () => { _currentAudio = null; reject(new Error("cached playback failed")); };
-    audio.play().catch(e => { _currentAudio = null; reject(e); });
+    let settled = false;
+    audio.onended = () => { if (settled) return; settled = true; resolve(); };
+    audio.onerror = () => { if (settled) return; settled = true; reject(new Error("cached playback failed")); };
+    setTimeout(() => { if (settled) return; settled = true; resolve(); }, 10000);
+    audio.src = url;
+    audio.currentTime = 0;
+    audio.play().catch(e => { if (settled) return; settled = true; reject(e); });
   });
 }
 

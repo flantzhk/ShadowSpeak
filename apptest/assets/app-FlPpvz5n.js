@@ -40222,7 +40222,7 @@ if (_refParam) {
   _cleanRef.searchParams.delete("ref");
   window.history.replaceState({}, "", _cleanRef.pathname + _cleanRef.search + _cleanRef.hash);
 }
-const APP_VERSION = "4.1.1";
+const APP_VERSION = "4.1.2";
 function trackEvent(name2, props = {}) {
   var _a;
   const uid = ((_a = window._ssUser) == null ? void 0 : _a.uid) || null;
@@ -40377,33 +40377,40 @@ if (!_lang) {
       return _audioManifest;
     }
     loadAudioManifest();
+    let _reusableAudio = null;
+    function getReusableAudio() {
+      if (!_reusableAudio) {
+        _reusableAudio = new Audio();
+        _reusableAudio.preload = "auto";
+      }
+      return _reusableAudio;
+    }
     function playLocalAudio(url) {
       return new Promise((resolve, reject) => {
         stopAudio();
-        const audio = new Audio(url);
+        const audio = getReusableAudio();
         _currentAudio = audio;
         if (_audioCtx && _audioCtx.state === "suspended") _audioCtx.resume();
         let settled = false;
         const done = () => {
           if (settled) return;
           settled = true;
-          _currentAudio = null;
           resolve();
         };
-        audio.onended = done;
-        audio.onpause = done;
-        audio.onerror = () => {
+        const fail2 = (e) => {
           if (settled) return;
           settled = true;
-          _currentAudio = null;
-          reject(new Error("Local audio failed: " + url));
+          reject(e || new Error("Local audio failed: " + url));
         };
-        setTimeout(done, 15e3);
-        audio.play().catch((e) => {
-          if (settled) return;
-          settled = true;
-          _currentAudio = null;
-          reject(e);
+        audio.onended = done;
+        audio.onerror = () => fail2();
+        setTimeout(done, 1e4);
+        audio.src = url;
+        audio.currentTime = 0;
+        audio.play().then(() => {
+        }).catch((e) => {
+          console.warn("[Audio] play() rejected:", e.message, "url:", url);
+          fail2(e);
         });
       });
     }
@@ -40559,6 +40566,8 @@ if (!_lang) {
       if (_currentAudio) {
         _currentAudio.pause();
         _currentAudio.currentTime = 0;
+        _currentAudio.onended = null;
+        _currentAudio.onerror = null;
         _currentAudio = null;
       }
       if ("speechSynthesis" in window) speechSynthesis.cancel();
@@ -40576,19 +40585,30 @@ if (!_lang) {
       return new Promise((resolve, reject) => {
         stopAudio();
         const url = URL.createObjectURL(blob);
-        const audio = new Audio(url);
+        const audio = getReusableAudio();
         _currentAudio = audio;
         if (_audioCtx && _audioCtx.state === "suspended") _audioCtx.resume();
+        let settled = false;
         audio.onended = () => {
-          _currentAudio = null;
+          if (settled) return;
+          settled = true;
           resolve();
         };
         audio.onerror = () => {
-          _currentAudio = null;
+          if (settled) return;
+          settled = true;
           reject(new Error("cached playback failed"));
         };
+        setTimeout(() => {
+          if (settled) return;
+          settled = true;
+          resolve();
+        }, 1e4);
+        audio.src = url;
+        audio.currentTime = 0;
         audio.play().catch((e) => {
-          _currentAudio = null;
+          if (settled) return;
+          settled = true;
           reject(e);
         });
       });
@@ -44910,4 +44930,4 @@ if (!_lang) {
     root.render(React.createElement(ErrorBoundary, null, React.createElement(App)));
   })();
 }
-//# sourceMappingURL=app-BJbnj0oz.js.map
+//# sourceMappingURL=app-FlPpvz5n.js.map

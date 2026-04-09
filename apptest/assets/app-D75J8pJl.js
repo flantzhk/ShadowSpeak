@@ -40876,14 +40876,29 @@ if (!_lang) {
       return new Blob([wavBuffer], { type: "audio/wav" });
     }
     async function scorePronunciation(audioBlob, text, language = LANG_CONFIG.id) {
+      var _a, _b;
       if (!_isOnline2) throw new Error("OFFLINE");
-      const wavBlob = await convertToWav(audioBlob);
+      let audioToSend = audioBlob;
+      let filename = "recording.webm";
+      try {
+        const wavBlob = await convertToWav(audioBlob);
+        audioToSend = wavBlob;
+        filename = "recording.wav";
+        console.log("[Score] Converted to WAV:", wavBlob.size, "bytes");
+      } catch (e) {
+        console.warn("[Score] WAV conversion failed, sending raw audio:", e.message);
+        const ext = ((_a = audioBlob.type) == null ? void 0 : _a.includes("mp4")) ? "m4a" : ((_b = audioBlob.type) == null ? void 0 : _b.includes("ogg")) ? "ogg" : "wav";
+        filename = "recording." + ext;
+      }
       const formData = new FormData();
       formData.append("text", text);
       formData.append("language", language);
-      formData.append("audio", wavBlob, "recording.wav");
+      formData.append("audio", audioToSend, filename);
       const res = await fetch(`${PROXY_URL}/score`, { method: "POST", body: formData });
-      if (!res.ok) throw new Error("Scoring failed: " + res.status);
+      if (!res.ok) {
+        const errText = await res.text().catch(() => "");
+        throw new Error("Scoring failed: " + res.status + " " + errText);
+      }
       return res.json();
     }
     function parseScoreChars(result, phraseCn) {
@@ -41784,7 +41799,7 @@ if (!_lang) {
             setScoreResult({ score: result.score, passed: result.passed, chars, phrase: ph2 });
           } catch (e) {
             console.error("Scoring error:", e);
-            setScoreResult(null);
+            setScoreResult({ error: e.message });
           }
         }
         setScoring(false);
@@ -41978,10 +41993,21 @@ if (!_lang) {
               quizItems.length
             ] })
           ] }),
-          scoreResult && /* @__PURE__ */ jsxRuntimeExports.jsx(PronunciationScore, { score: scoreResult.score, chars: scoreResult.chars, phrase: scoreResult.phrase, onRetry: () => {
+          scoreResult && (scoreResult.error ? /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,.6)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }, children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { background: "var(--wh)", borderRadius: 20, padding: 24, maxWidth: 360, textAlign: "center" }, children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: "2rem", marginBottom: 8 }, children: "😕" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".88rem", fontWeight: 800, color: "var(--ink)", marginBottom: 6 }, children: "Scoring failed" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".72rem", color: "var(--ink3)", marginBottom: 16, lineHeight: 1.5 }, children: scoreResult.error }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", gap: 8 }, children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => {
+                setScoreResult(null);
+                qStartTest();
+              }, style: { flex: 1, padding: 12, borderRadius: 12, border: "none", background: "var(--lime)", color: "var(--for)", fontWeight: 800, fontSize: ".78rem", cursor: "pointer" }, children: "Try again" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: pronNext, style: { flex: 1, padding: 12, borderRadius: 12, border: "1.5px solid var(--st)", background: "var(--wh)", color: "var(--ink)", fontWeight: 700, fontSize: ".78rem", cursor: "pointer" }, children: "Skip" })
+            ] })
+          ] }) }) : /* @__PURE__ */ jsxRuntimeExports.jsx(PronunciationScore, { score: scoreResult.score, chars: scoreResult.chars, phrase: scoreResult.phrase, onRetry: () => {
             setScoreResult(null);
             qStartTest();
-          }, onNext: pronNext, onClose: pronNext })
+          }, onNext: pronNext, onClose: pronNext }))
         ] });
       }
       if (mode === "speaking") {
@@ -42200,6 +42226,12 @@ if (!_lang) {
             if (doc2.exists) {
               const profileData = doc2.data();
               if (profileData.isPremium) setIsPremium(true);
+              if (!user.displayName && profileData.displayName) {
+                try {
+                  await user.updateProfile({ displayName: profileData.displayName });
+                } catch (e) {
+                }
+              }
               await profileRef.update({
                 lastActiveAt: /* @__PURE__ */ new Date(),
                 email: user.email || null,
@@ -42401,7 +42433,7 @@ if (!_lang) {
         return null;
       }
       activeUser.uid;
-      const displayName = activeUser.displayName || "Learner";
+      const displayName = activeUser.displayName || (activeUser.email ? activeUser.email.split("@")[0].replace(/[._]/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()) : "Learner");
       const photoURL = activeUser.photoURL;
       Object.keys(progress.vocab || {}).filter((k2) => progress.vocab[k2]).length;
       const isReturningUser = (progress.lessonLog || []).length > 0 || Object.keys(progress.phrases || {}).length > 0 || Object.keys(progress.vocab || {}).length > 0;
@@ -42933,7 +42965,7 @@ if (!_lang) {
             setScoreResult({ score: result.score, passed: result.passed, chars, phrase: ph2 });
           } catch (e) {
             console.error("Quiz scoring error:", e);
-            setScoreResult(null);
+            setScoreResult({ error: e.message });
           }
         }
         setScoring(false);
@@ -45026,4 +45058,4 @@ if (!_lang) {
     root.render(React.createElement(ErrorBoundary, null, React.createElement(App)));
   })();
 }
-//# sourceMappingURL=app-CW3B2z26.js.map
+//# sourceMappingURL=app-D75J8pJl.js.map

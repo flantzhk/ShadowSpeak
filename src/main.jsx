@@ -611,14 +611,29 @@ async function convertToWav(audioBlob) {
 
 async function scorePronunciation(audioBlob, text, language = LANG_CONFIG.id) {
   if (!_isOnline) throw new Error("OFFLINE");
-  // Convert to WAV — the scoring API only accepts wav/mp3/m4a/flac/ogg
-  const wavBlob = await convertToWav(audioBlob);
+  let audioToSend = audioBlob;
+  let filename = "recording.webm";
+  // Convert to WAV — the scoring API only accepts wav, mp3, m4a, flac, ogg
+  try {
+    const wavBlob = await convertToWav(audioBlob);
+    audioToSend = wavBlob;
+    filename = "recording.wav";
+    console.log("[Score] Converted to WAV:", wavBlob.size, "bytes");
+  } catch(e) {
+    // If WAV conversion fails (some browsers), send as m4a which the API also accepts
+    console.warn("[Score] WAV conversion failed, sending raw audio:", e.message);
+    const ext = audioBlob.type?.includes("mp4") ? "m4a" : audioBlob.type?.includes("ogg") ? "ogg" : "wav";
+    filename = "recording." + ext;
+  }
   const formData = new FormData();
   formData.append("text", text);
   formData.append("language", language);
-  formData.append("audio", wavBlob, "recording.wav");
+  formData.append("audio", audioToSend, filename);
   const res = await fetch(`${PROXY_URL}/score`, { method: "POST", body: formData });
-  if (!res.ok) throw new Error("Scoring failed: " + res.status);
+  if (!res.ok) {
+    const errText = await res.text().catch(() => "");
+    throw new Error("Scoring failed: " + res.status + " " + errText);
+  }
   return res.json();
 }
 
@@ -1489,7 +1504,7 @@ function QuizTab({ progress, upd, startMode, onBack }) {
         const result = await scorePronunciation(blob, ph.cn, LANG_CONFIG.id);
         const chars = parseScoreChars(result, ph.cn);
         setScoreResult({ score: result.score, passed: result.passed, chars, phrase: ph });
-      } catch(e) { console.error("Scoring error:", e); setScoreResult(null); }
+      } catch(e) { console.error("Scoring error:", e); setScoreResult({ error: e.message }); }
     }
     setScoring(false);
   };
@@ -1645,7 +1660,19 @@ function QuizTab({ progress, upd, startMode, onBack }) {
         {!scoreResult && !isRecording && !scoring && (<button onClick={pronSkip} style={{marginTop:16,background:"none",border:"none",cursor:"pointer",fontSize:".78rem",fontWeight:600,color:"var(--ink3)",minHeight:44,padding:"8px 16px"}}>Skip →</button>)}
         <div style={{fontSize:".65rem",color:"var(--ink3)",marginTop:10}}>{idx+1} of {quizItems.length}</div>
       </div>
-      {scoreResult && <PronunciationScore score={scoreResult.score} chars={scoreResult.chars} phrase={scoreResult.phrase} onRetry={()=>{setScoreResult(null);qStartTest();}} onNext={pronNext} onClose={pronNext} />}
+      {scoreResult && (scoreResult.error ? (
+        <div style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"rgba(0,0,0,.6)",zIndex:200,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
+          <div style={{background:"var(--wh)",borderRadius:20,padding:24,maxWidth:360,textAlign:"center"}}>
+            <div style={{fontSize:"2rem",marginBottom:8}}>😕</div>
+            <div style={{fontSize:".88rem",fontWeight:800,color:"var(--ink)",marginBottom:6}}>Scoring failed</div>
+            <div style={{fontSize:".72rem",color:"var(--ink3)",marginBottom:16,lineHeight:1.5}}>{scoreResult.error}</div>
+            <div style={{display:"flex",gap:8}}>
+              <button onClick={()=>{setScoreResult(null);qStartTest();}} style={{flex:1,padding:12,borderRadius:12,border:"none",background:"var(--lime)",color:"var(--for)",fontWeight:800,fontSize:".78rem",cursor:"pointer"}}>Try again</button>
+              <button onClick={pronNext} style={{flex:1,padding:12,borderRadius:12,border:"1.5px solid var(--st)",background:"var(--wh)",color:"var(--ink)",fontWeight:700,fontSize:".78rem",cursor:"pointer"}}>Skip</button>
+            </div>
+          </div>
+        </div>
+      ) : <PronunciationScore score={scoreResult.score} chars={scoreResult.chars} phrase={scoreResult.phrase} onRetry={()=>{setScoreResult(null);qStartTest();}} onNext={pronNext} onClose={pronNext} />)}
     </div>);
   }
 
@@ -1858,9 +1885,13 @@ function App() {
       try {
         const doc = await profileRef.get();
         if (doc.exists) {
-          // Returning user — update lastActiveAt and read premium status
+          // Returning user — update lastActiveAt and read premium status + name
           const profileData = doc.data();
           if (profileData.isPremium) setIsPremium(true);
+          // If Firebase Auth has no displayName but Firestore does, restore it
+          if (!user.displayName && profileData.displayName) {
+            try { await user.updateProfile({ displayName: profileData.displayName }); } catch(e) {}
+          }
           await profileRef.update({
             lastActiveAt: new Date(),
             email: user.email || null,
@@ -2070,7 +2101,7 @@ function App() {
   if (!activeUser) { window.location.href = "index.html"; return null; }
 
   const profile = activeUser.uid;
-  const displayName = activeUser.displayName || "Learner";
+  const displayName = activeUser.displayName || (activeUser.email ? activeUser.email.split("@")[0].replace(/[._]/g, " ").replace(/\b\w/g, c => c.toUpperCase()) : "Learner");
   const photoURL = activeUser.photoURL;
   const vk = Object.keys(progress.vocab||{}).filter(k=>progress.vocab[k]).length;
 
@@ -2560,7 +2591,7 @@ function LessonMode({ progress, upd, profile, settings, onComplete, onQuit }) {
         setScoreResult({ score: result.score, passed: result.passed, chars, phrase: ph });
       } catch(e) {
         console.error("Quiz scoring error:", e);
-        setScoreResult(null);
+        setScoreResult({ error: e.message });
       }
     }
     setScoring(false);
@@ -4727,7 +4758,7 @@ function ShadowMode({ unit, progress, upd, settings, onClose, startIdx=0, single
         setScoreResult({ score: result.score, passed: result.passed, chars, phrase: ph });
       } catch(e) {
         console.error("Scoring error:", e);
-        setScoreResult(null);
+        setScoreResult({ error: e.message });
       }
     }
     setScoring(false);

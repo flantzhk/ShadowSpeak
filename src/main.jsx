@@ -611,6 +611,8 @@ async function convertToWav(audioBlob) {
 
 async function scorePronunciation(audioBlob, text, language = LANG_CONFIG.id) {
   if (!_isOnline) throw new Error("OFFLINE");
+  // Map internal language IDs to what the cantonese.ai API expects
+  const apiLang = language === "canto" ? "cantonese" : language === "mandarin" ? "mandarin" : language;
   let audioToSend = audioBlob;
   let filename = "recording.webm";
   // Convert to WAV — the scoring API only accepts wav, mp3, m4a, flac, ogg
@@ -627,7 +629,7 @@ async function scorePronunciation(audioBlob, text, language = LANG_CONFIG.id) {
   }
   const formData = new FormData();
   formData.append("text", text);
-  formData.append("language", language);
+  formData.append("language", apiLang);
   formData.append("audio", audioToSend, filename);
   const res = await fetch(`${PROXY_URL}/score`, { method: "POST", body: formData });
   if (!res.ok) {

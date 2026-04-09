@@ -40878,6 +40878,7 @@ if (!_lang) {
     async function scorePronunciation(audioBlob, text, language = LANG_CONFIG.id) {
       var _a, _b;
       if (!_isOnline2) throw new Error("OFFLINE");
+      const apiLang = language === "canto" ? "cantonese" : language === "mandarin" ? "mandarin" : language;
       let audioToSend = audioBlob;
       let filename = "recording.webm";
       try {
@@ -40892,7 +40893,7 @@ if (!_lang) {
       }
       const formData = new FormData();
       formData.append("text", text);
-      formData.append("language", language);
+      formData.append("language", apiLang);
       formData.append("audio", audioToSend, filename);
       const res = await fetch(`${PROXY_URL}/score`, { method: "POST", body: formData });
       if (!res.ok) {
@@ -45035,4 +45036,4 @@ if (!_lang) {
     root.render(React.createElement(ErrorBoundary, null, React.createElement(App)));
   })();
 }
-//# sourceMappingURL=app-xbltDlur.js.map
+//# sourceMappingURL=app-C4nU8TX5.js.map

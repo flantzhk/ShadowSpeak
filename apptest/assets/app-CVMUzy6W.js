@@ -40222,7 +40222,7 @@ if (_refParam) {
   _cleanRef.searchParams.delete("ref");
   window.history.replaceState({}, "", _cleanRef.pathname + _cleanRef.search + _cleanRef.hash);
 }
-const APP_VERSION = "4.2.0";
+const APP_VERSION = "4.2.1";
 function trackEvent(name2, props = {}) {
   var _a;
   const uid = ((_a = window._ssUser) == null ? void 0 : _a.uid) || null;
@@ -40378,12 +40378,16 @@ if (!_lang) {
     }
     loadAudioManifest();
     let _reusableAudio = null;
+    let _playbackRate = 1;
     function getReusableAudio() {
       if (!_reusableAudio) {
         _reusableAudio = new Audio();
         _reusableAudio.preload = "auto";
       }
       return _reusableAudio;
+    }
+    function setPlaybackRate(rate) {
+      _playbackRate = rate;
     }
     function playLocalAudio(url) {
       return new Promise((resolve, reject) => {
@@ -40407,6 +40411,7 @@ if (!_lang) {
         setTimeout(done, 1e4);
         audio.src = url;
         audio.currentTime = 0;
+        audio.playbackRate = _playbackRate;
         audio.play().then(() => {
         }).catch((e) => {
           console.warn("[Audio] play() rejected:", e.message, "url:", url);
@@ -40540,7 +40545,7 @@ if (!_lang) {
       };
       unlockEvents.forEach((e) => document.addEventListener(e, handleUnlock, true));
     }
-    function speakAsync(text, lang, rate = 0.85) {
+    function speakAsync(text, lang, rate = 0.85 * _playbackRate) {
       return new Promise((resolve) => {
         if ("speechSynthesis" in window) {
           speechSynthesis.cancel();
@@ -40615,6 +40620,7 @@ if (!_lang) {
         }, 1e4);
         audio.src = url;
         audio.currentTime = 0;
+        audio.playbackRate = _playbackRate;
         audio.play().catch((e) => {
           if (settled) return;
           settled = true;
@@ -42223,10 +42229,14 @@ if (!_lang) {
             localStorage.setItem(LANG_CONFIG.localStorageSettingsKey, JSON.stringify(cloudSettings));
             _activeEnVoiceId = cloudSettings.enVoice || DEFAULT_EN_VOICE;
             _activeCnVoiceId = cloudSettings.cnVoice || DEFAULT_CN_VOICE;
+            const vs = cloudSettings.voiceSpeed || "natural";
+            setPlaybackRate(vs === "slower" ? 0.75 : vs === "very-slow" ? 0.5 : 1);
           } else if (ls.onboardingDone) {
             setSettings(ls);
             _activeEnVoiceId = ls.enVoice || DEFAULT_EN_VOICE;
             _activeCnVoiceId = ls.cnVoice || DEFAULT_CN_VOICE;
+            const vs = ls.voiceSpeed || "natural";
+            setPlaybackRate(vs === "slower" ? 0.75 : vs === "very-slow" ? 0.5 : 1);
           } else {
             const defaults = { learnMode: ls.learnMode || "speaking", enVoice: DEFAULT_EN_VOICE, cnVoice: DEFAULT_CN_VOICE, defaultSpeed: "normal", onboardingDone: false };
             setSettings(defaults);
@@ -42342,7 +42352,8 @@ if (!_lang) {
         };
       }, [playlist == null ? void 0 : playlist.idx, playlist == null ? void 0 : playlist.playing, playlist == null ? void 0 : playlist.speed]);
       const startPlaylist = reactExports.useCallback((items, title) => {
-        setPlaylist({ items, title, idx: 0, playing: true, speed: "normal" });
+        setPlaybackRate(1);
+        setPlaylist({ items, title, idx: 0, playing: true, speed: "normal", voiceSpeed: "natural" });
       }, []);
       const activeUser = user || offlineUser;
       if (authLoading && !offlineUser) return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "ca", children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "pkr", children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { color: "var(--lime)", fontSize: "1rem", fontWeight: 900 }, children: "Loading..." }) }) });
@@ -42454,8 +42465,17 @@ if (!_lang) {
             ] }),
             /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "pl-v2-prog", children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "pl-v2-prog-fill", style: { width: `${(playlist.idx + 1) / playlist.items.length * 100}%` } }) }),
             /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "pl-v2-speeds", children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "pl-v2-speed-label", children: "Speed" }),
-              [{ k: "slow", l: "🐢" }, { k: "normal", l: "Normal" }, { k: "fast", l: "🐇" }].map(
+              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "pl-v2-speed-label", children: "Voice" }),
+              [{ k: "natural", l: "Natural", r: 1 }, { k: "slower", l: "Slower", r: 0.75 }, { k: "very-slow", l: "Very slow", r: 0.5 }].map(
+                (s) => /* @__PURE__ */ jsxRuntimeExports.jsx("button", { style: { padding: "4px 10px", borderRadius: 999, border: playlist.voiceSpeed === s.k ? "1px solid var(--lime)" : "1px solid rgba(255,255,255,.1)", background: playlist.voiceSpeed === s.k ? "rgba(196,240,0,.12)" : "transparent", color: playlist.voiceSpeed === s.k ? "var(--lime)" : "rgba(255,255,255,.4)", fontSize: ".62rem", fontWeight: 700, cursor: "pointer" }, onClick: () => {
+                  setPlaybackRate(s.r);
+                  setPlaylist((p2) => p2 ? { ...p2, voiceSpeed: s.k } : null);
+                }, children: s.l }, s.k)
+              )
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "pl-v2-speeds", style: { marginTop: 4 }, children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "pl-v2-speed-label", children: "Pace" }),
+              [{ k: "slow", l: "🐢 Slow" }, { k: "normal", l: "Normal" }, { k: "fast", l: "🐇 Fast" }].map(
                 (s) => /* @__PURE__ */ jsxRuntimeExports.jsx("button", { style: { padding: "4px 10px", borderRadius: 999, border: playlist.speed === s.k ? "1px solid var(--lime)" : "1px solid rgba(255,255,255,.1)", background: playlist.speed === s.k ? "rgba(196,240,0,.12)" : "transparent", color: playlist.speed === s.k ? "var(--lime)" : "rgba(255,255,255,.4)", fontSize: ".62rem", fontWeight: 700, cursor: "pointer" }, onClick: () => setPlaylist((p2) => p2 ? { ...p2, speed: s.k } : null), children: s.l }, s.k)
               )
             ] })
@@ -44852,10 +44872,24 @@ if (!_lang) {
           ] }, v2.id)) })
         ] }),
         /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "set-card", children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "set-lb", children: "Default speed" }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".68rem", color: "var(--ink2)", lineHeight: 1.5, marginBottom: 10 }, children: "Sets the starting speed for lessons and shadow mode." }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "set-lb", children: "Lesson pace" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".68rem", color: "var(--ink2)", lineHeight: 1.5, marginBottom: 10 }, children: "How quickly lessons move between phrases. Affects lessons, shadow mode, and playlists." }),
           /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { display: "flex", gap: 8 }, children: [{ k: "slow", l: "🐢 Slow" }, { k: "normal", l: "Normal" }, { k: "fast", l: "🐇 Fast" }].map(
             (s) => /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => updSettings("defaultSpeed", s.k), style: { flex: 1, padding: "10px 8px", borderRadius: 12, border: (settings.defaultSpeed || "normal") === s.k ? "2px solid var(--lime)" : "1.5px solid var(--st)", background: (settings.defaultSpeed || "normal") === s.k ? "rgba(196,240,0,.1)" : "var(--wh)", cursor: "pointer", fontSize: ".72rem", fontWeight: 700, color: "var(--ink)", textAlign: "center" }, children: s.l }, s.k)
+          ) })
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "set-card", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "set-lb", children: "Voice speed" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { fontSize: ".68rem", color: "var(--ink2)", lineHeight: 1.5, marginBottom: 10 }, children: [
+            "How fast the ",
+            LANG_CONFIG.name,
+            " voice speaks. Slower speeds help you catch every tone and syllable."
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { display: "flex", gap: 8 }, children: [{ k: "natural", l: "Natural", r: 1 }, { k: "slower", l: "Slower", r: 0.75 }, { k: "very-slow", l: "Very slow", r: 0.5 }].map(
+            (s) => /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => {
+              updSettings("voiceSpeed", s.k);
+              setPlaybackRate(s.r);
+            }, style: { flex: 1, padding: "10px 8px", borderRadius: 12, border: (settings.voiceSpeed || "natural") === s.k ? "2px solid var(--lime)" : "1.5px solid var(--st)", background: (settings.voiceSpeed || "natural") === s.k ? "rgba(196,240,0,.1)" : "var(--wh)", cursor: "pointer", fontSize: ".72rem", fontWeight: 700, color: "var(--ink)", textAlign: "center" }, children: s.l }, s.k)
           ) })
         ] }),
         /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "set-card", children: [
@@ -44951,4 +44985,4 @@ if (!_lang) {
     root.render(React.createElement(ErrorBoundary, null, React.createElement(App)));
   })();
 }
-//# sourceMappingURL=app-BAYweSzI.js.map
+//# sourceMappingURL=app-CVMUzy6W.js.map

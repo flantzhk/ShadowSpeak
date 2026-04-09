@@ -40222,7 +40222,7 @@ if (_refParam) {
   _cleanRef.searchParams.delete("ref");
   window.history.replaceState({}, "", _cleanRef.pathname + _cleanRef.search + _cleanRef.hash);
 }
-const APP_VERSION = "4.2.2";
+const APP_VERSION = "4.2.3";
 function trackEvent(name2, props = {}) {
   var _a;
   const uid = ((_a = window._ssUser) == null ? void 0 : _a.uid) || null;
@@ -40838,14 +40838,50 @@ if (!_lang) {
       await new Promise((r2) => setTimeout(r2, 800));
       await speak(item.cn);
     }
+    async function convertToWav(audioBlob) {
+      const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const arrayBuffer = await audioBlob.arrayBuffer();
+      const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+      const sampleRate = 16e3;
+      const offlineCtx = new OfflineAudioContext(1, audioBuffer.duration * sampleRate, sampleRate);
+      const source = offlineCtx.createBufferSource();
+      source.buffer = audioBuffer;
+      source.connect(offlineCtx.destination);
+      source.start(0);
+      const rendered = await offlineCtx.startRendering();
+      const pcm = rendered.getChannelData(0);
+      const wavBuffer = new ArrayBuffer(44 + pcm.length * 2);
+      const view = new DataView(wavBuffer);
+      const writeStr = (off, str) => {
+        for (let i = 0; i < str.length; i++) view.setUint8(off + i, str.charCodeAt(i));
+      };
+      writeStr(0, "RIFF");
+      view.setUint32(4, 36 + pcm.length * 2, true);
+      writeStr(8, "WAVE");
+      writeStr(12, "fmt ");
+      view.setUint32(16, 16, true);
+      view.setUint16(20, 1, true);
+      view.setUint16(22, 1, true);
+      view.setUint32(24, sampleRate, true);
+      view.setUint32(28, sampleRate * 2, true);
+      view.setUint16(32, 2, true);
+      view.setUint16(34, 16, true);
+      writeStr(36, "data");
+      view.setUint32(40, pcm.length * 2, true);
+      for (let i = 0; i < pcm.length; i++) {
+        const s = Math.max(-1, Math.min(1, pcm[i]));
+        view.setInt16(44 + i * 2, s < 0 ? s * 32768 : s * 32767, true);
+      }
+      await audioCtx.close();
+      return new Blob([wavBuffer], { type: "audio/wav" });
+    }
     async function scorePronunciation(audioBlob, text, language = LANG_CONFIG.id) {
-      var _a, _b;
       if (!_isOnline2) throw new Error("OFFLINE");
+      const wavBlob = await convertToWav(audioBlob);
       const formData = new FormData();
       formData.append("text", text);
       formData.append("language", language);
-      const ext = ((_a = audioBlob.type) == null ? void 0 : _a.includes("mp4")) ? "mp4" : ((_b = audioBlob.type) == null ? void 0 : _b.includes("wav")) ? "wav" : "webm";
-      formData.append("audio", audioBlob, "recording." + ext);
+      formData.append("audio", wavBlob, "recording.wav");
       const res = await fetch(`${PROXY_URL}/score`, { method: "POST", body: formData });
       if (!res.ok) throw new Error("Scoring failed: " + res.status);
       return res.json();
@@ -44990,4 +45026,4 @@ if (!_lang) {
     root.render(React.createElement(ErrorBoundary, null, React.createElement(App)));
   })();
 }
-//# sourceMappingURL=app-x8T2vluQ.js.map
+//# sourceMappingURL=app-CW3B2z26.js.map

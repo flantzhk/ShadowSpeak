@@ -42023,7 +42023,7 @@ if (!_lang) {
           toneToastTimer.current = setTimeout(() => setToneToast(null), 1800);
         };
         const handlePillTap = (c, toneValue, type) => {
-          googleTTS(c.cn, LANG_CONFIG.id === "mandarin" ? "zh-CN" : "yue-HK");
+          speak(c.cn);
           showToast(`${type}: ${toneValue}`);
         };
         const startListening = () => {
@@ -45240,4 +45240,4 @@ if (!_lang) {
     root.render(React.createElement(ErrorBoundary, null, React.createElement(App)));
   })();
 }
-//# sourceMappingURL=app-D_kUH1HG.js.map
+//# sourceMappingURL=app-CvY_58yl.js.map

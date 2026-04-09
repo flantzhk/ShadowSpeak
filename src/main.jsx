@@ -1717,7 +1717,7 @@ function QuizTab({ progress, upd, startMode, onBack }) {
     const tonesTotal = scoreResult?.chars ? scoreResult.chars.length : 0;
     const showToast = (msg) => { clearTimeout(toneToastTimer.current); setToneToast(msg); toneToastTimer.current = setTimeout(() => setToneToast(null), 1800); };
     const handlePillTap = (c, toneValue, type) => {
-      googleTTS(c.cn, LANG_CONFIG.id === "mandarin" ? "zh-CN" : "yue-HK");
+      speak(c.cn);
       showToast(`${type}: ${toneValue}`);
     };
 

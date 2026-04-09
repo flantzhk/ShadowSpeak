@@ -17,7 +17,7 @@ if (_refParam) {
 }
 
 // ---- ANALYTICS ----
-const APP_VERSION = "4.2.1";
+const APP_VERSION = "4.2.2";
 let _analyticsClient = null;
 function trackEvent(name, props = {}) {
   const uid = window._ssUser?.uid || null;
@@ -572,7 +572,8 @@ async function scorePronunciation(audioBlob, text, language = LANG_CONFIG.id) {
   const formData = new FormData();
   formData.append("text", text);
   formData.append("language", language);
-  formData.append("audio", audioBlob, "recording.webm");
+  const ext = audioBlob.type?.includes("mp4") ? "mp4" : audioBlob.type?.includes("wav") ? "wav" : "webm";
+  formData.append("audio", audioBlob, "recording." + ext);
   const res = await fetch(`${PROXY_URL}/score`, { method: "POST", body: formData });
   if (!res.ok) throw new Error("Scoring failed: " + res.status);
   return res.json();
@@ -611,7 +612,9 @@ async function getMicStream() {
 async function startRecording() {
   const stream = await getMicStream();
   _audioChunks = [];
-  _mediaRecorder = new MediaRecorder(stream, { mimeType: "audio/webm;codecs=opus" });
+  // Safari/iOS doesn't support webm — fall back to mp4 or default
+  const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus") ? "audio/webm;codecs=opus" : MediaRecorder.isTypeSupported("audio/mp4") ? "audio/mp4" : "";
+  _mediaRecorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
   _mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) _audioChunks.push(e.data); };
   _mediaRecorder.start();
   return true;
@@ -621,7 +624,7 @@ function stopRecording() {
   return new Promise((resolve) => {
     if (!_mediaRecorder || _mediaRecorder.state === "inactive") { resolve(null); return; }
     _mediaRecorder.onstop = () => {
-      const blob = new Blob(_audioChunks, { type: "audio/webm" });
+      const blob = new Blob(_audioChunks, { type: _mediaRecorder?.mimeType || "audio/webm" });
       // Don't stop tracks — keep stream alive for next recording
       resolve(blob);
     };
@@ -2106,10 +2109,11 @@ function App() {
       {playlist && <div style={{position:"fixed",bottom:54,left:0,right:0,zIndex:110,padding:"0 10px"}}><div className="pl-bar-v2">
         <button className="pl-v2-close" onClick={()=>{setPlaylist(null);if("speechSynthesis"in window)speechSynthesis.cancel();}}>✕</button>
         <button className="pl-v2-play" onClick={()=>setPlaylist(p=>p?{...p,playing:!p.playing}:null)}>{playlist.playing?"⏸":"▶"}</button>
-        <div className="pl-v2-info">
-          <div className="pl-v2-en">{playlist.items[playlist.idx]?.en || "..."}</div>
-          {playlist.items[playlist.idx]?.jyut && <div className="pl-v2-jy"><JyutpingTone text={playlist.items[playlist.idx].jyut} /></div>}
-          <div className="pl-v2-counter">Word {playlist.idx+1} of {playlist.items.length}</div>
+        <div className="pl-v2-info" style={{flex:1,minWidth:0}}>
+          <div style={{fontSize:".82rem",fontWeight:700,color:"#fff",marginBottom:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{playlist.items[playlist.idx]?.en || "..."}</div>
+          {playlist.items[playlist.idx]?.jyut && <div style={{fontSize:".72rem",fontStyle:"italic",color:"var(--lime)",marginBottom:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}><JyutpingTone text={playlist.items[playlist.idx].jyut} /></div>}
+          {playlist.items[playlist.idx]?.cn && <div style={{fontSize:".82rem",fontWeight:700,color:"rgba(255,255,255,.7)",marginBottom:6,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{playlist.items[playlist.idx].cn}</div>}
+          <div className="pl-v2-counter">Word {playlist.idx+1} of {playlist.items.length} · {playlist.title}</div>
           <div className="pl-v2-prog"><div className="pl-v2-prog-fill" style={{width:`${((playlist.idx+1)/playlist.items.length)*100}%`}} /></div>
           <div className="pl-v2-speeds">
             <span className="pl-v2-speed-label">Voice</span>
@@ -2124,7 +2128,6 @@ function App() {
             )}
           </div>
         </div>
-        {playlist.items[playlist.idx]?.cn && <div className="pl-v2-cn">{playlist.items[playlist.idx].cn}</div>}
       </div></div>}
 
       <div className="bn">

@@ -40222,7 +40222,7 @@ if (_refParam) {
   _cleanRef.searchParams.delete("ref");
   window.history.replaceState({}, "", _cleanRef.pathname + _cleanRef.search + _cleanRef.hash);
 }
-const APP_VERSION = "4.2.1";
+const APP_VERSION = "4.2.2";
 function trackEvent(name2, props = {}) {
   var _a;
   const uid = ((_a = window._ssUser) == null ? void 0 : _a.uid) || null;
@@ -40839,11 +40839,13 @@ if (!_lang) {
       await speak(item.cn);
     }
     async function scorePronunciation(audioBlob, text, language = LANG_CONFIG.id) {
+      var _a, _b;
       if (!_isOnline2) throw new Error("OFFLINE");
       const formData = new FormData();
       formData.append("text", text);
       formData.append("language", language);
-      formData.append("audio", audioBlob, "recording.webm");
+      const ext = ((_a = audioBlob.type) == null ? void 0 : _a.includes("mp4")) ? "mp4" : ((_b = audioBlob.type) == null ? void 0 : _b.includes("wav")) ? "wav" : "webm";
+      formData.append("audio", audioBlob, "recording." + ext);
       const res = await fetch(`${PROXY_URL}/score`, { method: "POST", body: formData });
       if (!res.ok) throw new Error("Scoring failed: " + res.status);
       return res.json();
@@ -40872,7 +40874,8 @@ if (!_lang) {
     async function startRecording() {
       const stream = await getMicStream();
       _audioChunks = [];
-      _mediaRecorder = new MediaRecorder(stream, { mimeType: "audio/webm;codecs=opus" });
+      const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus") ? "audio/webm;codecs=opus" : MediaRecorder.isTypeSupported("audio/mp4") ? "audio/mp4" : "";
+      _mediaRecorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
       _mediaRecorder.ondataavailable = (e) => {
         if (e.data.size > 0) _audioChunks.push(e.data);
       };
@@ -40886,7 +40889,7 @@ if (!_lang) {
           return;
         }
         _mediaRecorder.onstop = () => {
-          const blob = new Blob(_audioChunks, { type: "audio/webm" });
+          const blob = new Blob(_audioChunks, { type: (_mediaRecorder == null ? void 0 : _mediaRecorder.mimeType) || "audio/webm" });
           resolve(blob);
         };
         _mediaRecorder.stop();
@@ -42454,14 +42457,17 @@ if (!_lang) {
             if ("speechSynthesis" in window) speechSynthesis.cancel();
           }, children: "✕" }),
           /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "pl-v2-play", onClick: () => setPlaylist((p2) => p2 ? { ...p2, playing: !p2.playing } : null), children: playlist.playing ? "⏸" : "▶" }),
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "pl-v2-info", children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "pl-v2-en", children: ((_a = playlist.items[playlist.idx]) == null ? void 0 : _a.en) || "..." }),
-            ((_b = playlist.items[playlist.idx]) == null ? void 0 : _b.jyut) && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "pl-v2-jy", children: /* @__PURE__ */ jsxRuntimeExports.jsx(JyutpingTone, { text: playlist.items[playlist.idx].jyut }) }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "pl-v2-info", style: { flex: 1, minWidth: 0 }, children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".82rem", fontWeight: 700, color: "#fff", marginBottom: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }, children: ((_a = playlist.items[playlist.idx]) == null ? void 0 : _a.en) || "..." }),
+            ((_b = playlist.items[playlist.idx]) == null ? void 0 : _b.jyut) && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".72rem", fontStyle: "italic", color: "var(--lime)", marginBottom: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }, children: /* @__PURE__ */ jsxRuntimeExports.jsx(JyutpingTone, { text: playlist.items[playlist.idx].jyut }) }),
+            ((_c = playlist.items[playlist.idx]) == null ? void 0 : _c.cn) && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".82rem", fontWeight: 700, color: "rgba(255,255,255,.7)", marginBottom: 6, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }, children: playlist.items[playlist.idx].cn }),
             /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "pl-v2-counter", children: [
               "Word ",
               playlist.idx + 1,
               " of ",
-              playlist.items.length
+              playlist.items.length,
+              " · ",
+              playlist.title
             ] }),
             /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "pl-v2-prog", children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "pl-v2-prog-fill", style: { width: `${(playlist.idx + 1) / playlist.items.length * 100}%` } }) }),
             /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "pl-v2-speeds", children: [
@@ -42479,8 +42485,7 @@ if (!_lang) {
                 (s) => /* @__PURE__ */ jsxRuntimeExports.jsx("button", { style: { padding: "4px 10px", borderRadius: 999, border: playlist.speed === s.k ? "1px solid var(--lime)" : "1px solid rgba(255,255,255,.1)", background: playlist.speed === s.k ? "rgba(196,240,0,.12)" : "transparent", color: playlist.speed === s.k ? "var(--lime)" : "rgba(255,255,255,.4)", fontSize: ".62rem", fontWeight: 700, cursor: "pointer" }, onClick: () => setPlaylist((p2) => p2 ? { ...p2, speed: s.k } : null), children: s.l }, s.k)
               )
             ] })
-          ] }),
-          ((_c = playlist.items[playlist.idx]) == null ? void 0 : _c.cn) && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "pl-v2-cn", children: playlist.items[playlist.idx].cn })
+          ] })
         ] }) }),
         /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "bn", children: [{ id: "home", icon: "🏠", l: "Home" }, { id: "library", icon: "📚", l: "My Library", badge: (progress.unit10 || []).filter((x2) => !x2.known).length || 0 }, { id: "practice", icon: "🧠", l: "Practice" }].map(
           (t2) => /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { className: `bb ${tab === t2.id ? "on" : ""}`, onClick: () => {
@@ -44985,4 +44990,4 @@ if (!_lang) {
     root.render(React.createElement(ErrorBoundary, null, React.createElement(App)));
   })();
 }
-//# sourceMappingURL=app-CVMUzy6W.js.map
+//# sourceMappingURL=app-x8T2vluQ.js.map

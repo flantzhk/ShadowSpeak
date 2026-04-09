@@ -41245,8 +41245,8 @@ if (!_lang) {
 .wc-en{font-size:.78rem;font-weight:700;color:var(--ink);margin-bottom:1px}.wc-jy{font-size:.68rem;font-style:italic;color:var(--plum)}
 .wc-cn{font-family:${LANG_CONFIG.fontFamily.replace(/'/g, "")};font-size:.68rem;color:var(--ink3)}
 .wc-ft{display:flex;align-items:center;justify-content:space-between;margin-top:5px}
-.wc-pl{width:32px;height:32px;border-radius:50%;background:var(--st);border:none;cursor:pointer;font-size:10px;display:flex;align-items:center;justify-content:center;color:var(--ink)}
-.wc-ik{font-size:.62rem;font-weight:800;border:none;border-radius:999px;padding:6px 10px;cursor:pointer;min-height:32px}
+.wc-pl{width:44px;height:44px;border-radius:50%;background:var(--st);border:none;cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center;color:var(--ink)}
+.wc-ik{font-size:.65rem;font-weight:800;border:none;border-radius:999px;padding:8px 14px;cursor:pointer;min-height:44px;display:inline-flex;align-items:center}
 .wc-ik.un{background:var(--st);color:var(--ink2)}.wc-ik.kn{background:var(--lime);color:var(--for)}
 
 /* Tier cards */
@@ -42015,7 +42015,7 @@ if (!_lang) {
       const [selUnit, setSelUnit] = reactExports.useState(null);
       const [progress, setProgress] = reactExports.useState({ phrases: {}, vocab: {}, unit10: [], phraseTs: {}, lastReview: {}, lessonLog: [], quizCount: 0 });
       const [settings, setSettings] = reactExports.useState({});
-      const [popup, setPopup] = reactExports.useState(null);
+      const [popup, setPopup2] = reactExports.useState(null);
       const [playlist, setPlaylist] = reactExports.useState(null);
       const [profileMenu, setProfileMenu] = reactExports.useState(false);
       const [library, setLibrary] = reactExports.useState([]);
@@ -42176,7 +42176,7 @@ if (!_lang) {
           const tw = ALL_WORDS.length;
           if (vk2 === Math.min(200, tw) && !localStorage.getItem("ms1")) {
             localStorage.setItem("ms1", "1");
-            setTimeout(() => setPopup({ e: "🎊", t: "Tier 1 Complete!", s: "You can survive HK!" }), 300);
+            setTimeout(() => setPopup2({ e: "🎊", t: "Tier 1 Complete!", s: "You can survive HK!" }), 300);
           }
           return u2;
         });
@@ -42212,7 +42212,7 @@ if (!_lang) {
         const item = playlist.items[playlist.idx];
         if (!item) {
           setPlaylist(null);
-          setPopup({ e: "🎵", t: "Playlist complete!", s: `Reviewed ${playlist.items.length} items` });
+          setPopup2({ e: "🎵", t: "Playlist complete!", s: `Reviewed ${playlist.items.length} items` });
           return;
         }
         const gapMs = { slow: 2500, normal: 1500, fast: 700 }[playlist.speed || "normal"];
@@ -42355,11 +42355,11 @@ if (!_lang) {
             t2.badge > 0 && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { position: "absolute", top: 4, right: "calc(50% - 18px)", background: "var(--cor,#e74c3c)", color: "#fff", fontSize: ".55rem", fontWeight: 900, borderRadius: 999, minWidth: 16, height: 16, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 4px" }, children: t2.badge })
           ] }, t2.id)
         ) }),
-        popup && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "comp-ov", onClick: () => setPopup(null), children: [
+        popup && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "comp-ov", onClick: () => setPopup2(null), children: [
           /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "comp-em", children: popup.e }),
           /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "comp-t", children: popup.t }),
           /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "comp-s", children: popup.s }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "comp-btn", onClick: () => setPopup(null), children: "Continue" })
+          /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "comp-btn", onClick: () => setPopup2(null), children: "Continue" })
         ] })
       ] });
     }
@@ -43298,6 +43298,7 @@ if (!_lang) {
                         const items2 = progress.unit10 || [];
                         if (!items2.find((s) => s.cn === ph2.cn)) {
                           upd("unit10", [{ en: ph2.en, jyut: ph2.jyut, cn: ph2.cn, tag: unit.title, known: false, date: (/* @__PURE__ */ new Date()).toLocaleDateString("en-GB", { day: "numeric", month: "short" }) }, ...items2]);
+                          setPopup({ e: "📖", t: "Saved to library", s: ph2.en });
                         }
                       }, children: (progress.unit10 || []).find((s) => s.cn === ph2.cn) ? "✓ Saved!" : "Save to Library" }),
                       /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { className: "ph-action-btn", onClick: (e) => {
@@ -44625,7 +44626,7 @@ if (!_lang) {
             /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: (e) => {
               e.stopPropagation();
               previewEnVoice(v2.id);
-            }, style: { background: "var(--for)", color: "var(--lime)", border: "none", borderRadius: 999, padding: "6px 12px", fontSize: ".62rem", fontWeight: 700, cursor: "pointer" }, children: playing === v2.id ? "..." : "▶" })
+            }, style: { background: "var(--for)", color: "var(--lime)", border: "none", borderRadius: 999, padding: "10px 16px", fontSize: ".68rem", fontWeight: 700, cursor: "pointer", minWidth: 44, minHeight: 44, display: "inline-flex", alignItems: "center", justifyContent: "center" }, children: playing === v2.id ? "..." : "▶" })
           ] }, v2.id)) })
         ] }),
         /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "set-card", children: [
@@ -44637,7 +44638,7 @@ if (!_lang) {
             /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: (e) => {
               e.stopPropagation();
               previewCnVoice(v2.id);
-            }, style: { background: "var(--for)", color: "var(--lime)", border: "none", borderRadius: 999, padding: "6px 12px", fontSize: ".62rem", fontWeight: 700, cursor: "pointer" }, children: playing === v2.id ? "..." : "▶" })
+            }, style: { background: "var(--for)", color: "var(--lime)", border: "none", borderRadius: 999, padding: "10px 16px", fontSize: ".68rem", fontWeight: 700, cursor: "pointer", minWidth: 44, minHeight: 44, display: "inline-flex", alignItems: "center", justifyContent: "center" }, children: playing === v2.id ? "..." : "▶" })
           ] }, v2.id)) })
         ] }),
         /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "set-card", children: [
@@ -44731,4 +44732,4 @@ if (!_lang) {
     root.render(React.createElement(ErrorBoundary, null, React.createElement(App)));
   })();
 }
-//# sourceMappingURL=app-PHKl9G4H.js.map
+//# sourceMappingURL=app-BfrxI6xJ.js.map

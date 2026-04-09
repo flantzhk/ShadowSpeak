@@ -1527,6 +1527,19 @@ function QuizTab({ progress, upd, startMode, onBack }) {
     }
   }, [startMode, knownPhrases, autoStarted]);
 
+  // Auto-play TTS when entering pronunciation mode or advancing to next phrase
+  useEffect(() => {
+    if (mode === "pronunciation" && pronState === "listen" && quizItems.length > 0 && idx < quizItems.length) {
+      const item = quizItems[idx];
+      if (item) {
+        (async () => {
+          try { await speak(item.cn); } catch(e) {}
+          setTimeout(() => setPronState("ready"), 600);
+        })();
+      }
+    }
+  }, [mode, idx, pronState, quizItems]);
+
   const getUnitPhrases = () => {
     const items = [];
     UNITS.forEach(u => { if (selectedUnits.has(u.id)) u.phrases.forEach((p, i) => items.push({ ...p, unitId: u.id, phraseIdx: i, key: `${u.id}-${i}` })); });
@@ -1708,12 +1721,8 @@ function QuizTab({ progress, upd, startMode, onBack }) {
       showToast(`${type}: ${toneValue}`);
     };
 
-    // Auto-play TTS and transition listen → ready
-    const startListening = async () => {
-      setPronState("listen");
-      try { await speak(item.cn); } catch(e) {}
-      setTimeout(() => setPronState("ready"), 600);
-    };
+    // Reset to listen state (triggers useEffect auto-play)
+    const startListening = () => { setPronState("listen"); };
 
     // Start recording
     const doPronRecord = async () => {
@@ -1744,13 +1753,6 @@ function QuizTab({ progress, upd, startMode, onBack }) {
       }
       setScoring(false);
     };
-
-    // Auto-play on mount and when idx changes
-    useEffect(() => {
-      if (mode === "pronunciation" && pronState === "listen") {
-        startListening();
-      }
-    }, [idx, mode]);
 
     return (<div className="pron-screen">
       {/* Top bar */}

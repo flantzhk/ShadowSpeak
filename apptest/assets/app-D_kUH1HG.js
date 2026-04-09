@@ -41787,6 +41787,20 @@ if (!_lang) {
           setSource("known");
         }
       }, [startMode, knownPhrases, autoStarted]);
+      reactExports.useEffect(() => {
+        if (mode === "pronunciation" && pronState === "listen" && quizItems.length > 0 && idx < quizItems.length) {
+          const item2 = quizItems[idx];
+          if (item2) {
+            (async () => {
+              try {
+                await speak(item2.cn);
+              } catch (e) {
+              }
+              setTimeout(() => setPronState("ready"), 600);
+            })();
+          }
+        }
+      }, [mode, idx, pronState, quizItems]);
       const getUnitPhrases = () => {
         const items = [];
         UNITS.forEach((u2) => {
@@ -42012,13 +42026,8 @@ if (!_lang) {
           googleTTS(c.cn, LANG_CONFIG.id === "mandarin" ? "zh-CN" : "yue-HK");
           showToast(`${type}: ${toneValue}`);
         };
-        const startListening = async () => {
+        const startListening = () => {
           setPronState("listen");
-          try {
-            await speak(item.cn);
-          } catch (e) {
-          }
-          setTimeout(() => setPronState("ready"), 600);
         };
         const doPronRecord = async () => {
           setPronState("recording");
@@ -42052,11 +42061,6 @@ if (!_lang) {
           }
           setScoring(false);
         };
-        reactExports.useEffect(() => {
-          if (mode === "pronunciation" && pronState === "listen") {
-            startListening();
-          }
-        }, [idx, mode]);
         return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "pron-screen", children: [
           /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "pron-topbar", children: [
             /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "pron-topbar-end", onClick: () => {
@@ -45236,4 +45240,4 @@ if (!_lang) {
     root.render(React.createElement(ErrorBoundary, null, React.createElement(App)));
   })();
 }
-//# sourceMappingURL=app-JaHEqpkW.js.map
+//# sourceMappingURL=app-D_kUH1HG.js.map

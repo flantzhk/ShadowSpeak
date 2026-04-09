@@ -40222,7 +40222,7 @@ if (_refParam) {
   _cleanRef.searchParams.delete("ref");
   window.history.replaceState({}, "", _cleanRef.pathname + _cleanRef.search + _cleanRef.hash);
 }
-const APP_VERSION = "4.1.3";
+const APP_VERSION = "4.1.4";
 function trackEvent(name2, props = {}) {
   var _a;
   const uid = ((_a = window._ssUser) == null ? void 0 : _a.uid) || null;
@@ -43537,15 +43537,15 @@ if (!_lang) {
               ] })
             ] });
           })() }),
-          miniPlayer && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { position: "fixed", bottom: 64, left: 0, right: 0, zIndex: 110, padding: "0 12px", animation: "fadeUp .2s ease" }, children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { background: "rgba(20,20,20,.95)", borderRadius: 14, padding: "10px 14px", display: "flex", alignItems: "center", gap: 12, boxShadow: "0 8px 32px rgba(0,0,0,.4)", border: "1px solid rgba(255,255,255,.06)" }, children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { width: 40, height: 40, borderRadius: 8, background: "var(--for)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, cursor: "pointer" }, onClick: () => {
+          miniPlayer && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { position: "fixed", bottom: 64, left: 0, right: 0, zIndex: 110, padding: "0 12px", animation: "fadeUp .2s ease" }, children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { background: "rgba(20,20,20,.95)", borderRadius: 14, padding: "12px 14px", display: "flex", alignItems: "center", gap: 12, boxShadow: "0 8px 32px rgba(0,0,0,.4)", border: "1px solid rgba(255,255,255,.06)" }, children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { width: 44, height: 44, borderRadius: 10, background: "var(--for)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, cursor: "pointer" }, onClick: () => {
               speak(miniPlayer.cn);
             }, children: /* @__PURE__ */ jsxRuntimeExports.jsx("svg", { width: "12", height: "14", viewBox: "0 0 10 12", fill: "none", children: /* @__PURE__ */ jsxRuntimeExports.jsx("path", { d: "M0 0L10 6L0 12V0Z", fill: "#C4F000" }) }) }),
-            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { flex: 1, minWidth: 0 }, children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".78rem", fontWeight: 600, color: "rgba(255,255,255,.85)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }, children: miniPlayer.en }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".68rem", fontStyle: "italic", color: "var(--lime)", marginTop: 1 }, children: miniPlayer.jyut })
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { flex: 1, minWidth: 0, overflow: "hidden" }, children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".78rem", fontWeight: 700, color: "#fff", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }, children: miniPlayer.en }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".68rem", fontStyle: "italic", color: "var(--lime)", marginTop: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }, children: miniPlayer.jyut }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".82rem", fontWeight: 800, color: "rgba(255,255,255,.7)", marginTop: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }, children: miniPlayer.cn })
             ] }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: "1.4rem", fontWeight: 900, color: "#fff", flexShrink: 0 }, children: miniPlayer.cn }),
             /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => {
               stopAudio();
               clearTimeout(miniTimer.current);
@@ -44933,4 +44933,4 @@ if (!_lang) {
     root.render(React.createElement(ErrorBoundary, null, React.createElement(App)));
   })();
 }
-//# sourceMappingURL=app-Dnp1z_lE.js.map
+//# sourceMappingURL=app-PzjLdgkG.js.map

@@ -17,7 +17,7 @@ if (_refParam) {
 }
 
 // ---- ANALYTICS ----
-const APP_VERSION = "4.1.3";
+const APP_VERSION = "4.1.4";
 let _analyticsClient = null;
 function trackEvent(name, props = {}) {
   const uid = window._ssUser?.uid || null;
@@ -3263,15 +3263,15 @@ function HomeTab({ profile, progress, upd, settings, setTab, recentTopics, setRe
 
         {/* Mini player — shows when a phrase is playing */}
         {miniPlayer && <div style={{position:"fixed",bottom:64,left:0,right:0,zIndex:110,padding:"0 12px",animation:"fadeUp .2s ease"}}>
-          <div style={{background:"rgba(20,20,20,.95)",borderRadius:14,padding:"10px 14px",display:"flex",alignItems:"center",gap:12,boxShadow:"0 8px 32px rgba(0,0,0,.4)",border:"1px solid rgba(255,255,255,.06)"}}>
-            <div style={{width:40,height:40,borderRadius:8,background:"var(--for)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,cursor:"pointer"}} onClick={()=>{speak(miniPlayer.cn);}}>
+          <div style={{background:"rgba(20,20,20,.95)",borderRadius:14,padding:"12px 14px",display:"flex",alignItems:"center",gap:12,boxShadow:"0 8px 32px rgba(0,0,0,.4)",border:"1px solid rgba(255,255,255,.06)"}}>
+            <div style={{width:44,height:44,borderRadius:10,background:"var(--for)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,cursor:"pointer"}} onClick={()=>{speak(miniPlayer.cn);}}>
               <svg width="12" height="14" viewBox="0 0 10 12" fill="none"><path d="M0 0L10 6L0 12V0Z" fill="#C4F000"/></svg>
             </div>
-            <div style={{flex:1,minWidth:0}}>
-              <div style={{fontSize:".78rem",fontWeight:600,color:"rgba(255,255,255,.85)",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{miniPlayer.en}</div>
-              <div style={{fontSize:".68rem",fontStyle:"italic",color:"var(--lime)",marginTop:1}}>{miniPlayer.jyut}</div>
+            <div style={{flex:1,minWidth:0,overflow:"hidden"}}>
+              <div style={{fontSize:".78rem",fontWeight:700,color:"#fff",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{miniPlayer.en}</div>
+              <div style={{fontSize:".68rem",fontStyle:"italic",color:"var(--lime)",marginTop:2,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{miniPlayer.jyut}</div>
+              <div style={{fontSize:".82rem",fontWeight:800,color:"rgba(255,255,255,.7)",marginTop:2,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{miniPlayer.cn}</div>
             </div>
-            <div style={{fontSize:"1.4rem",fontWeight:900,color:"#fff",flexShrink:0}}>{miniPlayer.cn}</div>
             <button onClick={()=>{stopAudio();clearTimeout(miniTimer.current);setMiniPlayer(null);}} style={{background:"rgba(255,255,255,.08)",border:"1px solid rgba(255,255,255,.1)",borderRadius:"50%",width:36,height:36,display:"flex",alignItems:"center",justifyContent:"center",color:"rgba(255,255,255,.5)",fontSize:14,cursor:"pointer",flexShrink:0}}>x</button>
           </div>
         </div>}

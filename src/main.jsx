@@ -3513,19 +3513,19 @@ function HomeTab({ profile, progress, upd, settings, setTab, recentTopics, setRe
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" style={{marginRight:4}}><path d="M4 6h16M4 12h16M4 18h10"/></svg>
             {readingMode?"Chinese first":"English first"}
           </span>
+          {/* Add whole unit to library — inline in ctrl row */}
+          {(()=>{
+            const libItems = progress.unit10 || [];
+            const notInLib = items.filter(p => !libItems.find(s => s.cn === p.cn));
+            if (notInLib.length === 0) return <span style={{fontSize:".72rem",fontWeight:700,color:"var(--ld)",display:"flex",alignItems:"center",gap:4,whiteSpace:"nowrap"}}>✓ Saved</span>;
+            return <button onClick={()=>{
+              const newItems = notInLib.map(p=>({en:p.en,jyut:p.jyut,cn:p.cn,tag:unit.title,known:false,date:new Date().toLocaleDateString("en-GB",{day:"numeric",month:"short"})}));
+              upd("unit10", [...newItems, ...libItems]);
+            }} className="shuffle-btn" style={{border:"1.5px solid var(--lime)",background:"rgba(196,240,0,.06)",color:"var(--ld)"}}>
+              📚 Add all
+            </button>;
+          })()}
         </div>
-        {/* Add whole unit to library */}
-        {(()=>{
-          const libItems = progress.unit10 || [];
-          const notInLib = items.filter(p => !libItems.find(s => s.cn === p.cn));
-          if (notInLib.length === 0) return <div style={{padding:"6px 16px",fontSize:".72rem",fontWeight:700,color:"var(--ld)",display:"flex",alignItems:"center",gap:6}}>✓ All phrases saved to library</div>;
-          return <button onClick={()=>{
-            const newItems = notInLib.map(p=>({en:p.en,jyut:p.jyut,cn:p.cn,tag:unit.title,known:false,date:new Date().toLocaleDateString("en-GB",{day:"numeric",month:"short"})}));
-            upd("unit10", [...newItems, ...libItems]);
-          }} style={{margin:"6px 16px",padding:"10px 16px",borderRadius:10,border:"1.5px solid var(--lime)",background:"rgba(196,240,0,.06)",color:"var(--ld)",fontSize:".75rem",fontWeight:700,cursor:"pointer",display:"flex",alignItems:"center",gap:6}}>
-            📚 Add all {notInLib.length} phrases to My Library
-          </button>;
-        })()}
         <div>
           {(() => { const notKnown = sorted.filter(p=>!p.known); const known = sorted.filter(p=>p.known); return <>
             {notKnown.map((ph,i) => {

@@ -43702,21 +43702,17 @@ if (!_lang) {
             /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "filter-chip", onClick: () => setReadingMode((r2) => !r2), children: [
               /* @__PURE__ */ jsxRuntimeExports.jsx("svg", { width: "14", height: "14", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", strokeLinecap: "round", style: { marginRight: 4 }, children: /* @__PURE__ */ jsxRuntimeExports.jsx("path", { d: "M4 6h16M4 12h16M4 18h10" }) }),
               readingMode ? "Chinese first" : "English first"
-            ] })
+            ] }),
+            (() => {
+              const libItems = progress.unit10 || [];
+              const notInLib = items.filter((p2) => !libItems.find((s) => s.cn === p2.cn));
+              if (notInLib.length === 0) return /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { fontSize: ".72rem", fontWeight: 700, color: "var(--ld)", display: "flex", alignItems: "center", gap: 4, whiteSpace: "nowrap" }, children: "✓ Saved" });
+              return /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => {
+                const newItems = notInLib.map((p2) => ({ en: p2.en, jyut: p2.jyut, cn: p2.cn, tag: unit.title, known: false, date: (/* @__PURE__ */ new Date()).toLocaleDateString("en-GB", { day: "numeric", month: "short" }) }));
+                upd("unit10", [...newItems, ...libItems]);
+              }, className: "shuffle-btn", style: { border: "1.5px solid var(--lime)", background: "rgba(196,240,0,.06)", color: "var(--ld)" }, children: "📚 Add all" });
+            })()
           ] }),
-          (() => {
-            const libItems = progress.unit10 || [];
-            const notInLib = items.filter((p2) => !libItems.find((s) => s.cn === p2.cn));
-            if (notInLib.length === 0) return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { padding: "6px 16px", fontSize: ".72rem", fontWeight: 700, color: "var(--ld)", display: "flex", alignItems: "center", gap: 6 }, children: "✓ All phrases saved to library" });
-            return /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { onClick: () => {
-              const newItems = notInLib.map((p2) => ({ en: p2.en, jyut: p2.jyut, cn: p2.cn, tag: unit.title, known: false, date: (/* @__PURE__ */ new Date()).toLocaleDateString("en-GB", { day: "numeric", month: "short" }) }));
-              upd("unit10", [...newItems, ...libItems]);
-            }, style: { margin: "6px 16px", padding: "10px 16px", borderRadius: 10, border: "1.5px solid var(--lime)", background: "rgba(196,240,0,.06)", color: "var(--ld)", fontSize: ".75rem", fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }, children: [
-              "📚 Add all ",
-              notInLib.length,
-              " phrases to My Library"
-            ] });
-          })(),
           /* @__PURE__ */ jsxRuntimeExports.jsx("div", { children: (() => {
             const notKnown = sorted.filter((p2) => !p2.known);
             const known = sorted.filter((p2) => p2.known);
@@ -45240,4 +45236,4 @@ if (!_lang) {
     root.render(React.createElement(ErrorBoundary, null, React.createElement(App)));
   })();
 }
-//# sourceMappingURL=app-CvY_58yl.js.map
+//# sourceMappingURL=app-D81q2eYP.js.map

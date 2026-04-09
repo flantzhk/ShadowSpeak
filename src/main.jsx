@@ -17,7 +17,7 @@ if (_refParam) {
 }
 
 // ---- ANALYTICS ----
-const APP_VERSION = "4.1.2";
+const APP_VERSION = "4.1.3";
 let _analyticsClient = null;
 function trackEvent(name, props = {}) {
   const uid = window._ssUser?.uid || null;
@@ -1721,7 +1721,8 @@ function App() {
 
   // Wrap setSelUnit to check premium gate
   const selectUnitGated = (id) => {
-    if (!isPremium && !FREE_UNIT_IDS.includes(id)) {
+    // null = go back to home, always allowed
+    if (id !== null && !isPremium && !FREE_UNIT_IDS.includes(id)) {
       setShowPremiumGate(true);
       trackEvent("paywall_shown", { unitId: id });
       return;
@@ -2101,7 +2102,7 @@ function App() {
 
       <div className="bn">
         {[{id:"home",icon:"🏠",l:"Home"},{id:"library",icon:"📚",l:"My Library",badge:(progress.unit10||[]).filter(x=>!x.known).length||0},{id:"practice",icon:"🧠",l:"Practice"}].map(t=>
-          <button key={t.id} className={`bb ${tab===t.id?"on":""}`} onClick={()=>setTab(t.id)} style={{flex:"1 1 33.33%"}}><span className="bi">{t.icon}</span>{t.l}{t.badge>0&&<span style={{position:"absolute",top:4,right:"calc(50% - 18px)",background:"var(--cor,#e74c3c)",color:"#fff",fontSize:".55rem",fontWeight:900,borderRadius:999,minWidth:16,height:16,display:"flex",alignItems:"center",justifyContent:"center",padding:"0 4px"}}>{t.badge}</span>}</button>
+          <button key={t.id} className={`bb ${tab===t.id?"on":""}`} onClick={()=>{setTab(t.id);if(t.id==="home")setSelUnit(null);}} style={{flex:"1 1 33.33%"}}><span className="bi">{t.icon}</span>{t.l}{t.badge>0&&<span style={{position:"absolute",top:4,right:"calc(50% - 18px)",background:"var(--cor,#e74c3c)",color:"#fff",fontSize:".55rem",fontWeight:900,borderRadius:999,minWidth:16,height:16,display:"flex",alignItems:"center",justifyContent:"center",padding:"0 4px"}}>{t.badge}</span>}</button>
         )}
       </div>
 

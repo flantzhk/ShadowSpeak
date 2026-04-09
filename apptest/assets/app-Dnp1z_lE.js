@@ -40222,7 +40222,7 @@ if (_refParam) {
   _cleanRef.searchParams.delete("ref");
   window.history.replaceState({}, "", _cleanRef.pathname + _cleanRef.search + _cleanRef.hash);
 }
-const APP_VERSION = "4.1.2";
+const APP_VERSION = "4.1.3";
 function trackEvent(name2, props = {}) {
   var _a;
   const uid = ((_a = window._ssUser) == null ? void 0 : _a.uid) || null;
@@ -42072,7 +42072,7 @@ if (!_lang) {
       const saveTimer = reactExports.useRef(null);
       const FREE_UNIT_IDS = [1, 2, 5];
       const selectUnitGated = (id2) => {
-        if (!isPremium && !FREE_UNIT_IDS.includes(id2)) {
+        if (id2 !== null && !isPremium && !FREE_UNIT_IDS.includes(id2)) {
           setShowPremiumGate(true);
           trackEvent("paywall_shown", { unitId: id2 });
           return;
@@ -42449,7 +42449,10 @@ if (!_lang) {
           ((_c = playlist.items[playlist.idx]) == null ? void 0 : _c.cn) && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "pl-v2-cn", children: playlist.items[playlist.idx].cn })
         ] }) }),
         /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "bn", children: [{ id: "home", icon: "🏠", l: "Home" }, { id: "library", icon: "📚", l: "My Library", badge: (progress.unit10 || []).filter((x2) => !x2.known).length || 0 }, { id: "practice", icon: "🧠", l: "Practice" }].map(
-          (t2) => /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { className: `bb ${tab === t2.id ? "on" : ""}`, onClick: () => setTab(t2.id), style: { flex: "1 1 33.33%" }, children: [
+          (t2) => /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { className: `bb ${tab === t2.id ? "on" : ""}`, onClick: () => {
+            setTab(t2.id);
+            if (t2.id === "home") setSelUnit(null);
+          }, style: { flex: "1 1 33.33%" }, children: [
             /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "bi", children: t2.icon }),
             t2.l,
             t2.badge > 0 && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { position: "absolute", top: 4, right: "calc(50% - 18px)", background: "var(--cor,#e74c3c)", color: "#fff", fontSize: ".55rem", fontWeight: 900, borderRadius: 999, minWidth: 16, height: 16, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 4px" }, children: t2.badge })
@@ -44930,4 +44933,4 @@ if (!_lang) {
     root.render(React.createElement(ErrorBoundary, null, React.createElement(App)));
   })();
 }
-//# sourceMappingURL=app-FlPpvz5n.js.map
+//# sourceMappingURL=app-Dnp1z_lE.js.map

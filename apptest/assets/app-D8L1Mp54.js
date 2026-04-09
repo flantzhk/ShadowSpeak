@@ -41590,19 +41590,20 @@ if (!_lang) {
 /* 2-row topic grid */
 .topics-wrap{padding:0 16px 16px;overflow-x:auto;scrollbar-width:none;position:relative;scroll-snap-type:x mandatory}
 .topics-wrap::-webkit-scrollbar{display:none}
-.topics-grid{display:grid;grid-template-rows:repeat(3,auto);grid-auto-flow:column;grid-auto-columns:140px;gap:8px}
+.topics-grid{display:flex;gap:12px}
 .topics-scrollbar{height:3px;background:var(--st);border-radius:2px;margin:8px 16px 16px;position:relative;overflow:hidden}
 .topics-scrollbar-fill{height:100%;background:var(--lime);border-radius:2px;transition:width .15s}
-.t-card{border-radius:12px;overflow:hidden;cursor:pointer;transition:transform .15s;background:var(--wh);box-shadow:0 2px 10px rgba(0,0,0,.08);scroll-snap-align:start}
+.t-card{flex:0 0 44%;border-radius:14px;overflow:hidden;cursor:pointer;transition:transform .15s;background:var(--wh);box-shadow:0 2px 12px rgba(0,0,0,.08);scroll-snap-align:start}
 .t-card:active{transform:scale(.97)}
-.t-card .t-art{height:80px;position:relative;overflow:hidden}
+.t-card .t-art{height:160px;position:relative;overflow:hidden}
 .t-card .t-art img{width:100%;height:100%;object-fit:cover}
-.t-card .t-art .t-overlay{position:absolute;inset:0;background:linear-gradient(0deg,rgba(0,0,0,.5) 0%,transparent 60%)}
-.t-card .t-art .t-emoji{position:absolute;bottom:6px;left:8px;font-size:1rem}
-.t-card .t-art .t-num{position:absolute;top:6px;right:8px;font-size:9px;font-weight:600;color:rgba(255,255,255,.8);background:rgba(0,0,0,.35);padding:2px 6px;border-radius:4px;z-index:1}
-.t-card .t-info{padding:7px 8px 8px}
-.t-card .t-name{font-size:11px;font-weight:700;color:var(--ink);margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.t-card .t-desc{font-size:9px;color:var(--ink3);line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.t-card .t-art .t-overlay{position:absolute;inset:0;background:linear-gradient(0deg,rgba(0,0,0,.55) 0%,rgba(0,0,0,.1) 50%,transparent 100%)}
+.t-card .t-art .t-emoji{position:absolute;bottom:8px;left:10px;font-size:1.3rem}
+.t-card .t-art .t-title-overlay{position:absolute;bottom:28px;left:10px;right:10px;font-size:14px;font-weight:800;color:#fff;text-shadow:0 1px 4px rgba(0,0,0,.4);line-height:1.2}
+.t-card .t-art .t-num{position:absolute;top:8px;right:10px;font-size:9px;font-weight:600;color:rgba(255,255,255,.8);background:rgba(0,0,0,.35);padding:2px 8px;border-radius:6px;z-index:1}
+.t-card .t-info{padding:8px 10px 10px}
+.t-card .t-name{display:none}
+.t-card .t-desc{font-size:11px;color:var(--ink3);line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .t-card .t-accent{height:3px;width:100%}
 
 /* Lesson/Topic View header */
@@ -43988,28 +43989,8 @@ if (!_lang) {
             ] })
           ] }),
           (() => {
-            const rows = 3;
-            const cols = Math.ceil(UNITS.length / rows);
-            const reordered = [];
-            for (let c = 0; c < cols; c++) {
-              for (let r2 = 0; r2 < rows; r2++) {
-                const idx = r2 * cols + c;
-                if (idx < UNITS.length) reordered.push(UNITS[idx]);
-              }
-            }
             return /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "topics-wrap", ref: (el2) => {
-                if (!el2) return;
-                const bar = el2.nextElementSibling;
-                if (!bar) return;
-                const fill = bar.firstChild;
-                const update = () => {
-                  const pct2 = el2.scrollWidth <= el2.clientWidth ? 100 : Math.round(el2.scrollLeft / (el2.scrollWidth - el2.clientWidth) * 100);
-                  if (fill) fill.style.width = pct2 + "%";
-                };
-                el2.onscroll = update;
-                setTimeout(update, 100);
-              }, children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "topics-grid", children: reordered.map((u2) => {
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "topics-wrap", children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "topics-grid", children: UNITS.map((u2) => {
                 const isLocked = !isPremium && freeUnitIds && !freeUnitIds.includes(u2.id);
                 return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "t-card", onClick: () => {
                   if (!isLocked) {
@@ -44021,8 +44002,9 @@ if (!_lang) {
                   /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "t-art", style: isLocked ? { opacity: 0.4, filter: "grayscale(.5)" } : {}, children: [
                     /* @__PURE__ */ jsxRuntimeExports.jsx("img", { src: TOPIC_IMAGES[u2.id] || TOPIC_IMAGES[1], alt: "" }),
                     /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "t-overlay" }),
+                    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "t-title-overlay", children: u2.title }),
                     /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "t-emoji", children: { 1: "👋", 2: "🤝", 3: "🚕", 4: "☕", 5: "🍜", 6: "🛍", 7: "🏫", 8: "🏠", 9: "🕐", 10: "❤️", 11: "🍻", 12: "🌧", 13: "💰", 14: "💪", 15: "😤", 16: "📱", 17: "🥺", 18: "🔢", 19: "🎉", 20: "🌇" }[u2.id] || "📖" }),
-                    isLocked && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)", fontSize: 20, filter: "none", opacity: 1 }, children: "🔒" }),
+                    isLocked && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)", fontSize: 24, filter: "none", opacity: 1 }, children: "🔒" }),
                     /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "t-num", children: [
                       "#",
                       u2.id
@@ -44188,13 +44170,13 @@ if (!_lang) {
                 /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: "1.1rem", fontWeight: 900, color: "var(--lime)" }, children: stillLearning.length }),
                 /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".6rem", fontWeight: 700, color: "rgba(255,255,255,.65)", textTransform: "uppercase", letterSpacing: ".5px" }, children: "Learning" })
               ] }),
-              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { flex: 1, background: "rgba(255,255,255,.1)", borderRadius: 12, padding: "10px 0", textAlign: "center" }, children: [
-                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: "1.1rem", fontWeight: 900, color: "var(--lime)" }, children: mastered.length }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { flex: 1, background: masteredOpen ? "rgba(196,240,0,.15)" : "rgba(255,255,255,.1)", borderRadius: 12, padding: "10px 0", textAlign: "center", cursor: "pointer", border: masteredOpen ? "1.5px solid rgba(196,240,0,.3)" : "1.5px solid transparent", transition: "all .2s" }, onClick: () => setMasteredOpen((o) => !o), children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { fontSize: "1.1rem", fontWeight: 900, color: "var(--lime)" }, children: [
+                  mastered.length,
+                  " ",
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { fontSize: ".7rem" }, children: masteredOpen ? "▲" : "▼" })
+                ] }),
                 /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".6rem", fontWeight: 700, color: "rgba(255,255,255,.65)", textTransform: "uppercase", letterSpacing: ".5px" }, children: "Mastered" })
-              ] }),
-              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { flex: 1, background: "rgba(255,255,255,.1)", borderRadius: 12, padding: "10px 0", textAlign: "center" }, children: [
-                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: "1.1rem", fontWeight: 900, color: "var(--lime)" }, children: items.length }),
-                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".6rem", fontWeight: 700, color: "rgba(255,255,255,.65)", textTransform: "uppercase", letterSpacing: ".5px" }, children: "Total" })
               ] })
             ] })
           ] })
@@ -44233,21 +44215,15 @@ if (!_lang) {
               /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: handleSave, style: { flex: 1, background: en.trim() ? "var(--lime)" : "var(--st)", color: en.trim() ? "var(--for)" : "var(--ink3)", border: "none", borderRadius: 10, padding: "10px 0", fontSize: ".82rem", fontWeight: 900, cursor: en.trim() ? "pointer" : "default", minHeight: 44 }, children: "Save" })
             ] })
           ] }),
-          mastered.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { background: "linear-gradient(135deg, #1F3329 0%, #2a4a36 50%, #1F3329 100%)", borderRadius: 16, padding: "14px 16px", marginBottom: 12, cursor: "pointer" }, onClick: () => setMasteredOpen((o) => !o), children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between" }, children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", alignItems: "center", gap: 10 }, children: [
-                /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { fontSize: "1.4rem" }, children: "🏆" }),
-                /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
-                  /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { color: "#fff", fontWeight: 800, fontSize: ".88rem" }, children: [
-                    mastered.length,
-                    " Mastered!"
-                  ] }),
-                  /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { color: "var(--lime)", fontSize: ".7rem", fontWeight: 600, marginTop: 1 }, children: "You're crushing it — keep going!" })
-                ] })
-              ] }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { color: "rgba(255,255,255,.5)", fontSize: "1.1rem", transition: "transform .2s", transform: masteredOpen ? "rotate(180deg)" : "rotate(0)" }, children: "▾" })
+          masteredOpen && mastered.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { background: "linear-gradient(135deg, #1F3329 0%, #2a4a36 50%, #1F3329 100%)", borderRadius: 16, padding: "14px 16px", marginBottom: 12 }, children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }, children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { fontSize: "1.1rem" }, children: "🏆" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { color: "#fff", fontWeight: 800, fontSize: ".82rem" }, children: [
+                mastered.length,
+                " Mastered"
+              ] })
             ] }),
-            masteredOpen && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { marginTop: 12 }, onClick: (e) => e.stopPropagation(), children: mastered.map((s) => {
+            mastered.map((s) => {
               const idx = items.indexOf(s);
               return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { background: "rgba(255,255,255,.08)", borderRadius: 10, padding: "10px 12px", marginBottom: 6, display: "flex", alignItems: "center", gap: 10 }, children: [
                 canSpeak(s) && /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => speak(s.cn), style: { width: 32, height: 32, borderRadius: "50%", border: "none", background: "rgba(196,240,0,.2)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: ".65rem", color: "var(--lime)", flexShrink: 0 }, children: "▶" }),
@@ -44258,7 +44234,7 @@ if (!_lang) {
                 ] }),
                 /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => toggleKnown(idx), style: { background: "none", border: "1px solid rgba(255,255,255,.15)", color: "rgba(255,255,255,.5)", fontSize: ".65rem", fontWeight: 700, cursor: "pointer", padding: "6px 10px", borderRadius: 8, flexShrink: 0 }, children: "Relearn" })
               ] }, idx);
-            }) })
+            })
           ] }),
           stillLearning.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "ctrl-row", children: [
             /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { className: "play-all-btn", onClick: () => startPlaylist(stillLearning.map((s) => ({ en: s.en || s.cn, cn: s.cn, jyut: s[romKey] || s.jyut || "" })), "My Library"), children: [
@@ -44652,10 +44628,16 @@ if (!_lang) {
             ] })
           ] }),
           /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "l-divider" }),
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "l-speed", children: [
+          !single && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "l-speed", children: [
             /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "l-row-label", children: "Pause between phrases" }),
             /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "l-pill-row", children: [{ k: "slow", l: "Longer pause" }, { k: "normal", l: "Normal" }, { k: "fast", l: "Shorter pause" }].map(
               (s) => /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: `l-pill-btn ${speed === s.k ? "on" : ""}`, onClick: () => setSpeed(s.k), children: s.l }, s.k)
+            ) })
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "l-speed", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "l-row-label", children: "Voice speed" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "l-pill-row", children: [{ k: "natural", l: "1×", r: 1 }, { k: "slower", l: "0.75×", r: 0.75 }, { k: "very-slow", l: "0.5×", r: 0.5 }].map(
+              (s) => /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: `l-pill-btn ${((settings == null ? void 0 : settings.voiceSpeed) || "natural") === s.k ? "on" : ""}`, onClick: () => setPlaybackRate(s.r), children: s.l }, s.k)
             ) })
           ] })
         ] }),
@@ -45236,4 +45218,4 @@ if (!_lang) {
     root.render(React.createElement(ErrorBoundary, null, React.createElement(App)));
   })();
 }
-//# sourceMappingURL=app-D81q2eYP.js.map
+//# sourceMappingURL=app-D8L1Mp54.js.map

@@ -1311,19 +1311,20 @@ const CSS = `
 /* 2-row topic grid */
 .topics-wrap{padding:0 16px 16px;overflow-x:auto;scrollbar-width:none;position:relative;scroll-snap-type:x mandatory}
 .topics-wrap::-webkit-scrollbar{display:none}
-.topics-grid{display:grid;grid-template-rows:repeat(3,auto);grid-auto-flow:column;grid-auto-columns:140px;gap:8px}
+.topics-grid{display:flex;gap:12px}
 .topics-scrollbar{height:3px;background:var(--st);border-radius:2px;margin:8px 16px 16px;position:relative;overflow:hidden}
 .topics-scrollbar-fill{height:100%;background:var(--lime);border-radius:2px;transition:width .15s}
-.t-card{border-radius:12px;overflow:hidden;cursor:pointer;transition:transform .15s;background:var(--wh);box-shadow:0 2px 10px rgba(0,0,0,.08);scroll-snap-align:start}
+.t-card{flex:0 0 44%;border-radius:14px;overflow:hidden;cursor:pointer;transition:transform .15s;background:var(--wh);box-shadow:0 2px 12px rgba(0,0,0,.08);scroll-snap-align:start}
 .t-card:active{transform:scale(.97)}
-.t-card .t-art{height:80px;position:relative;overflow:hidden}
+.t-card .t-art{height:160px;position:relative;overflow:hidden}
 .t-card .t-art img{width:100%;height:100%;object-fit:cover}
-.t-card .t-art .t-overlay{position:absolute;inset:0;background:linear-gradient(0deg,rgba(0,0,0,.5) 0%,transparent 60%)}
-.t-card .t-art .t-emoji{position:absolute;bottom:6px;left:8px;font-size:1rem}
-.t-card .t-art .t-num{position:absolute;top:6px;right:8px;font-size:9px;font-weight:600;color:rgba(255,255,255,.8);background:rgba(0,0,0,.35);padding:2px 6px;border-radius:4px;z-index:1}
-.t-card .t-info{padding:7px 8px 8px}
-.t-card .t-name{font-size:11px;font-weight:700;color:var(--ink);margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.t-card .t-desc{font-size:9px;color:var(--ink3);line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.t-card .t-art .t-overlay{position:absolute;inset:0;background:linear-gradient(0deg,rgba(0,0,0,.55) 0%,rgba(0,0,0,.1) 50%,transparent 100%)}
+.t-card .t-art .t-emoji{position:absolute;bottom:8px;left:10px;font-size:1.3rem}
+.t-card .t-art .t-title-overlay{position:absolute;bottom:28px;left:10px;right:10px;font-size:14px;font-weight:800;color:#fff;text-shadow:0 1px 4px rgba(0,0,0,.4);line-height:1.2}
+.t-card .t-art .t-num{position:absolute;top:8px;right:10px;font-size:9px;font-weight:600;color:rgba(255,255,255,.8);background:rgba(0,0,0,.35);padding:2px 8px;border-radius:6px;z-index:1}
+.t-card .t-info{padding:8px 10px 10px}
+.t-card .t-name{display:none}
+.t-card .t-desc{font-size:11px;color:var(--ink3);line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .t-card .t-accent{height:3px;width:100%}
 
 /* Lesson/Topic View header */
@@ -3742,31 +3743,10 @@ function HomeTab({ profile, progress, upd, settings, setTab, recentTopics, setRe
         {/* All Topics - 3-row horizontal grid, left-to-right reading order */}
         <div className="sec-hdr"><span className="sec-title">All Topics</span><span className="sec-link">{UNITS.length} topics</span></div>
         {(() => {
-          const rows = 3;
-          const cols = Math.ceil(UNITS.length / rows);
-          // Reorder: column-flow grid fills top-to-bottom, so remap for left-to-right reading
-          const reordered = [];
-          for (let c = 0; c < cols; c++) {
-            for (let r = 0; r < rows; r++) {
-              const idx = r * cols + c;
-              if (idx < UNITS.length) reordered.push(UNITS[idx]);
-            }
-          }
           return <>
-            <div className="topics-wrap" ref={el => {
-              if (!el) return;
-              const bar = el.nextElementSibling;
-              if (!bar) return;
-              const fill = bar.firstChild;
-              const update = () => {
-                const pct = el.scrollWidth <= el.clientWidth ? 100 : Math.round((el.scrollLeft / (el.scrollWidth - el.clientWidth)) * 100);
-                if (fill) fill.style.width = pct + "%";
-              };
-              el.onscroll = update;
-              setTimeout(update, 100);
-            }}>
+            <div className="topics-wrap">
               <div className="topics-grid">
-                {reordered.map((u) => {
+                {UNITS.map((u) => {
                   const isLocked = !isPremium && freeUnitIds && !freeUnitIds.includes(u.id);
                   return (
                   <div className="t-card" key={u.id} onClick={()=>{if(!isLocked){setSelUnit(u.id);updateRecent(u.id);}}}>
@@ -3774,8 +3754,9 @@ function HomeTab({ profile, progress, upd, settings, setTab, recentTopics, setRe
                     <div className="t-art" style={isLocked?{opacity:.4,filter:"grayscale(.5)"}:{}}>
                       <img src={TOPIC_IMAGES[u.id] || TOPIC_IMAGES[1]} alt="" />
                       <div className="t-overlay" />
+                      <div className="t-title-overlay">{u.title}</div>
                       <span className="t-emoji">{({1:"👋",2:"🤝",3:"🚕",4:"☕",5:"🍜",6:"🛍",7:"🏫",8:"🏠",9:"🕐",10:"❤️",11:"🍻",12:"🌧",13:"💰",14:"💪",15:"😤",16:"📱",17:"🥺",18:"🔢",19:"🎉",20:"🌇"})[u.id]||"📖"}</span>
-                      {isLocked && <span style={{position:"absolute",top:"50%",left:"50%",transform:"translate(-50%,-50%)",fontSize:20,filter:"none",opacity:1}}>🔒</span>}
+                      {isLocked && <span style={{position:"absolute",top:"50%",left:"50%",transform:"translate(-50%,-50%)",fontSize:24,filter:"none",opacity:1}}>🔒</span>}
                       <span className="t-num">#{u.id}</span>
                     </div>
                     <div className="t-info">
@@ -3928,13 +3909,9 @@ function LibraryTab({ library, setLibrary, progress, upd, settings, startPlaylis
               <div style={{fontSize:"1.1rem",fontWeight:900,color:"var(--lime)"}}>{stillLearning.length}</div>
               <div style={{fontSize:".6rem",fontWeight:700,color:"rgba(255,255,255,.65)",textTransform:"uppercase",letterSpacing:".5px"}}>Learning</div>
             </div>
-            <div style={{flex:1,background:"rgba(255,255,255,.1)",borderRadius:12,padding:"10px 0",textAlign:"center"}}>
-              <div style={{fontSize:"1.1rem",fontWeight:900,color:"var(--lime)"}}>{mastered.length}</div>
+            <div style={{flex:1,background:masteredOpen?"rgba(196,240,0,.15)":"rgba(255,255,255,.1)",borderRadius:12,padding:"10px 0",textAlign:"center",cursor:"pointer",border:masteredOpen?"1.5px solid rgba(196,240,0,.3)":"1.5px solid transparent",transition:"all .2s"}} onClick={()=>setMasteredOpen(o=>!o)}>
+              <div style={{fontSize:"1.1rem",fontWeight:900,color:"var(--lime)"}}>{mastered.length} <span style={{fontSize:".7rem"}}>{masteredOpen?"▲":"▼"}</span></div>
               <div style={{fontSize:".6rem",fontWeight:700,color:"rgba(255,255,255,.65)",textTransform:"uppercase",letterSpacing:".5px"}}>Mastered</div>
-            </div>
-            <div style={{flex:1,background:"rgba(255,255,255,.1)",borderRadius:12,padding:"10px 0",textAlign:"center"}}>
-              <div style={{fontSize:"1.1rem",fontWeight:900,color:"var(--lime)"}}>{items.length}</div>
-              <div style={{fontSize:".6rem",fontWeight:700,color:"rgba(255,255,255,.65)",textTransform:"uppercase",letterSpacing:".5px"}}>Total</div>
             </div>
           </div>
         </div>
@@ -3965,37 +3942,27 @@ function LibraryTab({ library, setLibrary, progress, upd, settings, startPlaylis
           </div>
         )}
 
-        {/* Mastered — collapsed toggle with trophy */}
-        {mastered.length > 0 && (
-          <div style={{background:"linear-gradient(135deg, #1F3329 0%, #2a4a36 50%, #1F3329 100%)",borderRadius:16,padding:"14px 16px",marginBottom:12,cursor:"pointer"}} onClick={()=>setMasteredOpen(o=>!o)}>
-            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-              <div style={{display:"flex",alignItems:"center",gap:10}}>
-                <span style={{fontSize:"1.4rem"}}>🏆</span>
-                <div>
-                  <div style={{color:"#fff",fontWeight:800,fontSize:".88rem"}}>{mastered.length} Mastered!</div>
-                  <div style={{color:"var(--lime)",fontSize:".7rem",fontWeight:600,marginTop:1}}>You're crushing it — keep going!</div>
-                </div>
-              </div>
-              <span style={{color:"rgba(255,255,255,.5)",fontSize:"1.1rem",transition:"transform .2s",transform:masteredOpen?"rotate(180deg)":"rotate(0)"}}>&#9662;</span>
+        {/* Mastered list — toggled from header stat */}
+        {masteredOpen && mastered.length > 0 && (
+          <div style={{background:"linear-gradient(135deg, #1F3329 0%, #2a4a36 50%, #1F3329 100%)",borderRadius:16,padding:"14px 16px",marginBottom:12}}>
+            <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:12}}>
+              <span style={{fontSize:"1.1rem"}}>🏆</span>
+              <div style={{color:"#fff",fontWeight:800,fontSize:".82rem"}}>{mastered.length} Mastered</div>
             </div>
-            {masteredOpen && (
-              <div style={{marginTop:12}} onClick={e=>e.stopPropagation()}>
-                {mastered.map((s) => {
-                  const idx = items.indexOf(s);
-                  return (
-                    <div key={idx} style={{background:"rgba(255,255,255,.08)",borderRadius:10,padding:"10px 12px",marginBottom:6,display:"flex",alignItems:"center",gap:10}}>
-                      {canSpeak(s) && <button onClick={()=>speak(s.cn)} style={{width:32,height:32,borderRadius:"50%",border:"none",background:"rgba(196,240,0,.2)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontSize:".65rem",color:"var(--lime)",flexShrink:0}}>&#9654;</button>}
-                      <div style={{flex:1,minWidth:0}}>
-                        <div style={{fontSize:".78rem",fontWeight:700,color:"#fff",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{s.en||s.cn}</div>
-                        {s[romKey] && <div style={{fontSize:".65rem",color:"var(--lime)",fontStyle:"italic"}}>{s[romKey]}</div>}
-                        {s.cn && s.en && <div style={{fontSize:".72rem",color:"rgba(255,255,255,.5)"}}>{s.cn}</div>}
-                      </div>
-                      <button onClick={()=>toggleKnown(idx)} style={{background:"none",border:"1px solid rgba(255,255,255,.15)",color:"rgba(255,255,255,.5)",fontSize:".65rem",fontWeight:700,cursor:"pointer",padding:"6px 10px",borderRadius:8,flexShrink:0}}>Relearn</button>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
+            {mastered.map((s) => {
+              const idx = items.indexOf(s);
+              return (
+                <div key={idx} style={{background:"rgba(255,255,255,.08)",borderRadius:10,padding:"10px 12px",marginBottom:6,display:"flex",alignItems:"center",gap:10}}>
+                  {canSpeak(s) && <button onClick={()=>speak(s.cn)} style={{width:32,height:32,borderRadius:"50%",border:"none",background:"rgba(196,240,0,.2)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontSize:".65rem",color:"var(--lime)",flexShrink:0}}>&#9654;</button>}
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontSize:".78rem",fontWeight:700,color:"#fff",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{s.en||s.cn}</div>
+                    {s[romKey] && <div style={{fontSize:".65rem",color:"var(--lime)",fontStyle:"italic"}}>{s[romKey]}</div>}
+                    {s.cn && s.en && <div style={{fontSize:".72rem",color:"rgba(255,255,255,.5)"}}>{s.cn}</div>}
+                  </div>
+                  <button onClick={()=>toggleKnown(idx)} style={{background:"none",border:"1px solid rgba(255,255,255,.15)",color:"rgba(255,255,255,.5)",fontSize:".65rem",fontWeight:700,cursor:"pointer",padding:"6px 10px",borderRadius:8,flexShrink:0}}>Relearn</button>
+                </div>
+              );
+            })}
           </div>
         )}
 
@@ -5095,11 +5062,21 @@ function ShadowMode({ unit, progress, upd, settings, onClose, startIdx=0, single
         <div className="l-divider" />
 
         {/* Speed row — pause between phrases */}
-        <div className="l-speed">
+        {!single && <div className="l-speed">
           <div className="l-row-label">Pause between phrases</div>
           <div className="l-pill-row">
             {[{k:"slow",l:"Longer pause"},{k:"normal",l:"Normal"},{k:"fast",l:"Shorter pause"}].map(s=>
               <button key={s.k} className={`l-pill-btn ${speed===s.k?"on":""}`} onClick={()=>setSpeed(s.k)}>{s.l}</button>
+            )}
+          </div>
+        </div>}
+
+        {/* Voice speed control */}
+        <div className="l-speed">
+          <div className="l-row-label">Voice speed</div>
+          <div className="l-pill-row">
+            {[{k:"natural",l:"1×",r:1.0},{k:"slower",l:"0.75×",r:0.75},{k:"very-slow",l:"0.5×",r:0.5}].map(s=>
+              <button key={s.k} className={`l-pill-btn ${(settings?.voiceSpeed||"natural")===s.k?"on":""}`} onClick={()=>setPlaybackRate(s.r)}>{s.l}</button>
             )}
           </div>
         </div>

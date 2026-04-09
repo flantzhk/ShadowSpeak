@@ -17,7 +17,7 @@ if (_refParam) {
 }
 
 // ---- ANALYTICS ----
-const APP_VERSION = "4.2.2";
+const APP_VERSION = "4.2.3";
 let _analyticsClient = null;
 function trackEvent(name, props = {}) {
   const uid = window._ssUser?.uid || null;
@@ -567,13 +567,56 @@ async function speakPhrase(item, unitTitle) {
 }
 
 // ---- Pronunciation Scoring via cantonese.ai ----
+// Convert any audio blob (webm, mp4, etc.) to WAV format using Web Audio API
+// The cantonese.ai scoring API only accepts wav, mp3, m4a, flac, ogg — not webm/mp4
+async function convertToWav(audioBlob) {
+  const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  const arrayBuffer = await audioBlob.arrayBuffer();
+  const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+
+  // Downsample to 16kHz mono for smaller file size and API compatibility
+  const sampleRate = 16000;
+  const offlineCtx = new OfflineAudioContext(1, audioBuffer.duration * sampleRate, sampleRate);
+  const source = offlineCtx.createBufferSource();
+  source.buffer = audioBuffer;
+  source.connect(offlineCtx.destination);
+  source.start(0);
+  const rendered = await offlineCtx.startRendering();
+
+  // Encode as WAV
+  const pcm = rendered.getChannelData(0);
+  const wavBuffer = new ArrayBuffer(44 + pcm.length * 2);
+  const view = new DataView(wavBuffer);
+  const writeStr = (off, str) => { for (let i = 0; i < str.length; i++) view.setUint8(off + i, str.charCodeAt(i)); };
+  writeStr(0, 'RIFF');
+  view.setUint32(4, 36 + pcm.length * 2, true);
+  writeStr(8, 'WAVE');
+  writeStr(12, 'fmt ');
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true); // PCM
+  view.setUint16(22, 1, true); // mono
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, sampleRate * 2, true);
+  view.setUint16(32, 2, true);
+  view.setUint16(34, 16, true);
+  writeStr(36, 'data');
+  view.setUint32(40, pcm.length * 2, true);
+  for (let i = 0; i < pcm.length; i++) {
+    const s = Math.max(-1, Math.min(1, pcm[i]));
+    view.setInt16(44 + i * 2, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
+  }
+  await audioCtx.close();
+  return new Blob([wavBuffer], { type: 'audio/wav' });
+}
+
 async function scorePronunciation(audioBlob, text, language = LANG_CONFIG.id) {
   if (!_isOnline) throw new Error("OFFLINE");
+  // Convert to WAV — the scoring API only accepts wav/mp3/m4a/flac/ogg
+  const wavBlob = await convertToWav(audioBlob);
   const formData = new FormData();
   formData.append("text", text);
   formData.append("language", language);
-  const ext = audioBlob.type?.includes("mp4") ? "mp4" : audioBlob.type?.includes("wav") ? "wav" : "webm";
-  formData.append("audio", audioBlob, "recording." + ext);
+  formData.append("audio", wavBlob, "recording.wav");
   const res = await fetch(`${PROXY_URL}/score`, { method: "POST", body: formData });
   if (!res.ok) throw new Error("Scoring failed: " + res.status);
   return res.json();

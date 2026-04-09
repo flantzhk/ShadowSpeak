@@ -468,12 +468,58 @@ async function speakPhrase(item) {
 }
 
 // ---- Pronunciation Scoring via cantonese.ai ----
+// Convert any audio blob (webm, mp4, etc.) to WAV format using Web Audio API
+// The cantonese.ai scoring API only accepts wav, mp3, m4a, flac, ogg — not webm/mp4
+async function convertToWav(audioBlob) {
+  const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  const arrayBuffer = await audioBlob.arrayBuffer();
+  const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+
+  // Downsample to 16kHz mono for smaller file size and API compatibility
+  const sampleRate = 16000;
+  const offlineCtx = new OfflineAudioContext(1, audioBuffer.duration * sampleRate, sampleRate);
+  const source = offlineCtx.createBufferSource();
+  source.buffer = audioBuffer;
+  source.connect(offlineCtx.destination);
+  source.start(0);
+  const rendered = await offlineCtx.startRendering();
+
+  // Encode as WAV
+  const pcm = rendered.getChannelData(0);
+  const wavBuffer = new ArrayBuffer(44 + pcm.length * 2);
+  const view = new DataView(wavBuffer);
+  // RIFF header
+  const writeStr = (off, str) => { for (let i = 0; i < str.length; i++) view.setUint8(off + i, str.charCodeAt(i)); };
+  writeStr(0, 'RIFF');
+  view.setUint32(4, 36 + pcm.length * 2, true);
+  writeStr(8, 'WAVE');
+  writeStr(12, 'fmt ');
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true); // PCM
+  view.setUint16(22, 1, true); // mono
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, sampleRate * 2, true);
+  view.setUint16(32, 2, true);
+  view.setUint16(34, 16, true);
+  writeStr(36, 'data');
+  view.setUint32(40, pcm.length * 2, true);
+  // PCM samples
+  for (let i = 0; i < pcm.length; i++) {
+    const s = Math.max(-1, Math.min(1, pcm[i]));
+    view.setInt16(44 + i * 2, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
+  }
+  await audioCtx.close();
+  return new Blob([wavBuffer], { type: 'audio/wav' });
+}
+
 async function scorePronunciation(audioBlob, text, language = LANG_CONFIG.id) {
   if (!_isOnline) throw new Error("OFFLINE");
+  // Convert to WAV — the scoring API only accepts wav/mp3/m4a/flac/ogg
+  const wavBlob = await convertToWav(audioBlob);
   const formData = new FormData();
   formData.append("text", text);
   formData.append("language", language);
-  formData.append("audio", audioBlob, "recording.webm");
+  formData.append("audio", wavBlob, "recording.wav");
   const res = await fetch(`${PROXY_URL}/score`, { method: "POST", body: formData });
   if (!res.ok) throw new Error("Scoring failed: " + res.status);
   return res.json();
@@ -512,7 +558,9 @@ async function getMicStream() {
 async function startRecording() {
   const stream = await getMicStream();
   _audioChunks = [];
-  _mediaRecorder = new MediaRecorder(stream, { mimeType: "audio/webm;codecs=opus" });
+  // Safari/iOS doesn't support webm — fall back to mp4 or default
+  const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus") ? "audio/webm;codecs=opus" : MediaRecorder.isTypeSupported("audio/mp4") ? "audio/mp4" : "";
+  _mediaRecorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
   _mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) _audioChunks.push(e.data); };
   _mediaRecorder.start();
   return true;
@@ -522,7 +570,7 @@ function stopRecording() {
   return new Promise((resolve) => {
     if (!_mediaRecorder || _mediaRecorder.state === "inactive") { resolve(null); return; }
     _mediaRecorder.onstop = () => {
-      const blob = new Blob(_audioChunks, { type: "audio/webm" });
+      const blob = new Blob(_audioChunks, { type: _mediaRecorder?.mimeType || "audio/webm" });
       // Don't stop tracks — keep stream alive for next recording
       resolve(blob);
     };
@@ -2282,7 +2330,7 @@ function LessonMode({ progress, upd, profile, settings, onComplete, onQuit }) {
             ))}
           </div>
 
-          <button className="li-go" onClick={()=>{setShowIntro(false);setShowTransition(true);speakEnglish(phaseInfo[0].transDesc+" Remember, say it out loud!");setTimeout(()=>{setShowTransition(false);},3000);}}>Let's go 💪</button>
+          <button className="li-go" onClick={()=>{setShowIntro(false);}}>Let's go 💪</button>
 
           <div className="li-tip">
             <span className="li-tip-emoji">💡</span>
@@ -3333,12 +3381,12 @@ function LibraryTab({ library, setLibrary, progress, upd, settings, startPlaylis
               <div style={{fontSize:".6rem",fontWeight:700,color:"rgba(255,255,255,.65)",textTransform:"uppercase",letterSpacing:".5px"}}>Learning</div>
             </div>
             <div style={{flex:1,background:"rgba(255,255,255,.1)",borderRadius:12,padding:"10px 0",textAlign:"center"}}>
-              <div style={{fontSize:"1.1rem",fontWeight:900,color:"var(--lime)"}}>{mastered.length}</div>
-              <div style={{fontSize:".6rem",fontWeight:700,color:"rgba(255,255,255,.65)",textTransform:"uppercase",letterSpacing:".5px"}}>Mastered</div>
+              <div style={{fontSize:"1.1rem",fontWeight:900,color:"var(--lime)"}}>{mastered.filter(s => !s.en || s.en.split(/\s+/).length > 2).length}</div>
+              <div style={{fontSize:".6rem",fontWeight:700,color:"rgba(255,255,255,.65)",textTransform:"uppercase",letterSpacing:".5px"}}>Phrases ✓</div>
             </div>
             <div style={{flex:1,background:"rgba(255,255,255,.1)",borderRadius:12,padding:"10px 0",textAlign:"center"}}>
-              <div style={{fontSize:"1.1rem",fontWeight:900,color:"var(--lime)"}}>{items.length}</div>
-              <div style={{fontSize:".6rem",fontWeight:700,color:"rgba(255,255,255,.65)",textTransform:"uppercase",letterSpacing:".5px"}}>Total</div>
+              <div style={{fontSize:"1.1rem",fontWeight:900,color:"var(--lime)"}}>{mastered.filter(s => s.en && s.en.split(/\s+/).length <= 2).length}</div>
+              <div style={{fontSize:".6rem",fontWeight:700,color:"rgba(255,255,255,.65)",textTransform:"uppercase",letterSpacing:".5px"}}>Vocab ✓</div>
             </div>
           </div>
         </div>
@@ -3359,9 +3407,12 @@ function LibraryTab({ library, setLibrary, progress, upd, settings, startPlaylis
           <div style={{width:"100%",padding:"14px",background:"rgba(196,240,0,.1)",border:"2px solid var(--lime)",borderRadius:12,fontSize:".84rem",fontWeight:800,color:"var(--for)",marginTop:16,marginBottom:12,textAlign:"center",minHeight:48,display:"flex",alignItems:"center",justifyContent:"center"}}>Saved to your library!</div>
         ) : (
           <div style={{background:"var(--wh)",borderRadius:14,padding:16,border:"1.5px solid var(--st)",marginTop:16,marginBottom:12}}>
-            <input style={{width:"100%",background:"var(--cream)",border:"1.5px solid var(--st)",borderRadius:8,padding:"10px 12px",fontSize:".82rem",color:"var(--ink)",outline:"none",fontFamily:"inherit",marginBottom:8,minHeight:44,boxSizing:"border-box"}} placeholder="What do you want to say?" value={en} onChange={e => setEn(e.target.value)} />
-            <input style={{width:"100%",background:"var(--cream)",border:"1.5px solid var(--st)",borderRadius:8,padding:"10px 12px",fontSize:".82rem",color:"var(--ink)",outline:"none",fontFamily:LANG_CONFIG.fontFamily,marginBottom:8,minHeight:44,boxSizing:"border-box"}} placeholder="Chinese characters" value={cn} onChange={e => setCn(e.target.value)} />
-            <input style={{width:"100%",background:"var(--cream)",border:"1.5px solid var(--st)",borderRadius:8,padding:"10px 12px",fontSize:".82rem",color:"var(--plum)",fontStyle:"italic",outline:"none",fontFamily:"inherit",marginBottom:12,minHeight:44,boxSizing:"border-box"}} placeholder={romLabel} value={rom} onChange={e => setRom(e.target.value)} />
+            <div style={{fontSize:".65rem",fontWeight:700,color:"var(--ink3)",marginBottom:4,textTransform:"uppercase",letterSpacing:".5px"}}>English</div>
+            <input style={{width:"100%",background:"var(--cream)",border:"1.5px solid var(--st)",borderRadius:8,padding:"10px 12px",fontSize:".82rem",color:"var(--ink)",outline:"none",fontFamily:"inherit",marginBottom:10,minHeight:44,boxSizing:"border-box"}} placeholder="What do you want to say?" value={en} onChange={e => setEn(e.target.value)} />
+            <div style={{fontSize:".65rem",fontWeight:700,color:"var(--ink3)",marginBottom:4,textTransform:"uppercase",letterSpacing:".5px"}}>Chinese characters</div>
+            <input style={{width:"100%",background:"var(--cream)",border:"1.5px solid var(--st)",borderRadius:8,padding:"10px 12px",fontSize:".82rem",color:"var(--ink)",outline:"none",fontFamily:LANG_CONFIG.fontFamily,marginBottom:10,minHeight:44,boxSizing:"border-box"}} placeholder="e.g. 你好" value={cn} onChange={e => setCn(e.target.value)} />
+            <div style={{fontSize:".65rem",fontWeight:700,color:"var(--ink3)",marginBottom:4,textTransform:"uppercase",letterSpacing:".5px"}}>{romLabel}</div>
+            <input style={{width:"100%",background:"var(--cream)",border:"1.5px solid var(--st)",borderRadius:8,padding:"10px 12px",fontSize:".82rem",color:"var(--plum)",fontStyle:"italic",outline:"none",fontFamily:"inherit",marginBottom:12,minHeight:44,boxSizing:"border-box"}} placeholder="e.g. nei5 hou2" value={rom} onChange={e => setRom(e.target.value)} />
             <div style={{display:"flex",gap:8}}>
               <button onClick={()=>{setShowAddForm(false);setEn("");setRom("");setCn("");}} style={{flex:1,background:"var(--cream)",color:"var(--ink3)",border:"1.5px solid var(--st)",borderRadius:10,padding:"10px 0",fontSize:".82rem",fontWeight:700,cursor:"pointer",minHeight:44}}>Cancel</button>
               <button onClick={handleSave} style={{flex:1,background:en.trim()?"var(--lime)":"var(--st)",color:en.trim()?"var(--for)":"var(--ink3)",border:"none",borderRadius:10,padding:"10px 0",fontSize:".82rem",fontWeight:900,cursor:en.trim()?"pointer":"default",minHeight:44}}>Save</button>
@@ -3422,7 +3473,7 @@ function LibraryTab({ library, setLibrary, progress, upd, settings, startPlaylis
         )}
 
         {/* Phrases section */}
-        {slPhrases.length > 0 && <div style={{fontSize:".7rem",fontWeight:800,color:"var(--ink3)",letterSpacing:"1.5px",textTransform:"uppercase",marginBottom:8}}>PHRASES ({slPhrases.length})</div>}
+        {slPhrases.length > 0 && <div style={{fontSize:".7rem",fontWeight:800,color:"var(--ink3)",letterSpacing:"1.5px",textTransform:"uppercase",marginBottom:8,marginTop:14}}>PHRASES ({slPhrases.length})</div>}
         {slPhrases.map(renderItem)}
 
         {/* Vocabulary section */}
@@ -3735,8 +3786,8 @@ function TodayTab({ profile, progress, upd, markReviewed, setTab, setSelUnit, st
             <div style={{fontSize:".62rem",fontWeight:700,color:"var(--ink2)"}}>Streak</div>
           </div>
           <div style={{background:"var(--wh)",borderRadius:12,padding:10,textAlign:"center",border:"1px solid var(--st)"}}>
-            <div style={{fontSize:"1.2rem",fontWeight:900,color:"var(--for)"}}>{stats.known}</div>
-            <div style={{fontSize:".62rem",fontWeight:700,color:"var(--ink2)"}}>Phrases</div>
+            <div style={{fontSize:"1.2rem",fontWeight:900,color:"var(--for)"}}>{stats.known + (progress.unit10||[]).filter(s=>s.known).length}</div>
+            <div style={{fontSize:".62rem",fontWeight:700,color:"var(--ink2)"}}>Mastered</div>
           </div>
           <div style={{background:"var(--wh)",borderRadius:12,padding:10,textAlign:"center",border:"1px solid var(--st)"}}>
             <div style={{fontSize:"1.2rem",fontWeight:900,color:"var(--for)"}}>{vk}</div>
@@ -5192,7 +5243,7 @@ function SettingsTab({ settings, updSettings }) {
       {/* About */}
       <div className="set-card">
         <div className="set-lb">About</div>
-        <div style={{fontSize:".68rem",color:"var(--ink2)",lineHeight:1.5}}>ShadowSpeak {LANG_CONFIG.name} v3.9.6. Shadowing method + spaced repetition. {ALL_WORDS.length} vocabulary words across {VOCAB_CATS.length} categories. {UNITS.reduce((s,u)=>s+u.phrases.length,0)} phrases across {UNITS.length} units.</div>
+        <div style={{fontSize:".68rem",color:"var(--ink2)",lineHeight:1.5}}>ShadowSpeak {LANG_CONFIG.name} v3.9.7. Shadowing method + spaced repetition. {ALL_WORDS.length} vocabulary words across {VOCAB_CATS.length} categories. {UNITS.reduce((s,u)=>s+u.phrases.length,0)} phrases across {UNITS.length} units.</div>
         <button onClick={()=>window.location.href="index.html"} style={{marginTop:8,background:"none",border:"none",cursor:"pointer",fontSize:".68rem",fontWeight:600,color:"var(--lime)",padding:0}}>← Back to landing page</button>
       </div>
     </div>

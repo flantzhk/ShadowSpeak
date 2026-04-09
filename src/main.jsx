@@ -17,7 +17,7 @@ if (_refParam) {
 }
 
 // ---- ANALYTICS ----
-const APP_VERSION = "4.1.5";
+const APP_VERSION = "4.2.0";
 let _analyticsClient = null;
 function trackEvent(name, props = {}) {
   const uid = window._ssUser?.uid || null;
@@ -182,7 +182,7 @@ function playLocalAudio(url) {
     _currentAudio = audio;
     if (_audioCtx && _audioCtx.state === "suspended") _audioCtx.resume();
     let settled = false;
-    const done = () => { if (settled) return; settled = true; resolve(); };
+    const done = () => { if (settled) return; settled = true; setTimeout(resolve, 200); }; // 200ms buffer after end to prevent cutoff
     const fail = (e) => { if (settled) return; settled = true; reject(e || new Error("Local audio failed: " + url)); };
     audio.onended = done;
     audio.onerror = () => fail();
@@ -347,6 +347,17 @@ function speakAsync(text, lang, rate=0.85) {
 
 let _currentAudio = null;
 
+// ---- MEDIA SESSION API (lock screen metadata) ----
+function updateMediaSession(title, artist, album) {
+  if ('mediaSession' in navigator) {
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title: title || 'ShadowSpeak',
+      artist: artist || LANG_CONFIG.name,
+      album: album || 'ShadowSpeak',
+    });
+  }
+}
+
 function stopAudio() {
   unlockAudio();
   if (_currentAudio) {
@@ -387,7 +398,7 @@ function _playCachedBlob(blob) {
     _currentAudio = audio;
     if (_audioCtx && _audioCtx.state === "suspended") _audioCtx.resume();
     let settled = false;
-    audio.onended = () => { if (settled) return; settled = true; resolve(); };
+    audio.onended = () => { if (settled) return; settled = true; setTimeout(resolve, 200); };
     audio.onerror = () => { if (settled) return; settled = true; reject(new Error("cached playback failed")); };
     setTimeout(() => { if (settled) return; settled = true; resolve(); }, 10000);
     audio.src = url;
@@ -544,7 +555,8 @@ async function speakEnglish(text) {
   return speakAsync(text, "en-US", 1.0);
 }
 
-async function speakPhrase(item) {
+async function speakPhrase(item, unitTitle) {
+  updateMediaSession(item.en, unitTitle || LANG_CONFIG.name, 'ShadowSpeak');
   await speakEnglish(item.en);
   await new Promise(r => setTimeout(r, 800));
   await speak(item.cn);
@@ -1563,14 +1575,14 @@ function QuizTab({ progress, upd, startMode, onBack }) {
         <div className="quiz-ti">🎙 Pronunciation</div>
         <div style={{fontSize:".65rem",color:"rgba(255,255,255,.4)"}}>{idx+1}/{quizItems.length}</div>
       </div>
-      <div className="quiz-body">
-        <div className="quiz-sub" style={{marginBottom:4}}>Say this out loud in Cantonese:</div>
-        <div className="quiz-prompt" style={{marginBottom:6}}>{item.en}</div>
-        <div style={{marginBottom:4}}>
-          <div style={{fontSize:".95rem",fontStyle:"italic",color:"var(--plum)",fontWeight:600}}><JyutpingTone text={item.jyut} /></div>
-          <div style={{fontFamily:"${LANG_CONFIG.fontFamily.replace(/'/g, '')}",fontSize:".88rem",color:"var(--ink2)",marginTop:2}}>{item.cn}</div>
+      <div className="quiz-body" style={{justifyContent:"center",gap:0}}>
+        <div className="quiz-sub" style={{marginBottom:12,fontSize:".82rem"}}>Say this out loud in {LANG_CONFIG.name}:</div>
+        <div className="quiz-prompt" style={{marginBottom:16,fontSize:"1.4rem"}}>{item.en}</div>
+        <div style={{marginBottom:20,textAlign:"center"}}>
+          <div style={{fontSize:"1rem",fontStyle:"italic",color:"var(--plum)",fontWeight:600,marginBottom:6}}><JyutpingTone text={item.jyut} /></div>
+          <div style={{fontFamily:`${LANG_CONFIG.fontFamily.replace(/'/g, '')}`,fontSize:"1.1rem",color:"var(--ink)",fontWeight:700}}>{item.cn}</div>
         </div>
-        <button style={{marginBottom:14,background:"var(--for)",border:"none",borderRadius:999,padding:"8px 16px",fontSize:".68rem",cursor:"pointer",color:"var(--lime)",fontWeight:700}} onClick={()=>speak(item.cn)}>▶ Listen first</button>
+        <button style={{marginBottom:24,background:"var(--for)",border:"none",borderRadius:999,padding:"12px 24px",fontSize:".78rem",cursor:"pointer",color:"var(--lime)",fontWeight:700,minHeight:44}} onClick={()=>speak(item.cn)}>▶ Listen first</button>
         <div style={{width:"100%",maxWidth:440}}>
           {!isRecording && !scoring && !scoreResult ? (
             <RecordBtn onClick={qStartTest} label="🎙 Record yourself" />
@@ -1580,7 +1592,7 @@ function QuizTab({ progress, upd, startMode, onBack }) {
             <button onClick={qStopTest} style={{width:"100%",padding:"16px",borderRadius:14,border:"none",background:"#e74c3c",color:"#fff",fontSize:".88rem",fontWeight:800,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:10,animation:"pulse 1s ease-in-out infinite"}}>⏹ Stop and score</button>
           ) : null}
         </div>
-        {!scoreResult && !isRecording && !scoring && (<button onClick={pronSkip} style={{marginTop:10,background:"none",border:"none",cursor:"pointer",fontSize:".72rem",fontWeight:600,color:"var(--ink3)"}}>Skip →</button>)}
+        {!scoreResult && !isRecording && !scoring && (<button onClick={pronSkip} style={{marginTop:16,background:"none",border:"none",cursor:"pointer",fontSize:".78rem",fontWeight:600,color:"var(--ink3)",minHeight:44,padding:"8px 16px"}}>Skip →</button>)}
         <div style={{fontSize:".65rem",color:"var(--ink3)",marginTop:10}}>{idx+1} of {quizItems.length}</div>
       </div>
       {scoreResult && <PronunciationScore score={scoreResult.score} chars={scoreResult.chars} phrase={scoreResult.phrase} onRetry={()=>{setScoreResult(null);qStartTest();}} onNext={pronNext} onClose={pronNext} />}
@@ -1717,7 +1729,7 @@ function App() {
   const saveTimer = useRef(null);
 
   // Free units — accessible without premium
-  const FREE_UNIT_IDS = [1, 2, 5];
+  const FREE_UNIT_IDS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 
   // Wrap setSelUnit to check premium gate
   const selectUnitGated = (id) => {
@@ -1979,7 +1991,7 @@ function App() {
     let cancelled = false;
     (async () => {
       try {
-        await speakPhrase(item);
+        await speakPhrase(item, playlist.title);
       } catch(e) {
         console.warn("[Playlist] speakPhrase failed, advancing:", e);
       }
@@ -3426,10 +3438,10 @@ function HomeTab({ profile, progress, upd, settings, setTab, recentTopics, setRe
                 {reordered.map((u) => {
                   const isLocked = !isPremium && freeUnitIds && !freeUnitIds.includes(u.id);
                   return (
-                  <div className="t-card" key={u.id} onClick={()=>{setSelUnit(u.id);updateRecent(u.id);}} style={isLocked?{opacity:.7}:{}}>
-                    <div className="t-art">
+                  <div className="t-card" key={u.id} onClick={()=>{setSelUnit(u.id);updateRecent(u.id);}}>
+                    <div className="t-art" style={isLocked?{opacity:.4,filter:"grayscale(.5)"}:{}}>
                       <img src={TOPIC_IMAGES[u.id] || TOPIC_IMAGES[1]} alt="" />
-                      {isLocked && <span style={{position:"absolute",top:6,right:6,background:"rgba(0,0,0,.6)",borderRadius:999,padding:"3px 7px",fontSize:11}}>🔒</span>}
+                      {isLocked && <span style={{position:"absolute",top:"50%",left:"50%",transform:"translate(-50%,-50%)",fontSize:20,filter:"none",opacity:1}}>🔒</span>}
                       <span className="t-num">#{u.id}</span>
                     </div>
                     <div className="t-info">

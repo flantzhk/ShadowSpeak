@@ -42024,7 +42024,54 @@ if (!_lang) {
       const [practiceCount, setPracticeCount] = reactExports.useState(parseInt(localStorage.getItem(LANG_CONFIG.id + "-practice-count") || "0"));
       const [recentTopics, setRecentTopics] = reactExports.useState(JSON.parse(localStorage.getItem(LANG_CONFIG.id + "-recent-topics") || "[]"));
       const [autoLaunch, setAutoLaunch] = reactExports.useState(null);
+      const [isPremium, setIsPremium] = reactExports.useState(false);
+      const [showPremiumGate, setShowPremiumGate] = reactExports.useState(false);
+      const [promoInput, setPromoInput] = reactExports.useState("");
+      const [promoStatus, setPromoStatus] = reactExports.useState(null);
       const saveTimer = reactExports.useRef(null);
+      const FREE_UNIT_IDS = [1, 2, 5];
+      const selectUnitGated = (id2) => {
+        if (!isPremium && !FREE_UNIT_IDS.includes(id2)) {
+          setShowPremiumGate(true);
+          return;
+        }
+        setSelUnit(id2);
+      };
+      const submitPromoCode = async () => {
+        if (!promoInput.trim()) return;
+        setPromoStatus("checking");
+        try {
+          const doc2 = await fbDb.collection("config").doc("promoCodes").get();
+          if (doc2.exists) {
+            const codes = doc2.data().codes || [];
+            const match = codes.find((c) => c.code.toUpperCase() === promoInput.trim().toUpperCase() && c.active);
+            if (match) {
+              const uid = user == null ? void 0 : user.uid;
+              if (uid) {
+                await fbDb.collection("users").doc(uid).update({
+                  isPremium: true,
+                  premiumSince: /* @__PURE__ */ new Date(),
+                  premiumTier: "promo",
+                  promoCodeUsed: match.code
+                });
+              }
+              setIsPremium(true);
+              setPromoStatus("success");
+              setShowPremiumGate(false);
+              setPopup2({ e: "🎉", t: "Unlocked!", s: "Welcome to ShadowSpeak Premium." });
+              setPromoInput("");
+              setTimeout(() => setPromoStatus(null), 2e3);
+              return;
+            }
+          }
+          setPromoStatus("invalid");
+          setTimeout(() => setPromoStatus(null), 3e3);
+        } catch (e) {
+          console.warn("Promo code check failed:", e);
+          setPromoStatus("invalid");
+          setTimeout(() => setPromoStatus(null), 3e3);
+        }
+      };
       reactExports.useEffect(() => {
         const s = document.createElement("style");
         s.textContent = CSS + QUIZ_CSS;
@@ -42046,6 +42093,8 @@ if (!_lang) {
           try {
             const doc2 = await profileRef.get();
             if (doc2.exists) {
+              const profileData = doc2.data();
+              if (profileData.isPremium) setIsPremium(true);
               await profileRef.update({
                 lastActiveAt: /* @__PURE__ */ new Date(),
                 email: user.email || null,
@@ -42315,10 +42364,10 @@ if (!_lang) {
             ] })
           ] }) })
         ] }),
-        tab === "home" && /* @__PURE__ */ jsxRuntimeExports.jsx(HomeTab, { profile: displayName, progress, upd, settings, setTab, recentTopics, setRecentTopics, practiceCount, library, selUnit, setSelUnit, markReviewed, startPlaylist, openPlBuilder: () => setShowPlBuilder(true), setAutoLaunch }),
+        tab === "home" && /* @__PURE__ */ jsxRuntimeExports.jsx(HomeTab, { profile: displayName, progress, upd, settings, setTab, recentTopics, setRecentTopics, practiceCount, library, selUnit, setSelUnit: selectUnitGated, markReviewed, startPlaylist, openPlBuilder: () => setShowPlBuilder(true), setAutoLaunch, isPremium, freeUnitIds: FREE_UNIT_IDS }),
         tab === "library" && /* @__PURE__ */ jsxRuntimeExports.jsx(LibraryTab, { library, setLibrary, progress, upd, settings, startPlaylist }),
         tab === "practice" && /* @__PURE__ */ jsxRuntimeExports.jsx(PracticeTab, { progress, upd, settings, library, practiceCount, setPracticeCount, autoLaunch }),
-        tab === "settings" && /* @__PURE__ */ jsxRuntimeExports.jsx(SettingsTab, { settings, updSettings }),
+        tab === "settings" && /* @__PURE__ */ jsxRuntimeExports.jsx(SettingsTab, { settings, updSettings, isPremium, setShowPremiumGate }),
         showPlBuilder && /* @__PURE__ */ jsxRuntimeExports.jsx(PlaylistBuilder, { onClose: () => setShowPlBuilder(false), onPlay: (items, title) => {
           setShowPlBuilder(false);
           startPlaylist(items, title);
@@ -42355,6 +42404,89 @@ if (!_lang) {
             t2.badge > 0 && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { position: "absolute", top: 4, right: "calc(50% - 18px)", background: "var(--cor,#e74c3c)", color: "#fff", fontSize: ".55rem", fontWeight: 900, borderRadius: 999, minWidth: 16, height: 16, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 4px" }, children: t2.badge })
           ] }, t2.id)
         ) }),
+        showPremiumGate && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { position: "fixed", inset: 0, zIndex: 2e3, background: "rgba(0,0,0,.7)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }, onClick: () => {
+          setShowPremiumGate(false);
+          setPromoInput("");
+          setPromoStatus(null);
+        }, children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { background: "#fff", borderRadius: 24, padding: "32px 24px", maxWidth: 420, width: "100%", maxHeight: "90vh", overflow: "auto", position: "relative" }, onClick: (e) => e.stopPropagation(), children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => {
+            setShowPremiumGate(false);
+            setPromoInput("");
+            setPromoStatus(null);
+          }, style: { position: "absolute", top: 16, right: 16, background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--ink3)", padding: 8 }, children: "✕" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { textAlign: "center", marginBottom: 24 }, children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 32, marginBottom: 8 }, children: "🔓" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 22, fontWeight: 900, color: "var(--for)", marginBottom: 8 }, children: "Unlock ShadowSpeak Premium" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { fontSize: 14, color: "var(--ink2)", lineHeight: 1.5 }, children: [
+              "Get access to all ",
+              UNITS.length,
+              " units, every language pack, and pronunciation scoring."
+            ] })
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", flexDirection: "column", gap: 10, marginBottom: 20 }, children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => {
+              console.log("[Payment] Monthly selected");
+              setPopup2({ e: "🔜", t: "Coming soon", s: "Payment integration coming soon." });
+              setShowPremiumGate(false);
+            }, style: { padding: "16px 20px", borderRadius: 14, border: "1.5px solid var(--st)", background: "var(--wh)", cursor: "pointer", textAlign: "left", fontFamily: "inherit" }, children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center" }, children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 15, fontWeight: 800, color: "var(--for)" }, children: "Monthly" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 12, color: "var(--ink2)" }, children: "Cancel anytime" })
+              ] }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { fontSize: 18, fontWeight: 900, color: "var(--for)" }, children: [
+                "HKD 98",
+                /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { fontSize: 12, fontWeight: 500, color: "var(--ink3)" }, children: "/mo" })
+              ] })
+            ] }) }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { onClick: () => {
+              console.log("[Payment] Annual selected");
+              setPopup2({ e: "🔜", t: "Coming soon", s: "Payment integration coming soon." });
+              setShowPremiumGate(false);
+            }, style: { padding: "16px 20px", borderRadius: 14, border: "2.5px solid var(--lime)", background: "rgba(196,240,0,.06)", cursor: "pointer", textAlign: "left", fontFamily: "inherit", position: "relative" }, children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { position: "absolute", top: -10, right: 16, background: "var(--lime)", color: "var(--for)", fontSize: 11, fontWeight: 900, padding: "3px 10px", borderRadius: 999 }, children: "Best value — Save 49%" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center" }, children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 15, fontWeight: 800, color: "var(--for)" }, children: "Annual" }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 12, color: "var(--ink2)" }, children: "Billed yearly" })
+                ] }),
+                /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { fontSize: 18, fontWeight: 900, color: "var(--for)" }, children: [
+                  "HKD 598",
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { fontSize: 12, fontWeight: 500, color: "var(--ink3)" }, children: "/yr" })
+                ] })
+              ] })
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => {
+              console.log("[Payment] Lifetime selected");
+              setPopup2({ e: "🔜", t: "Coming soon", s: "Payment integration coming soon." });
+              setShowPremiumGate(false);
+            }, style: { padding: "16px 20px", borderRadius: 14, border: "1.5px solid var(--st)", background: "var(--wh)", cursor: "pointer", textAlign: "left", fontFamily: "inherit" }, children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center" }, children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 15, fontWeight: 800, color: "var(--for)" }, children: "Lifetime" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 12, color: "var(--ink2)" }, children: "Pay once, learn forever" })
+              ] }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 18, fontWeight: 900, color: "var(--for)" }, children: "HKD 1,280" })
+            ] }) })
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("details", { style: { marginBottom: 20 }, children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("summary", { style: { fontSize: 13, fontWeight: 700, color: "var(--plum)", cursor: "pointer", marginBottom: 8 }, children: "Have a promo code?" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", gap: 8 }, children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("input", { value: promoInput, onChange: (e) => setPromoInput(e.target.value), onKeyDown: (e) => {
+                if (e.key === "Enter") submitPromoCode();
+              }, placeholder: "Enter code", style: { flex: 1, padding: "10px 14px", borderRadius: 10, border: "1.5px solid var(--st)", fontSize: 14, fontFamily: "inherit", outline: "none" } }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: submitPromoCode, disabled: promoStatus === "checking", style: { padding: "10px 20px", borderRadius: 10, border: "none", background: "var(--for)", color: "var(--lime)", fontSize: 13, fontWeight: 800, cursor: "pointer", fontFamily: "inherit", minWidth: 80 }, children: promoStatus === "checking" ? "..." : "Apply" })
+            ] }),
+            promoStatus === "invalid" && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 12, color: "#e74c3c", marginTop: 6, fontWeight: 600 }, children: "Code not recognised." }),
+            promoStatus === "success" && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 12, color: "#27ae60", marginTop: 6, fontWeight: 600 }, children: "Unlocked! Welcome to ShadowSpeak Premium." })
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { textAlign: "center", paddingTop: 16, borderTop: "1px solid var(--st)" }, children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 12, fontWeight: 700, color: "var(--ink3)", marginBottom: 8 }, children: "More languages coming to ShadowSpeak Premium" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", justifyContent: "center", gap: 12 }, children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { fontSize: 13, color: "var(--ink3)", opacity: 0.5 }, children: "🇯🇵 Japanese" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { fontSize: 13, color: "var(--ink3)", opacity: 0.5 }, children: "🇰🇷 Korean" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { fontSize: 13, color: "var(--ink3)", opacity: 0.5 }, children: "🇹🇭 Thai" })
+            ] })
+          ] })
+        ] }) }),
         popup && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "comp-ov", onClick: () => setPopup2(null), children: [
           /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "comp-em", children: popup.e }),
           /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "comp-t", children: popup.t }),
@@ -43046,7 +43178,7 @@ if (!_lang) {
         /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: onMastered, style: { width: "100%", padding: "14px", borderRadius: 12, border: "1.5px solid var(--st)", background: "var(--wh)", color: "var(--ink)", fontSize: ".84rem", fontWeight: 700, cursor: "pointer", minHeight: 48 }, children: "I've got this one — mark as mastered" })
       ] }) });
     }
-    function HomeTab({ profile, progress, upd, settings, setTab, recentTopics, setRecentTopics, practiceCount, library, selUnit, setSelUnit, markReviewed, startPlaylist, openPlBuilder, setAutoLaunch }) {
+    function HomeTab({ profile, progress, upd, settings, setTab, recentTopics, setRecentTopics, practiceCount, library, selUnit, setSelUnit, markReviewed, startPlaylist, openPlBuilder, setAutoLaunch, isPremium, freeUnitIds }) {
       const [shadow, setShadow] = reactExports.useState(null);
       const [searchQ, setSearchQ] = reactExports.useState("");
       const [readingMode, setReadingMode] = reactExports.useState(false);
@@ -43534,25 +43666,29 @@ if (!_lang) {
                 };
                 el2.onscroll = update;
                 setTimeout(update, 100);
-              }, children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "topics-grid", children: reordered.map((u2) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "t-card", onClick: () => {
-                setSelUnit(u2.id);
-                updateRecent(u2.id);
-              }, children: [
-                /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "t-art", children: [
-                  /* @__PURE__ */ jsxRuntimeExports.jsx("img", { src: TOPIC_IMAGES[u2.id] || TOPIC_IMAGES[1], alt: "" }),
-                  /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "t-num", children: [
-                    "#",
-                    u2.id
+              }, children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "topics-grid", children: reordered.map((u2) => {
+                const isLocked = !isPremium && freeUnitIds && !freeUnitIds.includes(u2.id);
+                return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "t-card", onClick: () => {
+                  setSelUnit(u2.id);
+                  updateRecent(u2.id);
+                }, style: isLocked ? { opacity: 0.7 } : {}, children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "t-art", children: [
+                    /* @__PURE__ */ jsxRuntimeExports.jsx("img", { src: TOPIC_IMAGES[u2.id] || TOPIC_IMAGES[1], alt: "" }),
+                    isLocked && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { position: "absolute", top: 6, right: 6, background: "rgba(0,0,0,.6)", borderRadius: 999, padding: "3px 7px", fontSize: 11 }, children: "🔒" }),
+                    /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "t-num", children: [
+                      "#",
+                      u2.id
+                    ] })
+                  ] }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "t-info", children: [
+                    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "t-name", children: u2.title }),
+                    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "t-meta", children: [
+                      u2.phrases.length,
+                      " phrases"
+                    ] })
                   ] })
-                ] }),
-                /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "t-info", children: [
-                  /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "t-name", children: u2.title }),
-                  /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "t-meta", children: [
-                    u2.phrases.length,
-                    " phrases"
-                  ] })
-                ] })
-              ] }, u2.id)) }) }),
+                ] }, u2.id);
+              }) }) }),
               /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "topics-scrollbar", children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "topics-scrollbar-fill" }) })
             ] });
           })()
@@ -44537,7 +44673,7 @@ if (!_lang) {
         ] })
       ] }) });
     }
-    function SettingsTab({ settings, updSettings }) {
+    function SettingsTab({ settings, updSettings, isPremium, setShowPremiumGate }) {
       const [playing, setPlaying] = reactExports.useState(null);
       const [confirmReset, setConfirmReset] = reactExports.useState(false);
       const [dlState, setDlState] = reactExports.useState(() => localStorage.getItem(LANG_CONFIG.audioDownloadedKey) === "true" ? "done" : "idle");
@@ -44670,6 +44806,13 @@ if (!_lang) {
           ] })
         ] }),
         /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "set-card", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "set-lb", children: "ShadowSpeak Premium" }),
+          isPremium ? /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".78rem", fontWeight: 700, color: "#27ae60", display: "flex", alignItems: "center", gap: 6 }, children: "✓ Premium active" }) : /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".68rem", color: "var(--ink2)", lineHeight: 1.5, marginBottom: 10 }, children: "Unlock all units, language packs, and pronunciation scoring." }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => setShowPremiumGate(true), style: { width: "100%", padding: "12px", borderRadius: 12, border: "none", background: "var(--for)", cursor: "pointer", fontSize: ".78rem", fontWeight: 700, color: "var(--lime)", marginBottom: 8 }, children: "View Premium Plans" })
+          ] })
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "set-card", children: [
           /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "set-lb", children: "Switch language" }),
           /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { onClick: () => {
             localStorage.setItem("shadowspeak-lang", LANG_CONFIG.switchTo.lang);
@@ -44732,4 +44875,4 @@ if (!_lang) {
     root.render(React.createElement(ErrorBoundary, null, React.createElement(App)));
   })();
 }
-//# sourceMappingURL=app-BfrxI6xJ.js.map
+//# sourceMappingURL=app-BgwFYEWf.js.map

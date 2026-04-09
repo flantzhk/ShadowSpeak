@@ -40222,7 +40222,7 @@ if (_refParam) {
   _cleanRef.searchParams.delete("ref");
   window.history.replaceState({}, "", _cleanRef.pathname + _cleanRef.search + _cleanRef.hash);
 }
-const APP_VERSION = "4.2.6";
+const APP_VERSION = "4.3.0";
 function trackEvent(name2, props = {}) {
   var _a;
   const uid = ((_a = window._ssUser) == null ? void 0 : _a.uid) || null;
@@ -41531,19 +41531,22 @@ if (!_lang) {
 .cont-pbar-fill{height:100%;background:var(--lime);border-radius:3px}
 
 /* 2-row topic grid */
-.topics-wrap{padding:0 16px 16px;overflow-x:auto;scrollbar-width:none;position:relative}
+.topics-wrap{padding:0 16px 16px;overflow-x:auto;scrollbar-width:none;position:relative;scroll-snap-type:x mandatory}
 .topics-wrap::-webkit-scrollbar{display:none}
 .topics-grid{display:grid;grid-template-rows:repeat(3,auto);grid-auto-flow:column;grid-auto-columns:140px;gap:8px}
 .topics-scrollbar{height:3px;background:var(--st);border-radius:2px;margin:8px 16px 16px;position:relative;overflow:hidden}
 .topics-scrollbar-fill{height:100%;background:var(--lime);border-radius:2px;transition:width .15s}
-.t-card{border-radius:10px;overflow:hidden;cursor:pointer;transition:transform .15s;background:var(--wh);box-shadow:0 1px 6px rgba(0,0,0,.05)}
+.t-card{border-radius:12px;overflow:hidden;cursor:pointer;transition:transform .15s;background:var(--wh);box-shadow:0 2px 10px rgba(0,0,0,.08);scroll-snap-align:start}
 .t-card:active{transform:scale(.97)}
-.t-card .t-art{height:100px;position:relative;overflow:hidden}
+.t-card .t-art{height:80px;position:relative;overflow:hidden}
 .t-card .t-art img{width:100%;height:100%;object-fit:cover}
-.t-card .t-art .t-num{position:absolute;top:6px;right:8px;font-size:9px;font-weight:600;color:rgba(255,255,255,.7);background:rgba(0,0,0,.35);padding:2px 6px;border-radius:4px;z-index:1}
-.t-card .t-info{padding:8px 10px 10px}
-.t-card .t-name{font-size:12px;font-weight:600;color:var(--ink);margin-bottom:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.t-card .t-meta{font-size:10px;color:var(--ink3)}
+.t-card .t-art .t-overlay{position:absolute;inset:0;background:linear-gradient(0deg,rgba(0,0,0,.5) 0%,transparent 60%)}
+.t-card .t-art .t-emoji{position:absolute;bottom:6px;left:8px;font-size:1rem}
+.t-card .t-art .t-num{position:absolute;top:6px;right:8px;font-size:9px;font-weight:600;color:rgba(255,255,255,.8);background:rgba(0,0,0,.35);padding:2px 6px;border-radius:4px;z-index:1}
+.t-card .t-info{padding:7px 8px 8px}
+.t-card .t-name{font-size:11px;font-weight:700;color:var(--ink);margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.t-card .t-desc{font-size:9px;color:var(--ink3);line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.t-card .t-accent{height:3px;width:100%}
 
 /* Lesson/Topic View header */
 .lesson-hdr{position:relative;overflow:hidden;padding:48px 20px 20px}
@@ -42502,33 +42505,34 @@ if (!_lang) {
             setPlaylist(null);
             if ("speechSynthesis" in window) speechSynthesis.cancel();
           }, children: "✕" }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "pl-v2-play", onClick: () => setPlaylist((p2) => p2 ? { ...p2, playing: !p2.playing } : null), children: playlist.playing ? "⏸" : "▶" }),
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "pl-v2-info", style: { flex: 1, minWidth: 0 }, children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { flex: 1, minWidth: 0, textAlign: "center", padding: "0 4px" }, children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".55rem", fontWeight: 700, color: "rgba(255,255,255,.3)", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }, children: playlist.title }),
             /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".82rem", fontWeight: 700, color: "#fff", marginBottom: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }, children: ((_a = playlist.items[playlist.idx]) == null ? void 0 : _a.en) || "..." }),
             ((_b = playlist.items[playlist.idx]) == null ? void 0 : _b.jyut) && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".72rem", fontStyle: "italic", color: "var(--lime)", marginBottom: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }, children: /* @__PURE__ */ jsxRuntimeExports.jsx(JyutpingTone, { text: playlist.items[playlist.idx].jyut }) }),
-            ((_c = playlist.items[playlist.idx]) == null ? void 0 : _c.cn) && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".82rem", fontWeight: 700, color: "rgba(255,255,255,.7)", marginBottom: 6, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }, children: playlist.items[playlist.idx].cn }),
-            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "pl-v2-counter", children: [
-              "Word ",
-              playlist.idx + 1,
-              " of ",
-              playlist.items.length,
-              " · ",
-              playlist.title
-            ] }),
+            ((_c = playlist.items[playlist.idx]) == null ? void 0 : _c.cn) && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".88rem", fontWeight: 800, color: "rgba(255,255,255,.8)", marginBottom: 6 }, children: playlist.items[playlist.idx].cn }),
             /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "pl-v2-prog", children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "pl-v2-prog-fill", style: { width: `${(playlist.idx + 1) / playlist.items.length * 100}%` } }) }),
-            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "pl-v2-speeds", children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "pl-v2-speed-label", children: "Voice" }),
-              [{ k: "natural", l: "Natural", r: 1 }, { k: "slower", l: "Slower", r: 0.75 }, { k: "very-slow", l: "Very slow", r: 0.5 }].map(
-                (s) => /* @__PURE__ */ jsxRuntimeExports.jsx("button", { style: { padding: "4px 10px", borderRadius: 999, border: playlist.voiceSpeed === s.k ? "1px solid var(--lime)" : "1px solid rgba(255,255,255,.1)", background: playlist.voiceSpeed === s.k ? "rgba(196,240,0,.12)" : "transparent", color: playlist.voiceSpeed === s.k ? "var(--lime)" : "rgba(255,255,255,.4)", fontSize: ".62rem", fontWeight: 700, cursor: "pointer" }, onClick: () => {
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { display: "flex", justifyContent: "space-between", marginTop: 2 }, children: /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { style: { fontSize: ".55rem", color: "rgba(255,255,255,.3)", fontWeight: 600 }, children: [
+              playlist.idx + 1,
+              "/",
+              playlist.items.length
+            ] }) }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", alignItems: "center", justifyContent: "center", gap: 20, marginTop: 8 }, children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => setPlaylist((p2) => p2 ? { ...p2, idx: Math.max(0, p2.idx - 1) } : null), style: { background: "none", border: "none", color: "rgba(255,255,255,.5)", fontSize: "1.1rem", cursor: "pointer", padding: 4 }, children: "⏮" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "pl-v2-play", onClick: () => setPlaylist((p2) => p2 ? { ...p2, playing: !p2.playing } : null), children: playlist.playing ? "⏸" : "▶" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => setPlaylist((p2) => p2 ? { ...p2, idx: Math.min(p2.items.length - 1, p2.idx + 1) } : null), style: { background: "none", border: "none", color: "rgba(255,255,255,.5)", fontSize: "1.1rem", cursor: "pointer", padding: 4 }, children: "⏭" })
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", alignItems: "center", justifyContent: "center", gap: 4, marginTop: 8 }, children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { fontSize: ".55rem", fontWeight: 800, color: "rgba(255,255,255,.2)", textTransform: "uppercase", letterSpacing: ".5px", marginRight: 2 }, children: "Voice" }),
+              [{ k: "natural", l: "1×", r: 1 }, { k: "slower", l: "0.75×", r: 0.75 }, { k: "very-slow", l: "0.5×", r: 0.5 }].map(
+                (s) => /* @__PURE__ */ jsxRuntimeExports.jsx("button", { style: { padding: "3px 10px", borderRadius: 999, border: playlist.voiceSpeed === s.k ? "1px solid var(--lime)" : "1px solid rgba(255,255,255,.1)", background: playlist.voiceSpeed === s.k ? "rgba(196,240,0,.12)" : "transparent", color: playlist.voiceSpeed === s.k ? "var(--lime)" : "rgba(255,255,255,.4)", fontSize: ".62rem", fontWeight: 700, cursor: "pointer" }, onClick: () => {
                   setPlaybackRate(s.r);
                   setPlaylist((p2) => p2 ? { ...p2, voiceSpeed: s.k } : null);
                 }, children: s.l }, s.k)
-              )
-            ] }),
-            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "pl-v2-speeds", style: { marginTop: 4 }, children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "pl-v2-speed-label", children: "Pace" }),
-              [{ k: "slow", l: "🐢 Slow" }, { k: "normal", l: "Normal" }, { k: "fast", l: "🐇 Fast" }].map(
-                (s) => /* @__PURE__ */ jsxRuntimeExports.jsx("button", { style: { padding: "4px 10px", borderRadius: 999, border: playlist.speed === s.k ? "1px solid var(--lime)" : "1px solid rgba(255,255,255,.1)", background: playlist.speed === s.k ? "rgba(196,240,0,.12)" : "transparent", color: playlist.speed === s.k ? "var(--lime)" : "rgba(255,255,255,.4)", fontSize: ".62rem", fontWeight: 700, cursor: "pointer" }, onClick: () => setPlaylist((p2) => p2 ? { ...p2, speed: s.k } : null), children: s.l }, s.k)
+              ),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { width: 8 } }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { fontSize: ".55rem", fontWeight: 800, color: "rgba(255,255,255,.2)", textTransform: "uppercase", letterSpacing: ".5px", marginRight: 2 }, children: "Pace" }),
+              [{ k: "slow", l: "🐢" }, { k: "normal", l: "—" }, { k: "fast", l: "🐇" }].map(
+                (s) => /* @__PURE__ */ jsxRuntimeExports.jsx("button", { style: { padding: "3px 10px", borderRadius: 999, border: playlist.speed === s.k ? "1px solid var(--lime)" : "1px solid rgba(255,255,255,.1)", background: playlist.speed === s.k ? "rgba(196,240,0,.12)" : "transparent", color: playlist.speed === s.k ? "var(--lime)" : "rgba(255,255,255,.4)", fontSize: ".62rem", fontWeight: 700, cursor: "pointer" }, onClick: () => setPlaylist((p2) => p2 ? { ...p2, speed: s.k } : null), children: s.l }, s.k)
               )
             ] })
           ] })
@@ -43519,6 +43523,19 @@ if (!_lang) {
               readingMode ? "Chinese first" : "English first"
             ] })
           ] }),
+          (() => {
+            const libItems = progress.unit10 || [];
+            const notInLib = items.filter((p2) => !libItems.find((s) => s.cn === p2.cn));
+            if (notInLib.length === 0) return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { padding: "6px 16px", fontSize: ".72rem", fontWeight: 700, color: "var(--ld)", display: "flex", alignItems: "center", gap: 6 }, children: "✓ All phrases saved to library" });
+            return /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { onClick: () => {
+              const newItems = notInLib.map((p2) => ({ en: p2.en, jyut: p2.jyut, cn: p2.cn, tag: unit.title, known: false, date: (/* @__PURE__ */ new Date()).toLocaleDateString("en-GB", { day: "numeric", month: "short" }) }));
+              upd("unit10", [...newItems, ...libItems]);
+            }, style: { margin: "6px 16px", padding: "10px 16px", borderRadius: 10, border: "1.5px solid var(--lime)", background: "rgba(196,240,0,.06)", color: "var(--ld)", fontSize: ".75rem", fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }, children: [
+              "📚 Add all ",
+              notInLib.length,
+              " phrases to My Library"
+            ] });
+          })(),
           /* @__PURE__ */ jsxRuntimeExports.jsx("div", { children: (() => {
             const notKnown = sorted.filter((p2) => !p2.known);
             const known = sorted.filter((p2) => p2.known);
@@ -43814,11 +43831,16 @@ if (!_lang) {
               }, children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "topics-grid", children: reordered.map((u2) => {
                 const isLocked = !isPremium && freeUnitIds && !freeUnitIds.includes(u2.id);
                 return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "t-card", onClick: () => {
-                  setSelUnit(u2.id);
-                  updateRecent(u2.id);
+                  if (!isLocked) {
+                    setSelUnit(u2.id);
+                    updateRecent(u2.id);
+                  }
                 }, children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "t-accent", style: { background: ["#C4F000", "#8F6AE8", "#F05A3A", "#4ECDC4", "#FFB347", "#45B7D1", "#96CEB4", "#FF6B6B", "#A8E6CF", "#DDA0DD", "#87CEEB", "#F0E68C", "#E8A87C", "#D4A574", "#B8860B", "#20B2AA", "#FF69B4", "#7B68EE", "#FF4500", "#2E8B57"][(u2.id - 1) % 20] } }),
                   /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "t-art", style: isLocked ? { opacity: 0.4, filter: "grayscale(.5)" } : {}, children: [
                     /* @__PURE__ */ jsxRuntimeExports.jsx("img", { src: TOPIC_IMAGES[u2.id] || TOPIC_IMAGES[1], alt: "" }),
+                    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "t-overlay" }),
+                    /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "t-emoji", children: { 1: "👋", 2: "🤝", 3: "🚕", 4: "☕", 5: "🍜", 6: "🛍", 7: "🏫", 8: "🏠", 9: "🕐", 10: "❤️", 11: "🍻", 12: "🌧", 13: "💰", 14: "💪", 15: "😤", 16: "📱", 17: "🥺", 18: "🔢", 19: "🎉", 20: "🌇" }[u2.id] || "📖" }),
                     isLocked && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)", fontSize: 20, filter: "none", opacity: 1 }, children: "🔒" }),
                     /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "t-num", children: [
                       "#",
@@ -43827,10 +43849,7 @@ if (!_lang) {
                   ] }),
                   /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "t-info", children: [
                     /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "t-name", children: u2.title }),
-                    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "t-meta", children: [
-                      u2.phrases.length,
-                      " phrases"
-                    ] })
+                    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "t-desc", children: u2.scene || u2.phrases.length + " phrases" })
                   ] })
                 ] }, u2.id);
               }) }) }),
@@ -45036,4 +45055,4 @@ if (!_lang) {
     root.render(React.createElement(ErrorBoundary, null, React.createElement(App)));
   })();
 }
-//# sourceMappingURL=app-C4nU8TX5.js.map
+//# sourceMappingURL=app-Dd8P2CPf.js.map

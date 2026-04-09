@@ -17,7 +17,7 @@ if (_refParam) {
 }
 
 // ---- ANALYTICS ----
-const APP_VERSION = "4.2.6";
+const APP_VERSION = "4.3.0";
 let _analyticsClient = null;
 function trackEvent(name, props = {}) {
   const uid = window._ssUser?.uid || null;
@@ -1252,19 +1252,22 @@ const CSS = `
 .cont-pbar-fill{height:100%;background:var(--lime);border-radius:3px}
 
 /* 2-row topic grid */
-.topics-wrap{padding:0 16px 16px;overflow-x:auto;scrollbar-width:none;position:relative}
+.topics-wrap{padding:0 16px 16px;overflow-x:auto;scrollbar-width:none;position:relative;scroll-snap-type:x mandatory}
 .topics-wrap::-webkit-scrollbar{display:none}
 .topics-grid{display:grid;grid-template-rows:repeat(3,auto);grid-auto-flow:column;grid-auto-columns:140px;gap:8px}
 .topics-scrollbar{height:3px;background:var(--st);border-radius:2px;margin:8px 16px 16px;position:relative;overflow:hidden}
 .topics-scrollbar-fill{height:100%;background:var(--lime);border-radius:2px;transition:width .15s}
-.t-card{border-radius:10px;overflow:hidden;cursor:pointer;transition:transform .15s;background:var(--wh);box-shadow:0 1px 6px rgba(0,0,0,.05)}
+.t-card{border-radius:12px;overflow:hidden;cursor:pointer;transition:transform .15s;background:var(--wh);box-shadow:0 2px 10px rgba(0,0,0,.08);scroll-snap-align:start}
 .t-card:active{transform:scale(.97)}
-.t-card .t-art{height:100px;position:relative;overflow:hidden}
+.t-card .t-art{height:80px;position:relative;overflow:hidden}
 .t-card .t-art img{width:100%;height:100%;object-fit:cover}
-.t-card .t-art .t-num{position:absolute;top:6px;right:8px;font-size:9px;font-weight:600;color:rgba(255,255,255,.7);background:rgba(0,0,0,.35);padding:2px 6px;border-radius:4px;z-index:1}
-.t-card .t-info{padding:8px 10px 10px}
-.t-card .t-name{font-size:12px;font-weight:600;color:var(--ink);margin-bottom:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.t-card .t-meta{font-size:10px;color:var(--ink3)}
+.t-card .t-art .t-overlay{position:absolute;inset:0;background:linear-gradient(0deg,rgba(0,0,0,.5) 0%,transparent 60%)}
+.t-card .t-art .t-emoji{position:absolute;bottom:6px;left:8px;font-size:1rem}
+.t-card .t-art .t-num{position:absolute;top:6px;right:8px;font-size:9px;font-weight:600;color:rgba(255,255,255,.8);background:rgba(0,0,0,.35);padding:2px 6px;border-radius:4px;z-index:1}
+.t-card .t-info{padding:7px 8px 8px}
+.t-card .t-name{font-size:11px;font-weight:700;color:var(--ink);margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.t-card .t-desc{font-size:9px;color:var(--ink3);line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.t-card .t-accent{height:3px;width:100%}
 
 /* Lesson/Topic View header */
 .lesson-hdr{position:relative;overflow:hidden;padding:48px 20px 20px}
@@ -2173,23 +2176,33 @@ function App() {
       {/* Playlist bar — redesigned (#20) */}
       {playlist && <div style={{position:"fixed",bottom:54,left:0,right:0,zIndex:110,padding:"0 10px"}}><div className="pl-bar-v2">
         <button className="pl-v2-close" onClick={()=>{setPlaylist(null);if("speechSynthesis"in window)speechSynthesis.cancel();}}>✕</button>
-        <button className="pl-v2-play" onClick={()=>setPlaylist(p=>p?{...p,playing:!p.playing}:null)}>{playlist.playing?"⏸":"▶"}</button>
-        <div className="pl-v2-info" style={{flex:1,minWidth:0}}>
+        {/* Now Playing text */}
+        <div style={{flex:1,minWidth:0,textAlign:"center",padding:"0 4px"}}>
+          <div style={{fontSize:".55rem",fontWeight:700,color:"rgba(255,255,255,.3)",textTransform:"uppercase",letterSpacing:1,marginBottom:4}}>{playlist.title}</div>
           <div style={{fontSize:".82rem",fontWeight:700,color:"#fff",marginBottom:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{playlist.items[playlist.idx]?.en || "..."}</div>
           {playlist.items[playlist.idx]?.jyut && <div style={{fontSize:".72rem",fontStyle:"italic",color:"var(--lime)",marginBottom:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}><JyutpingTone text={playlist.items[playlist.idx].jyut} /></div>}
-          {playlist.items[playlist.idx]?.cn && <div style={{fontSize:".82rem",fontWeight:700,color:"rgba(255,255,255,.7)",marginBottom:6,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{playlist.items[playlist.idx].cn}</div>}
-          <div className="pl-v2-counter">Word {playlist.idx+1} of {playlist.items.length} · {playlist.title}</div>
+          {playlist.items[playlist.idx]?.cn && <div style={{fontSize:".88rem",fontWeight:800,color:"rgba(255,255,255,.8)",marginBottom:6}}>{playlist.items[playlist.idx].cn}</div>}
+          {/* Progress bar */}
           <div className="pl-v2-prog"><div className="pl-v2-prog-fill" style={{width:`${((playlist.idx+1)/playlist.items.length)*100}%`}} /></div>
-          <div className="pl-v2-speeds">
-            <span className="pl-v2-speed-label">Voice</span>
-            {[{k:"natural",l:"Natural",r:1.0},{k:"slower",l:"Slower",r:0.75},{k:"very-slow",l:"Very slow",r:0.5}].map(s=>
-              <button key={s.k} style={{padding:"4px 10px",borderRadius:999,border:playlist.voiceSpeed===s.k?"1px solid var(--lime)":"1px solid rgba(255,255,255,.1)",background:playlist.voiceSpeed===s.k?"rgba(196,240,0,.12)":"transparent",color:playlist.voiceSpeed===s.k?"var(--lime)":"rgba(255,255,255,.4)",fontSize:".62rem",fontWeight:700,cursor:"pointer"}} onClick={()=>{setPlaybackRate(s.r);setPlaylist(p=>p?{...p,voiceSpeed:s.k}:null);}}>{s.l}</button>
-            )}
+          <div style={{display:"flex",justifyContent:"space-between",marginTop:2}}>
+            <span style={{fontSize:".55rem",color:"rgba(255,255,255,.3)",fontWeight:600}}>{playlist.idx+1}/{playlist.items.length}</span>
           </div>
-          <div className="pl-v2-speeds" style={{marginTop:4}}>
-            <span className="pl-v2-speed-label">Pace</span>
-            {[{k:"slow",l:"🐢 Slow"},{k:"normal",l:"Normal"},{k:"fast",l:"🐇 Fast"}].map(s=>
-              <button key={s.k} style={{padding:"4px 10px",borderRadius:999,border:playlist.speed===s.k?"1px solid var(--lime)":"1px solid rgba(255,255,255,.1)",background:playlist.speed===s.k?"rgba(196,240,0,.12)":"transparent",color:playlist.speed===s.k?"var(--lime)":"rgba(255,255,255,.4)",fontSize:".62rem",fontWeight:700,cursor:"pointer"}} onClick={()=>setPlaylist(p=>p?{...p,speed:s.k}:null)}>{s.l}</button>
+          {/* Transport controls — podcast style */}
+          <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:20,marginTop:8}}>
+            <button onClick={()=>setPlaylist(p=>p?{...p,idx:Math.max(0,p.idx-1)}:null)} style={{background:"none",border:"none",color:"rgba(255,255,255,.5)",fontSize:"1.1rem",cursor:"pointer",padding:4}}>⏮</button>
+            <button className="pl-v2-play" onClick={()=>setPlaylist(p=>p?{...p,playing:!p.playing}:null)}>{playlist.playing?"⏸":"▶"}</button>
+            <button onClick={()=>setPlaylist(p=>p?{...p,idx:Math.min(p.items.length-1,p.idx+1)}:null)} style={{background:"none",border:"none",color:"rgba(255,255,255,.5)",fontSize:"1.1rem",cursor:"pointer",padding:4}}>⏭</button>
+          </div>
+          {/* Speed controls */}
+          <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:4,marginTop:8}}>
+            <span style={{fontSize:".55rem",fontWeight:800,color:"rgba(255,255,255,.2)",textTransform:"uppercase",letterSpacing:".5px",marginRight:2}}>Voice</span>
+            {[{k:"natural",l:"1×",r:1.0},{k:"slower",l:"0.75×",r:0.75},{k:"very-slow",l:"0.5×",r:0.5}].map(s=>
+              <button key={s.k} style={{padding:"3px 10px",borderRadius:999,border:playlist.voiceSpeed===s.k?"1px solid var(--lime)":"1px solid rgba(255,255,255,.1)",background:playlist.voiceSpeed===s.k?"rgba(196,240,0,.12)":"transparent",color:playlist.voiceSpeed===s.k?"var(--lime)":"rgba(255,255,255,.4)",fontSize:".62rem",fontWeight:700,cursor:"pointer"}} onClick={()=>{setPlaybackRate(s.r);setPlaylist(p=>p?{...p,voiceSpeed:s.k}:null);}}>{s.l}</button>
+            )}
+            <span style={{width:8}} />
+            <span style={{fontSize:".55rem",fontWeight:800,color:"rgba(255,255,255,.2)",textTransform:"uppercase",letterSpacing:".5px",marginRight:2}}>Pace</span>
+            {[{k:"slow",l:"🐢"},{k:"normal",l:"—"},{k:"fast",l:"🐇"}].map(s=>
+              <button key={s.k} style={{padding:"3px 10px",borderRadius:999,border:playlist.speed===s.k?"1px solid var(--lime)":"1px solid rgba(255,255,255,.1)",background:playlist.speed===s.k?"rgba(196,240,0,.12)":"transparent",color:playlist.speed===s.k?"var(--lime)":"rgba(255,255,255,.4)",fontSize:".62rem",fontWeight:700,cursor:"pointer"}} onClick={()=>setPlaylist(p=>p?{...p,speed:s.k}:null)}>{s.l}</button>
             )}
           </div>
         </div>
@@ -3282,6 +3295,18 @@ function HomeTab({ profile, progress, upd, settings, setTab, recentTopics, setRe
             {readingMode?"Chinese first":"English first"}
           </span>
         </div>
+        {/* Add whole unit to library */}
+        {(()=>{
+          const libItems = progress.unit10 || [];
+          const notInLib = items.filter(p => !libItems.find(s => s.cn === p.cn));
+          if (notInLib.length === 0) return <div style={{padding:"6px 16px",fontSize:".72rem",fontWeight:700,color:"var(--ld)",display:"flex",alignItems:"center",gap:6}}>✓ All phrases saved to library</div>;
+          return <button onClick={()=>{
+            const newItems = notInLib.map(p=>({en:p.en,jyut:p.jyut,cn:p.cn,tag:unit.title,known:false,date:new Date().toLocaleDateString("en-GB",{day:"numeric",month:"short"})}));
+            upd("unit10", [...newItems, ...libItems]);
+          }} style={{margin:"6px 16px",padding:"10px 16px",borderRadius:10,border:"1.5px solid var(--lime)",background:"rgba(196,240,0,.06)",color:"var(--ld)",fontSize:".75rem",fontWeight:700,cursor:"pointer",display:"flex",alignItems:"center",gap:6}}>
+            📚 Add all {notInLib.length} phrases to My Library
+          </button>;
+        })()}
         <div>
           {(() => { const notKnown = sorted.filter(p=>!p.known); const known = sorted.filter(p=>p.known); return <>
             {notKnown.map((ph,i) => {
@@ -3521,15 +3546,18 @@ function HomeTab({ profile, progress, upd, settings, setTab, recentTopics, setRe
                 {reordered.map((u) => {
                   const isLocked = !isPremium && freeUnitIds && !freeUnitIds.includes(u.id);
                   return (
-                  <div className="t-card" key={u.id} onClick={()=>{setSelUnit(u.id);updateRecent(u.id);}}>
+                  <div className="t-card" key={u.id} onClick={()=>{if(!isLocked){setSelUnit(u.id);updateRecent(u.id);}}}>
+                    <div className="t-accent" style={{background:["#C4F000","#8F6AE8","#F05A3A","#4ECDC4","#FFB347","#45B7D1","#96CEB4","#FF6B6B","#A8E6CF","#DDA0DD","#87CEEB","#F0E68C","#E8A87C","#D4A574","#B8860B","#20B2AA","#FF69B4","#7B68EE","#FF4500","#2E8B57"][(u.id-1)%20]}} />
                     <div className="t-art" style={isLocked?{opacity:.4,filter:"grayscale(.5)"}:{}}>
                       <img src={TOPIC_IMAGES[u.id] || TOPIC_IMAGES[1]} alt="" />
+                      <div className="t-overlay" />
+                      <span className="t-emoji">{({1:"👋",2:"🤝",3:"🚕",4:"☕",5:"🍜",6:"🛍",7:"🏫",8:"🏠",9:"🕐",10:"❤️",11:"🍻",12:"🌧",13:"💰",14:"💪",15:"😤",16:"📱",17:"🥺",18:"🔢",19:"🎉",20:"🌇"})[u.id]||"📖"}</span>
                       {isLocked && <span style={{position:"absolute",top:"50%",left:"50%",transform:"translate(-50%,-50%)",fontSize:20,filter:"none",opacity:1}}>🔒</span>}
                       <span className="t-num">#{u.id}</span>
                     </div>
                     <div className="t-info">
                       <div className="t-name">{u.title}</div>
-                      <div className="t-meta">{u.phrases.length} phrases</div>
+                      <div className="t-desc">{u.scene || u.phrases.length + " phrases"}</div>
                     </div>
                   </div>
                 )})}

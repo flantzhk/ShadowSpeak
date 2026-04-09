@@ -40222,7 +40222,7 @@ if (_refParam) {
   _cleanRef.searchParams.delete("ref");
   window.history.replaceState({}, "", _cleanRef.pathname + _cleanRef.search + _cleanRef.hash);
 }
-const APP_VERSION = "4.1.5";
+const APP_VERSION = "4.2.0";
 function trackEvent(name2, props = {}) {
   var _a;
   const uid = ((_a = window._ssUser) == null ? void 0 : _a.uid) || null;
@@ -40395,7 +40395,7 @@ if (!_lang) {
         const done = () => {
           if (settled) return;
           settled = true;
-          resolve();
+          setTimeout(resolve, 200);
         };
         const fail2 = (e) => {
           if (settled) return;
@@ -40561,6 +40561,15 @@ if (!_lang) {
       });
     }
     let _currentAudio = null;
+    function updateMediaSession(title, artist, album) {
+      if ("mediaSession" in navigator) {
+        navigator.mediaSession.metadata = new MediaMetadata({
+          title: title || "ShadowSpeak",
+          artist: artist || LANG_CONFIG.name,
+          album
+        });
+      }
+    }
     function stopAudio() {
       unlockAudio();
       if (_currentAudio) {
@@ -40592,7 +40601,7 @@ if (!_lang) {
         audio.onended = () => {
           if (settled) return;
           settled = true;
-          resolve();
+          setTimeout(resolve, 200);
         };
         audio.onerror = () => {
           if (settled) return;
@@ -40817,7 +40826,8 @@ if (!_lang) {
       }
       return speakAsync(text, "en-US", 1);
     }
-    async function speakPhrase(item) {
+    async function speakPhrase(item, unitTitle) {
+      updateMediaSession(item.en, unitTitle || LANG_CONFIG.name, "ShadowSpeak");
       await speakEnglish(item.en);
       await new Promise((r2) => setTimeout(r2, 800));
       await speak(item.cn);
@@ -41903,16 +41913,20 @@ if (!_lang) {
               quizItems.length
             ] })
           ] }),
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "quiz-body", children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "quiz-sub", style: { marginBottom: 4 }, children: "Say this out loud in Cantonese:" }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "quiz-prompt", style: { marginBottom: 6 }, children: item.en }),
-            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { marginBottom: 4 }, children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".95rem", fontStyle: "italic", color: "var(--plum)", fontWeight: 600 }, children: /* @__PURE__ */ jsxRuntimeExports.jsx(JyutpingTone, { text: item.jyut }) }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontFamily: "${LANG_CONFIG.fontFamily.replace(/'/g, '')}", fontSize: ".88rem", color: "var(--ink2)", marginTop: 2 }, children: item.cn })
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "quiz-body", style: { justifyContent: "center", gap: 0 }, children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "quiz-sub", style: { marginBottom: 12, fontSize: ".82rem" }, children: [
+              "Say this out loud in ",
+              LANG_CONFIG.name,
+              ":"
             ] }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("button", { style: { marginBottom: 14, background: "var(--for)", border: "none", borderRadius: 999, padding: "8px 16px", fontSize: ".68rem", cursor: "pointer", color: "var(--lime)", fontWeight: 700 }, onClick: () => speak(item.cn), children: "▶ Listen first" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "quiz-prompt", style: { marginBottom: 16, fontSize: "1.4rem" }, children: item.en }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { marginBottom: 20, textAlign: "center" }, children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: "1rem", fontStyle: "italic", color: "var(--plum)", fontWeight: 600, marginBottom: 6 }, children: /* @__PURE__ */ jsxRuntimeExports.jsx(JyutpingTone, { text: item.jyut }) }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontFamily: `${LANG_CONFIG.fontFamily.replace(/'/g, "")}`, fontSize: "1.1rem", color: "var(--ink)", fontWeight: 700 }, children: item.cn })
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("button", { style: { marginBottom: 24, background: "var(--for)", border: "none", borderRadius: 999, padding: "12px 24px", fontSize: ".78rem", cursor: "pointer", color: "var(--lime)", fontWeight: 700, minHeight: 44 }, onClick: () => speak(item.cn), children: "▶ Listen first" }),
             /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { width: "100%", maxWidth: 440 }, children: !isRecording && !scoring && !scoreResult ? /* @__PURE__ */ jsxRuntimeExports.jsx(RecordBtn, { onClick: qStartTest, label: "🎙 Record yourself" }) : scoring ? /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { width: "100%", padding: "16px", borderRadius: 14, background: "rgba(0,0,0,.04)", textAlign: "center" }, children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: ".82rem", fontWeight: 700, color: "var(--ink2)" }, children: "Scoring..." }) }) : isRecording ? /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: qStopTest, style: { width: "100%", padding: "16px", borderRadius: 14, border: "none", background: "#e74c3c", color: "#fff", fontSize: ".88rem", fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 10, animation: "pulse 1s ease-in-out infinite" }, children: "⏹ Stop and score" }) : null }),
-            !scoreResult && !isRecording && !scoring && /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: pronSkip, style: { marginTop: 10, background: "none", border: "none", cursor: "pointer", fontSize: ".72rem", fontWeight: 600, color: "var(--ink3)" }, children: "Skip →" }),
+            !scoreResult && !isRecording && !scoring && /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: pronSkip, style: { marginTop: 16, background: "none", border: "none", cursor: "pointer", fontSize: ".78rem", fontWeight: 600, color: "var(--ink3)", minHeight: 44, padding: "8px 16px" }, children: "Skip →" }),
             /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { fontSize: ".65rem", color: "var(--ink3)", marginTop: 10 }, children: [
               idx + 1,
               " of ",
@@ -42070,7 +42084,7 @@ if (!_lang) {
       const [promoInput, setPromoInput] = reactExports.useState("");
       const [promoStatus, setPromoStatus] = reactExports.useState(null);
       const saveTimer = reactExports.useRef(null);
-      const FREE_UNIT_IDS = [1, 2, 5];
+      const FREE_UNIT_IDS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
       const selectUnitGated = (id2) => {
         if (id2 !== null && !isPremium && !FREE_UNIT_IDS.includes(id2)) {
           setShowPremiumGate(true);
@@ -42314,7 +42328,7 @@ if (!_lang) {
         let cancelled = false;
         (async () => {
           try {
-            await speakPhrase(item);
+            await speakPhrase(item, playlist.title);
           } catch (e) {
             console.warn("[Playlist] speakPhrase failed, advancing:", e);
           }
@@ -43731,10 +43745,10 @@ if (!_lang) {
                 return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "t-card", onClick: () => {
                   setSelUnit(u2.id);
                   updateRecent(u2.id);
-                }, style: isLocked ? { opacity: 0.7 } : {}, children: [
-                  /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "t-art", children: [
+                }, children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "t-art", style: isLocked ? { opacity: 0.4, filter: "grayscale(.5)" } : {}, children: [
                     /* @__PURE__ */ jsxRuntimeExports.jsx("img", { src: TOPIC_IMAGES[u2.id] || TOPIC_IMAGES[1], alt: "" }),
-                    isLocked && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { position: "absolute", top: 6, right: 6, background: "rgba(0,0,0,.6)", borderRadius: 999, padding: "3px 7px", fontSize: 11 }, children: "🔒" }),
+                    isLocked && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)", fontSize: 20, filter: "none", opacity: 1 }, children: "🔒" }),
                     /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "t-num", children: [
                       "#",
                       u2.id
@@ -44937,4 +44951,4 @@ if (!_lang) {
     root.render(React.createElement(ErrorBoundary, null, React.createElement(App)));
   })();
 }
-//# sourceMappingURL=app-CKPkkOxy.js.map
+//# sourceMappingURL=app-BAYweSzI.js.map

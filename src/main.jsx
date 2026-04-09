@@ -17,7 +17,7 @@ if (_refParam) {
 }
 
 // ---- ANALYTICS ----
-const APP_VERSION = "4.1.0";
+const APP_VERSION = "4.1.1";
 let _analyticsClient = null;
 function trackEvent(name, props = {}) {
   const uid = window._ssUser?.uid || null;
@@ -171,9 +171,14 @@ function playLocalAudio(url) {
     const audio = new Audio(url);
     _currentAudio = audio;
     if (_audioCtx && _audioCtx.state === "suspended") _audioCtx.resume();
-    audio.onended = () => { _currentAudio = null; resolve(); };
-    audio.onerror = () => { _currentAudio = null; reject(new Error("Local audio failed: " + url)); };
-    audio.play().catch(e => { _currentAudio = null; reject(e); });
+    let settled = false;
+    const done = () => { if (settled) return; settled = true; _currentAudio = null; resolve(); };
+    audio.onended = done;
+    audio.onpause = done; // resolve if externally paused (e.g. stopAudio)
+    audio.onerror = () => { if (settled) return; settled = true; _currentAudio = null; reject(new Error("Local audio failed: " + url)); };
+    // Safety timeout — resolve after 15s max to prevent hanging
+    setTimeout(done, 15000);
+    audio.play().catch(e => { if (settled) return; settled = true; _currentAudio = null; reject(e); });
   });
 }
 
@@ -1945,11 +1950,16 @@ function App() {
     const gapMs = { slow: 2500, normal: 1500, fast: 700 }[playlist.speed || "normal"];
     let cancelled = false;
     (async () => {
-      await speakPhrase(item);
+      try {
+        await speakPhrase(item);
+      } catch(e) {
+        console.warn("[Playlist] speakPhrase failed, advancing:", e);
+      }
+      if (cancelled) return;
       await new Promise(r => setTimeout(r, gapMs));
       if (!cancelled && plActive.current) setPlaylist(prev => prev ? { ...prev, idx: prev.idx + 1 } : null);
     })();
-    return () => { cancelled = true; if("speechSynthesis"in window) speechSynthesis.cancel(); };
+    return () => { cancelled = true; stopAudio(); };
   }, [playlist?.idx, playlist?.playing, playlist?.speed]);
 
   const startPlaylist = useCallback((items, title) => {

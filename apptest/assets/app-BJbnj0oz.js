@@ -40222,7 +40222,7 @@ if (_refParam) {
   _cleanRef.searchParams.delete("ref");
   window.history.replaceState({}, "", _cleanRef.pathname + _cleanRef.search + _cleanRef.hash);
 }
-const APP_VERSION = "4.1.0";
+const APP_VERSION = "4.1.1";
 function trackEvent(name2, props = {}) {
   var _a;
   const uid = ((_a = window._ssUser) == null ? void 0 : _a.uid) || null;
@@ -40383,15 +40383,25 @@ if (!_lang) {
         const audio = new Audio(url);
         _currentAudio = audio;
         if (_audioCtx && _audioCtx.state === "suspended") _audioCtx.resume();
-        audio.onended = () => {
+        let settled = false;
+        const done = () => {
+          if (settled) return;
+          settled = true;
           _currentAudio = null;
           resolve();
         };
+        audio.onended = done;
+        audio.onpause = done;
         audio.onerror = () => {
+          if (settled) return;
+          settled = true;
           _currentAudio = null;
           reject(new Error("Local audio failed: " + url));
         };
+        setTimeout(done, 15e3);
         audio.play().catch((e) => {
+          if (settled) return;
+          settled = true;
           _currentAudio = null;
           reject(e);
         });
@@ -42283,13 +42293,18 @@ if (!_lang) {
         const gapMs = { slow: 2500, normal: 1500, fast: 700 }[playlist.speed || "normal"];
         let cancelled = false;
         (async () => {
-          await speakPhrase(item);
+          try {
+            await speakPhrase(item);
+          } catch (e) {
+            console.warn("[Playlist] speakPhrase failed, advancing:", e);
+          }
+          if (cancelled) return;
           await new Promise((r2) => setTimeout(r2, gapMs));
           if (!cancelled && plActive.current) setPlaylist((prev) => prev ? { ...prev, idx: prev.idx + 1 } : null);
         })();
         return () => {
           cancelled = true;
-          if ("speechSynthesis" in window) speechSynthesis.cancel();
+          stopAudio();
         };
       }, [playlist == null ? void 0 : playlist.idx, playlist == null ? void 0 : playlist.playing, playlist == null ? void 0 : playlist.speed]);
       const startPlaylist = reactExports.useCallback((items, title) => {
@@ -44895,4 +44910,4 @@ if (!_lang) {
     root.render(React.createElement(ErrorBoundary, null, React.createElement(App)));
   })();
 }
-//# sourceMappingURL=app-BIKrTkZX.js.map
+//# sourceMappingURL=app-BJbnj0oz.js.map

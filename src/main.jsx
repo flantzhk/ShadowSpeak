@@ -17,7 +17,7 @@ if (_refParam) {
 }
 
 // ---- ANALYTICS ----
-const APP_VERSION = "4.1.4";
+const APP_VERSION = "4.1.5";
 let _analyticsClient = null;
 function trackEvent(name, props = {}) {
   const uid = window._ssUser?.uid || null;
@@ -3141,7 +3141,10 @@ function HomeTab({ profile, progress, upd, settings, setTab, recentTopics, setRe
   }, [recentTopics]);
 
   // Library count
-  const libraryCount = (progress.unit10 || []).length;
+  const libraryAll = (progress.unit10 || []);
+  const libraryToLearn = libraryAll.filter(x => !x.known).length;
+  const libraryMastered = libraryAll.filter(x => x.known).length;
+  const libraryCount = libraryAll.length;
 
   // Preload audio for selected unit
   useEffect(() => { preloadUnitAudio(unit.phrases); }, [selUnit]);
@@ -3350,7 +3353,7 @@ function HomeTab({ profile, progress, upd, settings, setTab, recentTopics, setRe
           <div className="lib-card-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M4 19V5a2 2 0 012-2h8.5L20 8.5V19a2 2 0 01-2 2H6a2 2 0 01-2-2z" stroke="#C4F000" strokeWidth="1.5"/><path d="M14 3v6h6" stroke="#C4F000" strokeWidth="1.5"/><path d="M8 13h8M8 17h5" stroke="#C4F000" strokeWidth="1.5" strokeLinecap="round"/></svg></div>
           <div className="lib-card-info">
             <div className="lib-card-title">My Library</div>
-            <div className="lib-card-sub">{libraryCount} saved phrases</div>
+            <div className="lib-card-sub">{libraryToLearn} to learn{libraryMastered > 0 ? ` · ${libraryMastered} mastered` : ""}</div>
           </div>
           <span style={{fontSize:18,color:"var(--ink3)"}}>&#8250;</span>
         </div>

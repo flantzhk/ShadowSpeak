@@ -40222,7 +40222,7 @@ if (_refParam) {
   _cleanRef.searchParams.delete("ref");
   window.history.replaceState({}, "", _cleanRef.pathname + _cleanRef.search + _cleanRef.hash);
 }
-const APP_VERSION = "4.1.4";
+const APP_VERSION = "4.1.5";
 function trackEvent(name2, props = {}) {
   var _a;
   const uid = ((_a = window._ssUser) == null ? void 0 : _a.uid) || null;
@@ -43370,7 +43370,10 @@ if (!_lang) {
       const recentUnits = reactExports.useMemo(() => {
         return (recentTopics || []).map((id2) => UNITS.find((u2) => u2.id === id2)).filter(Boolean);
       }, [recentTopics]);
-      const libraryCount = (progress.unit10 || []).length;
+      const libraryAll = progress.unit10 || [];
+      const libraryToLearn = libraryAll.filter((x2) => !x2.known).length;
+      const libraryMastered = libraryAll.filter((x2) => x2.known).length;
+      libraryAll.length;
       reactExports.useEffect(() => {
         preloadUnitAudio(unit.phrases);
       }, [selUnit]);
@@ -43647,8 +43650,9 @@ if (!_lang) {
             /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "lib-card-info", children: [
               /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "lib-card-title", children: "My Library" }),
               /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "lib-card-sub", children: [
-                libraryCount,
-                " saved phrases"
+                libraryToLearn,
+                " to learn",
+                libraryMastered > 0 ? ` · ${libraryMastered} mastered` : ""
               ] })
             ] }),
             /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { fontSize: 18, color: "var(--ink3)" }, children: "›" })
@@ -44933,4 +44937,4 @@ if (!_lang) {
     root.render(React.createElement(ErrorBoundary, null, React.createElement(App)));
   })();
 }
-//# sourceMappingURL=app-PzjLdgkG.js.map
+//# sourceMappingURL=app-CKPkkOxy.js.map

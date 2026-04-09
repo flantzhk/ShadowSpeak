@@ -151,7 +151,8 @@ async function loadAudioManifest() {
   }
   _audioManifestLoading = true;
   try {
-    const res = await fetch("audio/manifest.json");
+    // Always load from main app's audio directory (not apptest)
+    const res = await fetch("/ShadowSpeak/audio/manifest.json");
     if (res.ok) {
       _audioManifest = await res.json();
       console.log("Audio manifest loaded");
@@ -185,7 +186,8 @@ async function tryLocalAudio(text, section) {
   const path = manifest?.[app]?.[lang]?.[text];
   if (!path) return false;
   try {
-    await playLocalAudio(path);
+    // Audio files live in main app's /ShadowSpeak/audio/ directory
+    await playLocalAudio("/ShadowSpeak/" + path);
     return true;
   } catch(e) {
     console.warn("Local audio playback failed, falling back to API:", e.message);
@@ -5246,7 +5248,7 @@ function SettingsTab({ settings, updSettings, isPremium, setShowPremiumGate }) {
       for (const app of Object.values(manifest)) {
         for (const lang of Object.values(app)) {
           for (const path of Object.values(lang)) {
-            urls.push(path);
+            urls.push("/ShadowSpeak/" + path);
           }
         }
       }

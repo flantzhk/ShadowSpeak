@@ -950,8 +950,8 @@ const CSS = `
 .wc-en{font-size:.78rem;font-weight:700;color:var(--ink);margin-bottom:1px}.wc-jy{font-size:.68rem;font-style:italic;color:var(--plum)}
 .wc-cn{font-family:${LANG_CONFIG.fontFamily.replace(/'/g, '')};font-size:.68rem;color:var(--ink3)}
 .wc-ft{display:flex;align-items:center;justify-content:space-between;margin-top:5px}
-.wc-pl{width:32px;height:32px;border-radius:50%;background:var(--st);border:none;cursor:pointer;font-size:10px;display:flex;align-items:center;justify-content:center;color:var(--ink)}
-.wc-ik{font-size:.62rem;font-weight:800;border:none;border-radius:999px;padding:6px 10px;cursor:pointer;min-height:32px}
+.wc-pl{width:44px;height:44px;border-radius:50%;background:var(--st);border:none;cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center;color:var(--ink)}
+.wc-ik{font-size:.65rem;font-weight:800;border:none;border-radius:999px;padding:8px 14px;cursor:pointer;min-height:44px;display:inline-flex;align-items:center}
 .wc-ik.un{background:var(--st);color:var(--ink2)}.wc-ik.kn{background:var(--lime);color:var(--for)}
 
 /* Tier cards */
@@ -3058,7 +3058,7 @@ function HomeTab({ profile, progress, upd, settings, setTab, recentTopics, setRe
                     ))}
                   </div>}
                   <div className="ph-actions">
-                    <button className={"ph-action-btn"+((progress.unit10||[]).find(s=>s.cn===ph.cn)?" saved-btn":"")} onClick={e=>{e.stopPropagation();const items=progress.unit10||[];if(!items.find(s=>s.cn===ph.cn)){upd("unit10",[{en:ph.en,jyut:ph.jyut,cn:ph.cn,tag:unit.title,known:false,date:new Date().toLocaleDateString("en-GB",{day:"numeric",month:"short"})},...items]);}}}>{(progress.unit10||[]).find(s=>s.cn===ph.cn)?"✓ Saved!":"Save to Library"}</button>
+                    <button className={"ph-action-btn"+((progress.unit10||[]).find(s=>s.cn===ph.cn)?" saved-btn":"")} onClick={e=>{e.stopPropagation();const items=progress.unit10||[];if(!items.find(s=>s.cn===ph.cn)){upd("unit10",[{en:ph.en,jyut:ph.jyut,cn:ph.cn,tag:unit.title,known:false,date:new Date().toLocaleDateString("en-GB",{day:"numeric",month:"short"})},...items]);setPopup({e:"📖",t:"Saved to library",s:ph.en});}}}>{(progress.unit10||[]).find(s=>s.cn===ph.cn)?"✓ Saved!":"Save to Library"}</button>
                     <button className="ph-action-btn" onClick={e=>{e.stopPropagation();setShadow(ph.origIdx);}}><svg width="10" height="10" viewBox="0 0 10 12" fill="none"><path d="M0 0L10 6L0 12V0Z" fill="#fff"/></svg> Repeat</button>
                     {!ph.known && <button className="ph-action-btn know-btn" onClick={e=>{e.stopPropagation();setMasteryConfirm(ph);}}>I know this!</button>}
                   </div>
@@ -5192,7 +5192,7 @@ function SettingsTab({ settings, updSettings }) {
               <div style={{flex:1}}>
                 <div style={{fontSize:".75rem",fontWeight:700,color:"var(--ink)"}}>{v.label}</div>
               </div>
-              <button onClick={(e)=>{e.stopPropagation();previewEnVoice(v.id);}} style={{background:"var(--for)",color:"var(--lime)",border:"none",borderRadius:999,padding:"6px 12px",fontSize:".62rem",fontWeight:700,cursor:"pointer"}}>{playing===v.id?"...":"▶"}</button>
+              <button onClick={(e)=>{e.stopPropagation();previewEnVoice(v.id);}} style={{background:"var(--for)",color:"var(--lime)",border:"none",borderRadius:999,padding:"10px 16px",fontSize:".68rem",fontWeight:700,cursor:"pointer",minWidth:44,minHeight:44,display:"inline-flex",alignItems:"center",justifyContent:"center"}}>{playing===v.id?"...":"▶"}</button>
             </div>
           ))}
         </div>
@@ -5209,7 +5209,7 @@ function SettingsTab({ settings, updSettings }) {
               <div style={{flex:1}}>
                 <div style={{fontSize:".75rem",fontWeight:700,color:"var(--ink)"}}>{v.label}</div>
               </div>
-              <button onClick={(e)=>{e.stopPropagation();previewCnVoice(v.id);}} style={{background:"var(--for)",color:"var(--lime)",border:"none",borderRadius:999,padding:"6px 12px",fontSize:".62rem",fontWeight:700,cursor:"pointer"}}>{playing===v.id?"...":"▶"}</button>
+              <button onClick={(e)=>{e.stopPropagation();previewCnVoice(v.id);}} style={{background:"var(--for)",color:"var(--lime)",border:"none",borderRadius:999,padding:"10px 16px",fontSize:".68rem",fontWeight:700,cursor:"pointer",minWidth:44,minHeight:44,display:"inline-flex",alignItems:"center",justifyContent:"center"}}>{playing===v.id?"...":"▶"}</button>
             </div>
           ))}
         </div>

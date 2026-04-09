@@ -4,7 +4,19 @@ import firebase from "firebase/compat/app";
 import "firebase/compat/auth";
 import "firebase/compat/firestore";
 
-// Language selection — check URL param, localStorage, or show picker
+// ---- REFERRAL CAPTURE ----
+// Capture ?ref= parameter into sessionStorage BEFORE anything else
+// This must happen at page load so it's available when the user signs in
+const _refParam = new URLSearchParams(window.location.search).get("ref");
+if (_refParam) {
+  sessionStorage.setItem("shadowspeak_referral_code", _refParam);
+  console.log("[Referral] Captured referral code:", _refParam);
+  const _cleanRef = new URL(window.location.href);
+  _cleanRef.searchParams.delete("ref");
+  window.history.replaceState({}, "", _cleanRef.pathname + _cleanRef.search + _cleanRef.hash);
+}
+
+// ---- LANGUAGE SELECTION ----
 const _up = new URLSearchParams(window.location.search);
 let _lang = _up.get("lang") || localStorage.getItem("shadowspeak-lang") || null;
 // Clean ?lang= from URL if present
@@ -1666,6 +1678,48 @@ function App() {
     });
     return unsub;
   }, []);
+
+  // Sync user profile to Firestore (create on first sign-in, update lastActiveAt)
+  useEffect(() => {
+    if (!user) return;
+    (async () => {
+      const profileRef = fbDb.collection("users").doc(user.uid);
+      try {
+        const doc = await profileRef.get();
+        if (doc.exists) {
+          // Returning user — update lastActiveAt
+          await profileRef.update({
+            lastActiveAt: new Date(),
+            email: user.email || null,
+            displayName: user.displayName || null,
+            photoURL: user.photoURL || null,
+            selectedLanguage: localStorage.getItem("shadowspeak-lang") || null,
+          });
+        } else {
+          // New user — create full profile
+          const referralCode = sessionStorage.getItem("shadowspeak_referral_code") || null;
+          await profileRef.set({
+            uid: user.uid,
+            email: user.email || null,
+            displayName: user.displayName || null,
+            photoURL: user.photoURL || null,
+            createdAt: new Date(),
+            lastActiveAt: new Date(),
+            selectedLanguage: localStorage.getItem("shadowspeak-lang") || null,
+            isPremium: false,
+            premiumSince: null,
+            premiumTier: null,
+            promoCodeUsed: null,
+            referredBy: referralCode,
+          });
+          if (referralCode) sessionStorage.removeItem("shadowspeak_referral_code");
+          console.log("[Profile] New user profile created", referralCode ? "with referral: " + referralCode : "");
+        }
+      } catch (e) {
+        console.warn("Profile sync failed:", e);
+      }
+    })();
+  }, [user]);
 
   // Load progress from Firestore when user signs in
   useEffect(() => {

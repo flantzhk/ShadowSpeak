@@ -16,6 +16,21 @@ if (_refParam) {
   window.history.replaceState({}, "", _cleanRef.pathname + _cleanRef.search + _cleanRef.hash);
 }
 
+// ---- ANALYTICS ----
+const APP_VERSION = "4.0.0";
+let _analyticsClient = null;
+function trackEvent(name, props = {}) {
+  const uid = window._ssUser?.uid || null;
+  const lang = localStorage.getItem("shadowspeak-lang") || null;
+  const premium = window._ssIsPremium || false;
+  const platform = typeof navigator !== "undefined" && /capacitor/i.test(navigator.userAgent) ? "ios" : "web";
+  const payload = { ...props, uid, language: lang, isPremium: premium, appVersion: APP_VERSION, platform };
+  console.log(`[Analytics] ${name}`, payload);
+  if (_analyticsClient) try { _analyticsClient.capture(name, payload); } catch(e) {}
+}
+function setAnalyticsClient(client) { _analyticsClient = client; }
+window.trackEvent = trackEvent;
+
 // ---- LANGUAGE SELECTION ----
 const _up = new URLSearchParams(window.location.search);
 let _lang = _up.get("lang") || localStorage.getItem("shadowspeak-lang") || null;
@@ -1674,6 +1689,7 @@ function App() {
   const selectUnitGated = (id) => {
     if (!isPremium && !FREE_UNIT_IDS.includes(id)) {
       setShowPremiumGate(true);
+      trackEvent("paywall_shown", { unitId: id });
       return;
     }
     setSelUnit(id);
@@ -1682,6 +1698,7 @@ function App() {
   // Promo code validation
   const submitPromoCode = async () => {
     if (!promoInput.trim()) return;
+    trackEvent("promo_code_entered", { code: promoInput.trim() });
     setPromoStatus("checking");
     try {
       const doc = await fbDb.collection("config").doc("promoCodes").get();
@@ -1700,6 +1717,8 @@ function App() {
             });
           }
           setIsPremium(true);
+          window._ssIsPremium = true;
+          trackEvent("promo_code_redeemed", { code: match.code });
           setPromoStatus("success");
           setShowPremiumGate(false);
           setPopup({ e: "🎉", t: "Unlocked!", s: "Welcome to ShadowSpeak Premium." });
@@ -1720,7 +1739,8 @@ function App() {
   // Inject CSS
   useEffect(() => {
     const s = document.createElement("style"); s.textContent = CSS + QUIZ_CSS; document.head.appendChild(s);
-    localStorage.setItem('shadowspeak-last-lang', 'app.html?lang=' + LANG_CONFIG.id);
+    localStorage.setItem('shadowspeak-last-lang', LANG_CONFIG.id);
+    trackEvent("app_open");
     return () => document.head.removeChild(s);
   }, []);
 
@@ -2047,9 +2067,9 @@ function App() {
       </div>
 
       {/* Premium Gate */}
-      {showPremiumGate && <div style={{position:"fixed",inset:0,zIndex:2000,background:"rgba(0,0,0,.7)",display:"flex",alignItems:"center",justifyContent:"center",padding:16}} onClick={()=>{setShowPremiumGate(false);setPromoInput("");setPromoStatus(null);}}>
+      {showPremiumGate && <div style={{position:"fixed",inset:0,zIndex:2000,background:"rgba(0,0,0,.7)",display:"flex",alignItems:"center",justifyContent:"center",padding:16}} onClick={()=>{setShowPremiumGate(false);setPromoInput("");setPromoStatus(null);trackEvent("paywall_dismissed");}}>
         <div style={{background:"#fff",borderRadius:24,padding:"32px 24px",maxWidth:420,width:"100%",maxHeight:"90vh",overflow:"auto",position:"relative"}} onClick={e=>e.stopPropagation()}>
-          <button onClick={()=>{setShowPremiumGate(false);setPromoInput("");setPromoStatus(null);}} style={{position:"absolute",top:16,right:16,background:"none",border:"none",fontSize:20,cursor:"pointer",color:"var(--ink3)",padding:8}}>✕</button>
+          <button onClick={()=>{setShowPremiumGate(false);setPromoInput("");setPromoStatus(null);trackEvent("paywall_dismissed");}} style={{position:"absolute",top:16,right:16,background:"none",border:"none",fontSize:20,cursor:"pointer",color:"var(--ink3)",padding:8}}>✕</button>
           <div style={{textAlign:"center",marginBottom:24}}>
             <div style={{fontSize:32,marginBottom:8}}>🔓</div>
             <div style={{fontSize:22,fontWeight:900,color:"var(--for)",marginBottom:8}}>Unlock ShadowSpeak Premium</div>

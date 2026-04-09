@@ -40365,7 +40365,7 @@ if (!_lang) {
       }
       _audioManifestLoading = true;
       try {
-        const res = await fetch("audio/manifest.json");
+        const res = await fetch("/ShadowSpeak/audio/manifest.json");
         if (res.ok) {
           _audioManifest = await res.json();
           console.log("Audio manifest loaded");
@@ -40405,7 +40405,7 @@ if (!_lang) {
       const path = (_b = (_a = manifest == null ? void 0 : manifest[app]) == null ? void 0 : _a[lang]) == null ? void 0 : _b[text];
       if (!path) return false;
       try {
-        await playLocalAudio(path);
+        await playLocalAudio("/ShadowSpeak/" + path);
         return true;
       } catch (e) {
         console.warn("Local audio playback failed, falling back to API:", e.message);
@@ -44709,7 +44709,7 @@ if (!_lang) {
           for (const app of Object.values(manifest)) {
             for (const lang of Object.values(app)) {
               for (const path of Object.values(lang)) {
-                urls.push(path);
+                urls.push("/ShadowSpeak/" + path);
               }
             }
           }
@@ -44893,4 +44893,4 @@ if (!_lang) {
     root.render(React.createElement(ErrorBoundary, null, React.createElement(App)));
   })();
 }
-//# sourceMappingURL=app-UiQssFpo.js.map
+//# sourceMappingURL=app-BIgWcw7G.js.map

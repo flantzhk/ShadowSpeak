@@ -3417,12 +3417,16 @@ function HomeTab({ profile, progress, upd, settings, setTab, recentTopics, setRe
           <div className="greeting-sub">Keep going, you're building real fluency.</div>
           <div className="stats-row">
             <div className="stat-item">
-              <div className="stat-num">{knownPhrases}</div>
-              <div className="stat-label">Phrases Learned</div>
+              <div className="stat-num">{(progress.unit10||[]).filter(s=>!s.known).length}</div>
+              <div className="stat-label">To Learn</div>
+            </div>
+            <div className="stat-item">
+              <div className="stat-num">{(progress.unit10||[]).filter(s=>s.known).length}</div>
+              <div className="stat-label">Mastered</div>
             </div>
             <div className="stat-item">
               <div className="stat-num">{(progress.lessonLog||[]).length}</div>
-              <div className="stat-label">Lessons Done</div>
+              <div className="stat-label">Lessons</div>
             </div>
           </div>
           <button className="start-btn" onClick={()=>{setAutoLaunch("daily");setTab("practice");}}>

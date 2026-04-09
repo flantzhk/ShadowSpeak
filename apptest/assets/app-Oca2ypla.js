@@ -43363,7 +43363,7 @@ if (!_lang) {
       reactExports.useMemo(() => getStats(progress), [progress]);
       const userName = profile;
       UNITS.reduce((s, u2) => s + u2.phrases.length, 0);
-      const knownPhrases = Object.keys(progress.phrases || {}).filter((k2) => (progress.phrases || {})[k2]).length;
+      Object.keys(progress.phrases || {}).filter((k2) => (progress.phrases || {})[k2]).length;
       const hour = (/* @__PURE__ */ new Date()).getHours();
       const greeting = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
       const unit = UNITS.find((u2) => u2.id === selUnit) || UNITS[0];
@@ -43675,12 +43675,16 @@ if (!_lang) {
           /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "greeting-sub", children: "Keep going, you're building real fluency." }),
           /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "stats-row", children: [
             /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "stat-item", children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "stat-num", children: knownPhrases }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "stat-label", children: "Phrases Learned" })
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "stat-num", children: (progress.unit10 || []).filter((s) => !s.known).length }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "stat-label", children: "To Learn" })
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "stat-item", children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "stat-num", children: (progress.unit10 || []).filter((s) => s.known).length }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "stat-label", children: "Mastered" })
             ] }),
             /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "stat-item", children: [
               /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "stat-num", children: (progress.lessonLog || []).length }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "stat-label", children: "Lessons Done" })
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "stat-label", children: "Lessons" })
             ] })
           ] }),
           /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { className: "start-btn", onClick: () => {
@@ -45055,4 +45059,4 @@ if (!_lang) {
     root.render(React.createElement(ErrorBoundary, null, React.createElement(App)));
   })();
 }
-//# sourceMappingURL=app-Dd8P2CPf.js.map
+//# sourceMappingURL=app-Oca2ypla.js.map

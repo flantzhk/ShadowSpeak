@@ -2392,12 +2392,12 @@ function DrillView({ item, items, innerIdx, safeIdx, showJyut }) {
   );
 }
 
-function LessonMode({ progress, upd, profile, settings, onComplete, onQuit }) {
+function LessonMode({ progress, upd, profile, settings, onComplete, onQuit, skipIntro=false }) {
   // Restore lesson state from sessionStorage if available
   const saved = useMemo(() => {
     try { const s = sessionStorage.getItem(`${LANG_CONFIG.id}-lesson`); return s ? JSON.parse(s) : null; } catch(e) { return null; }
   }, []);
-  const [showIntro, setShowIntro] = useState(!saved);
+  const [showIntro, setShowIntro] = useState(!saved && !skipIntro);
   const [phase, setPhase] = useState(saved?.phase || 0);
   const [timeLeft, setTimeLeft] = useState(saved?.timeLeft ?? 30*60);
   const [phaseTimeLeft, setPhaseTimeLeft] = useState(saved?.phaseTimeLeft ?? 3*60);
@@ -3845,7 +3845,7 @@ function PracticeTab({ progress, upd, settings, library, practiceCount, setPract
     return count;
   }, [progress]);
 
-  if (showLesson) return <LessonMode progress={progress} upd={upd} profile="" settings={settings} onComplete={() => {
+  if (showLesson) return <LessonMode progress={progress} upd={upd} profile="" settings={settings} skipIntro={true} onComplete={() => {
     const log = [...(progress.lessonLog||[]), {date:Date.now(), mins:30}];
     upd("lessonLog", log);
     setShowLesson(false);

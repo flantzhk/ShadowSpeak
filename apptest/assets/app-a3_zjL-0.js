@@ -42748,7 +42748,7 @@ if (!_lang) {
         ] })
       ] });
     }
-    function LessonMode({ progress, upd, profile, settings, onComplete, onQuit }) {
+    function LessonMode({ progress, upd, profile, settings, onComplete, onQuit, skipIntro = false }) {
       var _a, _b;
       const saved = reactExports.useMemo(() => {
         try {
@@ -42758,7 +42758,7 @@ if (!_lang) {
           return null;
         }
       }, []);
-      const [showIntro, setShowIntro] = reactExports.useState(!saved);
+      const [showIntro, setShowIntro] = reactExports.useState(!saved && !skipIntro);
       const [phase, setPhase] = reactExports.useState((saved == null ? void 0 : saved.phase) || 0);
       const [timeLeft, setTimeLeft] = reactExports.useState((saved == null ? void 0 : saved.timeLeft) ?? 30 * 60);
       const [phaseTimeLeft, setPhaseTimeLeft] = reactExports.useState((saved == null ? void 0 : saved.phaseTimeLeft) ?? 3 * 60);
@@ -44173,7 +44173,7 @@ if (!_lang) {
         });
         return count;
       }, [progress]);
-      if (showLesson) return /* @__PURE__ */ jsxRuntimeExports.jsx(LessonMode, { progress, upd, profile: "", settings, onComplete: () => {
+      if (showLesson) return /* @__PURE__ */ jsxRuntimeExports.jsx(LessonMode, { progress, upd, profile: "", settings, skipIntro: true, onComplete: () => {
         const log = [...progress.lessonLog || [], { date: Date.now(), mins: 30 }];
         upd("lessonLog", log);
         setShowLesson(false);
@@ -45058,4 +45058,4 @@ if (!_lang) {
     root.render(React.createElement(ErrorBoundary, null, React.createElement(App)));
   })();
 }
-//# sourceMappingURL=app-D75J8pJl.js.map
+//# sourceMappingURL=app-a3_zjL-0.js.map

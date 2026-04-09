@@ -40222,7 +40222,7 @@ if (_refParam) {
   _cleanRef.searchParams.delete("ref");
   window.history.replaceState({}, "", _cleanRef.pathname + _cleanRef.search + _cleanRef.hash);
 }
-const APP_VERSION = "4.0.0";
+const APP_VERSION = "4.1.0";
 function trackEvent(name2, props = {}) {
   var _a;
   const uid = ((_a = window._ssUser) == null ? void 0 : _a.uid) || null;
@@ -44862,7 +44862,9 @@ if (!_lang) {
           /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { fontSize: ".68rem", color: "var(--ink2)", lineHeight: 1.5 }, children: [
             "ShadowSpeak ",
             LANG_CONFIG.name,
-            " v3.9.6. Shadowing method + spaced repetition. ",
+            " v",
+            APP_VERSION,
+            ". Shadowing method + spaced repetition. ",
             ALL_WORDS.length,
             " vocabulary words across ",
             VOCAB_CATS.length,
@@ -44893,4 +44895,4 @@ if (!_lang) {
     root.render(React.createElement(ErrorBoundary, null, React.createElement(App)));
   })();
 }
-//# sourceMappingURL=app-BIgWcw7G.js.map
+//# sourceMappingURL=app-BIKrTkZX.js.map
